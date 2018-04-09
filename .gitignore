@@ -1,0 +1,17 @@
+.idea/
+.vscode/
+.history/
+node_modules/
+.DS_Store/
+dist/
+bld/
+
+logs/
+
+__test.js
+*.env
+config.yml
+
+npm-debug.log
+yarn-error.log
+prepros.cfg

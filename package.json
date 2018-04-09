@@ -1,0 +1,19 @@
+{
+  "name": "blockchain-postgres-sync",
+  "version": "0.0.1",
+  "description":
+    "A set of scripts to download and update Waves blockchain into PostgreSQL",
+  "main": "src/update.js",
+  "author": "Dmitry Shuranov <shuranov@wavesplatform.com>",
+  "license": "MIT",
+  "scripts": {
+    "download": "node src/runForRange.js",
+    "update": "node src/update.js"
+  },
+  "dependencies": {
+    "json-bigint": "^0.2.3",
+    "pg-promise": "^8.2.2",
+    "superagent": "^3.8.2",
+    "yamljs": "^0.3.0"
+  }
+}

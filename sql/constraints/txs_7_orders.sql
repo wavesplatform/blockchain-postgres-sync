@@ -1,0 +1,11 @@
+ALTER TABLE txs_7
+   ADD CONSTRAINT fk_orders_1
+	 FOREIGN KEY (order1)
+	 REFERENCES orders (id)
+	 ON DELETE RESTRICT;
+
+ALTER TABLE txs_7
+   ADD CONSTRAINT fk_orders_2
+	 FOREIGN KEY (order2)
+	 REFERENCES orders (id)
+	 ON DELETE RESTRICT;

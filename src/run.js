@@ -14,11 +14,11 @@ const singleInsert = (q, data) => {
   const insert =
     pgp.helpers.insert(data.map(transformBlock), schema.blocks_raw) +
     ` on conflict on constraint blocks_raw_pkey
-		do update set 
-			height = excluded.height,
-			b = excluded.b
-			where blocks_raw.b->>'signature' != excluded.b->>'signature'
-	`;
+			do update set 
+				height = excluded.height,
+				b = excluded.b
+				where blocks_raw.b->>'signature' != excluded.b->>'signature'
+		`;
 
   const timer = `${data[0].height} — ${data[data.length - 1].height} insert, ${
     data.length

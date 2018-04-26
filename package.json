@@ -1,6 +1,6 @@
 {
   "name": "blockchain-postgres-sync",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description":
     "A set of scripts to download and update Waves blockchain into PostgreSQL",
   "main": "src/update.js",

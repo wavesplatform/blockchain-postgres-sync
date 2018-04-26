@@ -1,5 +1,9 @@
 # Waves blockchain — PostgreSQL sync scripts 
 
+A set of scripts to download and update Waves blockchain history data into a PostgreSQL database.
+
+## Usage
+
 1. Clone the repository, install dependencies.
    ```bash
    npm install

@@ -20,8 +20,8 @@ $$
 LANGUAGE plpgsql;
 
 -- triggers to insert/update structured block to tables on raw insert/update
-CREATE TRIGGER block_insert_trigger AFTER INSERT ON blocks_raw FOR EACH ROW EXECUTE PROCEDURE on_block_insert ();
-CREATE TRIGGER block_update_trigger AFTER UPDATE 	ON blocks_raw FOR EACH row EXECUTE PROCEDURE on_block_update ();
+CREATE TRIGGER block_insert_trigger BEFORE INSERT ON blocks_raw FOR EACH ROW EXECUTE PROCEDURE on_block_insert ();
+CREATE TRIGGER block_update_trigger BEFORE UPDATE 	ON blocks_raw FOR EACH row EXECUTE PROCEDURE on_block_update ();
 
 -- for delete simple rule suffices
 CREATE RULE block_delete AS ON DELETE TO blocks_raw

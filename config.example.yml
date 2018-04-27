@@ -11,6 +11,10 @@ blocksPerRequest: 100
 # Possible values: 1 to 100, recommended: 1 to 10.
 blocksPerUpdate: 5
 
+# Minimal interval between initiating updates, milliseconds ('throttle' value)
+# Frequent updates mean data is more up-to-date, but load database more
+updateThrottleInterval: 500
+
 # PostgreSQL credentials.
 # Tables must be created beforehand according to SQL files.
 postgresHost: # IP, hostname or localhost

@@ -37,10 +37,15 @@ const singleInsert = (q, data) => {
 const run = async (batches, options) => {
   const db = createDb(options);
 
-  const requestMore = index =>
-    index >= batches.length
+  const requestMore = index => {
+    console.time('Requesting blocks');
+    return index >= batches.length
       ? Promise.resolve(null)
-      : requestBlocksBatch(batches[index], options);
+      : requestBlocksBatch(batches[index], options).then(r => {
+          console.timeEnd('Requesting blocks');
+          return r;
+        });
+  };
 
   // either do a transaction wita many insert, or one
   // single insert without transaction

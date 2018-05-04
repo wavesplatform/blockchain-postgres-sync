@@ -1,6 +1,8 @@
 const YAML = require('yamljs');
 const path = require('path');
 
+const getEnvInt = varName => parseInt(process.env[varName]) || undefined;
+
 module.exports = () => {
   let config;
   try {
@@ -9,5 +11,12 @@ module.exports = () => {
     // eslint-disable-next-line
     console.error(err);
   }
-  return config;
+  return {
+    ...config,
+    blocksPerRequest:
+      getEnvInt('BLOCKS_PER_REQUEST') || config.blocksPerRequest,
+    blocksPerUpdate: getEnvInt('BLOCKS_PER_UPDATE') || config.blocksPerUpdate,
+    updateThrottleInterval:
+      getEnvInt('UPDATE_THROTTLE_INTERVAL') || config.updateThrottleInterval,
+  };
 };

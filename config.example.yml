@@ -1,6 +1,13 @@
 # Node to get data from. Can be localhost.
 nodeAddress: https://nodes.wavesnodes.com
 
+# Determines what to do if blocks on this height already exists in the database. 
+# Possible options:
+# 'nothing' — never update, skip block
+# 'update' — update only if block's signature is different
+# 'updateForce' — always update
+onConflict: update
+
 # How many blocks to fetch on single download request.
 # Consider lowering this setting if fetching takes too long.
 # Possible values: 1 to 100.

@@ -10,32 +10,47 @@ const transformBlock = b => ({
   b,
 });
 
-const singleInsert = (q, data) => {
-  const insert =
-    pgp.helpers.insert(data.map(transformBlock), schema.blocks_raw) +
-    ` on conflict on constraint blocks_raw_pkey
-			do update set 
-				height = excluded.height,
-				b = excluded.b
-				where blocks_raw.b->>'signature' != excluded.b->>'signature'
-		`;
+const singleInsert = ({ onConflict }) => {
+  const ON_CONFLICT_OPTIONS = {
+    update: ` on conflict on constraint blocks_raw_pkey
+      do update set 
+        height = excluded.height,
+        b = excluded.b
+        where blocks_raw.b->>'signature' != excluded.b->>'signature'
+    `,
+    updateForce: ` on conflict on constraint blocks_raw_pkey
+      do update set 
+        height = excluded.height,
+        b = excluded.b;
+    `,
+    nothing: ` on conflict do nothing`,
+  };
 
-  const timer = `${data[0].height} — ${data[data.length - 1].height} insert, ${
-    data.length
-  } objects`;
+  console.log(ON_CONFLICT_OPTIONS[onConflict]);
 
-  // console.log(timer + ' started');
-  console.time(timer);
+  return (q, data) => {
+    const insert =
+      pgp.helpers.insert(data.map(transformBlock), schema.blocks_raw) +
+      ON_CONFLICT_OPTIONS[onConflict];
 
-  return q.none(insert).then(r => {
-    console.timeEnd(timer);
-    return r;
-  });
+    const timer = `${data[0].height} — ${
+      data[data.length - 1].height
+    } insert, ${data.length} objects`;
+
+    // console.log(timer + ' started');
+    console.time(timer);
+
+    return q.none(insert).then(r => {
+      console.timeEnd(timer);
+      return r;
+    });
+  };
 };
 
 // run from batches array
 const run = async (batches, options) => {
   const db = createDb(options);
+  const insertBatch = singleInsert(options);
 
   const requestMore = index => {
     console.time('Requesting blocks');
@@ -54,12 +69,12 @@ const run = async (batches, options) => {
         t.sequence(index =>
           requestMore(index).then(data => {
             if (data && data.length) {
-              return singleInsert(t, data);
+              return insertBatch(t, data);
             }
           })
         )
       )
-    : requestMore(0).then(data => singleInsert(db, data));
+    : requestMore(0).then(data => insertBatch(db, data));
 };
 
 module.exports = run;

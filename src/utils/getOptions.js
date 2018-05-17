@@ -18,5 +18,6 @@ module.exports = () => {
     blocksPerUpdate: getEnvInt('BLOCKS_PER_UPDATE') || config.blocksPerUpdate,
     updateThrottleInterval:
       getEnvInt('UPDATE_THROTTLE_INTERVAL') || config.updateThrottleInterval,
+    onConflict: process.env.ON_CONFLICT || config.onConflict,
   };
 };

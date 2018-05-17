@@ -26,8 +26,6 @@ const singleInsert = ({ onConflict }) => {
     nothing: ` on conflict do nothing`,
   };
 
-  console.log(ON_CONFLICT_OPTIONS[onConflict]);
-
   return (q, data) => {
     const insert =
       pgp.helpers.insert(data.map(transformBlock), schema.blocks_raw) +

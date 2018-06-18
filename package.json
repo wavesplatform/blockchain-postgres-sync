@@ -7,7 +7,8 @@
   "license": "MIT",
   "scripts": {
     "download": "node src/runForRange.js",
-    "update": "node src/update.js"
+    "update": "node src/update.js",
+    "rollbackMonitor": "node src/rollbackMonitor.js"
   },
   "dependencies": {
     "json-bigint": "^0.2.3",

@@ -22,6 +22,9 @@ blocksPerUpdate: 5
 # Frequent updates mean data is more up-to-date, but load database more
 updateThrottleInterval: 500
 
+# Interval between initiating rollback checks, milliseconds ('throttle' value)
+rollbackMonitorThrottleInterval: 300000
+
 # PostgreSQL credentials.
 # Tables must be created beforehand according to SQL files.
 postgresHost: # IP, hostname or localhost

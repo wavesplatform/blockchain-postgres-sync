@@ -1,6 +1,6 @@
 {
   "name": "blockchain-postgres-sync",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A set of scripts to download and update Waves blockchain history data into a PostgreSQL database.",
   "main": "src/update.js",
   "author": "Dmitry Shuranov <shuranov@wavesplatform.com>",
@@ -8,7 +8,8 @@
   "scripts": {
     "download": "node src/runForRange.js",
     "update": "node src/update.js",
-    "rollbackMonitor": "node src/rollbackMonitor.js"
+    "rollbackMonitor": "node src/rollbackMonitor.js",
+    "reinsertBlocks": "node src/reinsertBlocks.js"
   },
   "dependencies": {
     "json-bigint": "^0.2.3",

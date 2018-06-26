@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 9.6.9
--- Dumped by pg_dump version 9.6.9
+-- Dumped from database version 10.4 (Ubuntu 10.4-2.pgdg16.04+1)
+-- Dumped by pg_dump version 10.4 (Ubuntu 10.4-2.pgdg16.04+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -61,6 +61,45 @@ BEGIN
     delete_order_if_orphan (old.order2);
   RETURN NULL;
 END
+$$;
+
+
+--
+-- Name: find_missing_blocks(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.find_missing_blocks() RETURNS TABLE(missing_height integer)
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  last_height INT;
+BEGIN
+  DROP TABLE IF EXISTS __blocks_check;
+  CREATE TEMP TABLE __blocks_check (
+    q INT
+  );
+
+  SELECT height
+  INTO last_height
+  FROM blocks_raw
+  ORDER BY height DESC
+  LIMIT 1;
+
+  RAISE NOTICE 'Last height is %', last_height;
+
+  FOR i IN 1..last_height LOOP
+    INSERT INTO __blocks_check VALUES (i);
+  END LOOP;
+
+  RETURN QUERY SELECT q AS missing_height
+               FROM __blocks_check bc
+                 LEFT JOIN blocks_raw b ON (bc.q = b.height)
+               WHERE b.height IS NULL;
+
+  DROP TABLE __blocks_check;
+
+  RETURN;
+END;
 $$;
 
 
@@ -263,61 +302,63 @@ $$;
 CREATE FUNCTION public.insert_txs_11(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
-begin
-	insert into txs_11 (
-		height,
-		tx_type,
-		id,
-		time_stamp,
-		signature,
-		proofs,
-		tx_version,
-		fee,
-		sender,
-		sender_public_key,
-		asset_id,
-		attachment
-	)
-	select
-		-- common
-		(t->>'height')::int4,
-		(t->>'type')::smallint,
-		t->>'id',
-		to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
-		t->>'signature',
-		jsonb_array_cast_text(t->'proofs'),
-		(t->>'version')::smallint,
-		(t->>'fee')::bigint,
-		-- with sender
-		t->>'sender',
-		t->>'senderPublicKey',
-		-- type specific
-		get_asset_id(t->>'assetId'),
-		t->>'attachment'
-	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
-	where (t->>'type') = '11'
-	on conflict do nothing;
+BEGIN
+  INSERT INTO txs_11 (
+    height,
+    tx_type,
+    id,
+    time_stamp,
+    signature,
+    proofs,
+    tx_version,
+    fee,
+    sender,
+    sender_public_key,
+    asset_id,
+    attachment
+  )
+    SELECT
+      -- common
+      (t ->> 'height') :: INT4,
+      (t ->> 'type') :: SMALLINT,
+      t ->> 'id',
+      to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
+      t ->> 'signature',
+      jsonb_array_cast_text(t -> 'proofs'),
+      (t ->> 'version') :: SMALLINT,
+      (t ->> 'fee') :: BIGINT,
+      -- with sender
+      t ->> 'sender',
+      t ->> 'senderPublicKey',
+      -- type specific
+      get_asset_id(t ->> 'assetId'),
+      t ->> 'attachment'
+    FROM (
+           SELECT jsonb_array_elements(b -> 'transactions') || jsonb_build_object('height', b -> 'height') AS t
+         ) AS txs
+    WHERE (t ->> 'type') = '11'
+  ON CONFLICT DO NOTHING;
 
-	insert into txs_11_transfers (
-		tx_id,
-		recipient,
-		amount,
-		position_in_tx
-	)
-	select
-		t->>'tx_id',
-		t->>'recipient',
-		(t->>'amount')::bigint,
-		row_number() over (PARTITION BY t->>'tx_id') - 1
-	from (
-		select jsonb_array_elements(tx->'transfers') || jsonb_build_object('tx_id', tx->>'id') as t
-			from (
-				select jsonb_array_elements(b->'transactions') as tx
-			) as txs
-	) as transfers
-	on conflict do nothing;
+  INSERT INTO txs_11_transfers (
+    tx_id,
+    recipient,
+    amount,
+    position_in_tx
+  )
+    SELECT
+      t ->> 'tx_id',
+      t ->> 'recipient',
+      (t ->> 'amount') :: BIGINT,
+      row_number()
+      OVER (
+        PARTITION BY t ->> 'tx_id' ) - 1
+    FROM (
+           SELECT jsonb_array_elements(tx -> 'transfers') || jsonb_build_object('tx_id', tx ->> 'id') AS t
+           FROM (
+                  SELECT jsonb_array_elements(b -> 'transactions') AS tx
+                ) AS txs
+         ) AS transfers
+  ON CONFLICT DO NOTHING;
 END
 $$;
 
@@ -1116,6 +1157,22 @@ CREATE TABLE public.orders (
 
 
 --
+-- Name: test_types; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.test_types (
+    i8 bigint,
+    f4 double precision,
+    f8 double precision,
+    n numeric,
+    i8a bigint[],
+    f4a double precision[],
+    f8a double precision[],
+    na numeric[]
+);
+
+
+--
 -- Name: txs_1; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1510,66 +1567,45 @@ CREATE INDEX txs_11_height_idx ON public.txs_11 USING btree (height);
 
 
 --
--- Name: txs_11_transfers_tx_id_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_11_transfers_tx_id_idx ON public.txs_11_transfers USING hash (tx_id);
-
-
---
 -- Name: txs_12_data_data_key_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX txs_12_data_data_key_idx ON public.txs_12_data USING btree (data_key);
-
-
---
--- Name: txs_12_data_data_type_data_value_binary_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_12_data_data_type_data_value_binary_idx ON public.txs_12_data USING btree (data_type, data_value_binary);
-
-
---
--- Name: txs_12_data_data_type_data_value_boolean_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_12_data_data_type_data_value_boolean_idx ON public.txs_12_data USING btree (data_type, data_value_boolean);
-
-
---
--- Name: txs_12_data_data_type_data_value_integer_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_12_data_data_type_data_value_integer_idx ON public.txs_12_data USING btree (data_type, data_value_integer);
-
-
---
--- Name: txs_12_data_data_type_data_value_string_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_12_data_data_type_data_value_string_idx ON public.txs_12_data USING btree (data_type, data_value_string);
+CREATE INDEX txs_12_data_data_key_idx ON public.txs_12_data USING hash (data_key);
 
 
 --
 -- Name: txs_12_data_data_type_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX txs_12_data_data_type_idx ON public.txs_12_data USING btree (data_type);
+CREATE INDEX txs_12_data_data_type_idx ON public.txs_12_data USING hash (data_type);
 
 
 --
--- Name: txs_12_data_tx_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_12_data_value_binary_partial_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX txs_12_data_tx_id_idx ON public.txs_12_data USING btree (tx_id);
+CREATE INDEX txs_12_data_value_binary_partial_idx ON public.txs_12_data USING hash (data_value_binary) WHERE (data_type = 'binary'::text);
 
 
 --
--- Name: txs_12_data_tx_id_position_in_tx_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_12_data_value_boolean_partial_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX txs_12_data_tx_id_position_in_tx_idx ON public.txs_12_data USING btree (tx_id, position_in_tx);
+CREATE INDEX txs_12_data_value_boolean_partial_idx ON public.txs_12_data USING btree (data_value_boolean) WHERE (data_type = 'boolean'::text);
+
+
+--
+-- Name: txs_12_data_value_integer_partial_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_12_data_value_integer_partial_idx ON public.txs_12_data USING btree (data_value_integer) WHERE (data_type = 'integer'::text);
+
+
+--
+-- Name: txs_12_data_value_string_partial_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_12_data_value_string_partial_idx ON public.txs_12_data USING hash (data_value_string) WHERE (data_type = 'string'::text);
 
 
 --
@@ -1924,14 +1960,6 @@ ALTER TABLE ONLY public.txs_7
 
 ALTER TABLE ONLY public.txs_11_transfers
     ADD CONSTRAINT fk_tx_id FOREIGN KEY (tx_id) REFERENCES public.txs_11(id) ON DELETE CASCADE;
-
-
---
--- Name: tickers tickers_asset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.tickers
-    ADD CONSTRAINT tickers_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES public.txs_3(id) ON DELETE CASCADE;
 
 
 --

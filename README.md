@@ -1,6 +1,6 @@
 # Waves blockchain — PostgreSQL sync scripts 
 
-A set of scripts to download and update Waves blockchain history data into a PostgreSQL 10 database.
+A set of scripts to download and update Waves blockchain history data into a PostgreSQL 10.x database.
 
 ## Usage
 

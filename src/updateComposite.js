@@ -25,12 +25,13 @@ const launchIter = async blocksPerUpdate => {
     ...options,
     blocksPerRequest: blocksPerUpdate,
   });
-  // .then(() => console.log('Finished update', new Date()))
-  // .catch(error => {
-  //   console.log('Failed update', new Date());
-  //   console.error(error);
-  // });
 };
+
+/*
+@TODO distribute events more evenly. Currently
+on a long concatMap events queue in background,
+then they get executed quicker than they should
+*/
 
 // Create tick to determine how many blocks to request.
 // Request with more blocks takes priority.

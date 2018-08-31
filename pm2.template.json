@@ -1,0 +1,31 @@
+{
+  "apps": [
+    {
+      "name": "${ENVIRONMENT}-update-100b-10m",
+      "script": "./src/update.js",
+      "env": {
+        "NODE_ENV": "production",
+        "BLOCKS_PER_UPDATE": 100,
+        "UPDATE_THROTTLE_INTERVAL": 600000
+      }
+    },
+    {
+      "name": "${ENVIRONMENT}-update-10b-1m",
+      "script": "./src/update.js",
+      "env": {
+        "NODE_ENV": "production",
+        "BLOCKS_PER_UPDATE": 10,
+        "UPDATE_THROTTLE_INTERVAL": 60000
+      }
+    },
+    {
+      "name": "${ENVIRONMENT}-update-2b-1s",
+      "script": "./src/update.js",
+      "env": {
+        "NODE_ENV": "production",
+        "BLOCKS_PER_UPDATE": 2,
+        "UPDATE_THROTTLE_INTERVAL": 1000
+      }
+    }
+  ]
+}

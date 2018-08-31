@@ -7,6 +7,7 @@ const {
   concatMap,
   catchError,
   startWith,
+  timeout,
 } = require('rxjs/operators');
 
 const getOptions = require('./utils/getOptions');
@@ -36,7 +37,9 @@ const launchIter = async blocksPerUpdate => {
 const max = a => a.reduce((x, y) => Math.max(x, y), -Infinity);
 const min = a => a.reduce((x, y) => Math.min(x, y), Infinity);
 
-const bufferInterval = min(options.updateStrategy.map(x => x.interval)) / 2;
+const intervals = options.updateStrategy.map(x => x.interval);
+const bufferInterval = min(intervals) / 2;
+const requestTimeoutInterval = max(intervals);
 
 const tick$ = merge(
   ...options.updateStrategy.map(({ interval: i, blocks }) =>
@@ -54,6 +57,7 @@ const tick$ = merge(
 const requests$ = tick$.pipe(
   concatMap(b =>
     from(launchIter(b)).pipe(
+      timeout(requestTimeoutInterval),
       map(() => ({
         type: 'success',
         blocks: b,

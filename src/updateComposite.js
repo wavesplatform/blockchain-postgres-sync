@@ -6,6 +6,7 @@ const {
   filter,
   concatMap,
   catchError,
+  startWith,
 } = require('rxjs/operators');
 
 const getOptions = require('./utils/getOptions');
@@ -39,7 +40,10 @@ const bufferInterval = min(options.updateStrategy.map(x => x.interval)) / 2;
 
 const tick$ = merge(
   ...options.updateStrategy.map(({ interval: i, blocks }) =>
-    interval(i).pipe(mapTo(blocks))
+    interval(i).pipe(
+      startWith(0),
+      mapTo(blocks)
+    )
   )
 ).pipe(
   bufferTime(bufferInterval),

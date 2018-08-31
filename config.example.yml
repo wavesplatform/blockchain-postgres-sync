@@ -18,6 +18,19 @@ blocksPerRequest: 100
 # Possible values: 1 to 100, recommended: 1 to 10.
 blocksPerUpdate: 5
 
+# A strategy for `updateComposite` script. This type of update combines updates:
+# requests `blocks` amount of blocks every `interval` milliceconds. More steps can
+# be added so the strategy.
+# Updates with more blocks take priority over updates with less.
+# Example below: every second update 2 last blocks, every minute — 10 blocks and every 10 minutes — 100.
+updateStrategy:
+  - interval: 1000
+    blocks: 2
+  - interval: 60000
+    blocks: 10
+  - interval: 600000
+    blocks: 100
+
 # Minimal interval between initiating updates, milliseconds ('throttle' value)
 # Frequent updates mean data is more up-to-date, but load database more
 updateThrottleInterval: 500

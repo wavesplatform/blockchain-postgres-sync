@@ -8,12 +8,14 @@
   "scripts": {
     "download": "node src/runForRange.js",
     "update": "node src/update.js",
+    "updateComposite": "node src/updateComposite.js",
     "rollbackMonitor": "node src/rollbackMonitor.js",
     "reinsertBlocks": "node src/reinsertBlocks.js"
   },
   "dependencies": {
     "json-bigint": "^0.2.3",
     "pg-promise": "^8.2.2",
+    "rxjs": "^6.3.0",
     "superagent": "^3.8.2",
     "throttle-debounce": "^1.0.1",
     "yamljs": "^0.3.0"

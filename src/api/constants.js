@@ -1,4 +1,6 @@
-const USER_AGENT = 'blockchain-postgres-sync/0.3.0';
+const { version } = require('../../package.json');
+
+const USER_AGENT = `blockchain-postgres-sync/${version}`;
 
 module.exports = {
   USER_AGENT,

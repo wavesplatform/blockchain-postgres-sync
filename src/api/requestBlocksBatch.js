@@ -15,12 +15,12 @@ const sanitize = text => text.replace(/\\u0000/g, '');
 
 const requestBlocksBatch = (start, options) =>
   request
-    .set('User-Agent', USER_AGENT)
     .get(
       `${options.nodeAddress}/blocks/seq/${start}/${start +
         options.blocksPerRequest -
         1}`
     )
+    .set('User-Agent', USER_AGENT)
     .retry(2)
     .buffer(true)
     .parse(bigIntParse(sanitize))

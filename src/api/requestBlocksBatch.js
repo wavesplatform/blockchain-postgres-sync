@@ -1,5 +1,6 @@
 const request = require('superagent');
 const jsonBigint = require('json-bigint')({ storeAsString: true });
+const { USER_AGENT } = require('./constants');
 
 const bigIntParse = sanitize => (res, fn) => {
   res.text = '';
@@ -14,6 +15,7 @@ const sanitize = text => text.replace(/\\u0000/g, '');
 
 const requestBlocksBatch = (start, options) =>
   request
+    .set('User-Agent', USER_AGENT)
     .get(
       `${options.nodeAddress}/blocks/seq/${start}/${start +
         options.blocksPerRequest -

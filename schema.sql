@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 10.4 (Ubuntu 10.4-2.pgdg16.04+1)
--- Dumped by pg_dump version 10.4 (Ubuntu 10.4-2.pgdg16.04+1)
+-- Dumped from database version 10.5 (Ubuntu 10.5-1.pgdg18.04+1)
+-- Dumped by pg_dump version 10.6 (Ubuntu 10.6-0ubuntu0.18.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -30,38 +30,17 @@ COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
 --
--- Name: delete_order_if_orphan(character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: btree_gin; Type: EXTENSION; Schema: -; Owner: -
 --
 
-CREATE FUNCTION public.delete_order_if_orphan(order_id character varying) RETURNS boolean
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  DELETE FROM orders
-  WHERE id = order_id;
-  RETURN TRUE;
-EXCEPTION
-  WHEN foreign_key_violation THEN
-  RETURN FALSE;
-END;
-$$;
+CREATE EXTENSION IF NOT EXISTS btree_gin WITH SCHEMA public;
 
 
 --
--- Name: delete_orders_after_tx(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: EXTENSION btree_gin; Type: COMMENT; Schema: -; Owner: -
 --
 
-CREATE FUNCTION public.delete_orders_after_tx() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  PERFORM
-    delete_order_if_orphan (old.order1);
-  PERFORM
-    delete_order_if_orphan (old.order2);
-  RETURN NULL;
-END
-$$;
+COMMENT ON EXTENSION btree_gin IS 'support for indexing common datatypes in GIN';
 
 
 --
@@ -99,8 +78,7 @@ BEGIN
   DROP TABLE __blocks_check;
 
   RETURN;
-END;
-$$;
+END; $$;
 
 
 --
@@ -123,7 +101,6 @@ CREATE FUNCTION public.insert_all(b jsonb) RETURNS void
     AS $$
 begin
 	PERFORM insert_block (b);
-	PERFORM insert_orders (b);
 	PERFORM insert_txs_1 (b);
 	PERFORM insert_txs_2 (b);
 	PERFORM insert_txs_3 (b);
@@ -164,45 +141,6 @@ begin
 		(b->>'height')::integer,
 		jsonb_array_cast_int(b->'features')::smallint[ ]
 	)
-	on conflict do nothing;
-END
-$$;
-
-
---
--- Name: insert_orders(jsonb); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_orders(b jsonb) RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-begin
-	insert into orders
-	select
-		o->>'id',
-		o->>'sender',
-		o->>'senderPublicKey',
-		o->>'matcherPublicKey',
-		o->>'orderType',
-		get_asset_id(o->'assetPair'->>'priceAsset'),
-		get_asset_id(o->'assetPair'->>'amountAsset'),
-		(o->>'price')::bigint,
-		(o->>'amount')::bigint,
-		to_timestamp((o ->> 'timestamp') :: DOUBLE PRECISION / 1000),
-		to_timestamp((o ->> 'expiration') :: DOUBLE PRECISION / 1000),
-		(o->>'matcherFee')::bigint,
-		o->>'signature'
-	from (
-		with t7 as (
-			select * from (
-				select jsonb_array_elements(b->'transactions') tx
-			) as txs
-			where tx->>'type' = '7'
-		)
-		select tx->'order1' o from t7
-		union all
-		select tx->'order2' o from t7
-	) as os
 	on conflict do nothing;
 END
 $$;
@@ -811,8 +749,8 @@ begin
 		t->>'sender',
 		t->>'senderPublicKey',
 		-- type specific
-		t->'order1'->>'id',
-		t->'order2'->>'id',
+		t->'order1',
+		t->'order2',
 		get_asset_id(t->'order1'->'assetPair'->>'amountAsset'),
 		get_asset_id(t->'order1'->'assetPair'->>'priceAsset'),
 		(t->>'amount')::bigint,
@@ -972,6 +910,42 @@ END
 $$;
 
 
+--
+-- Name: reinsert_range(integer, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.reinsert_range(range_start integer, range_end integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  FOR i IN range_start..range_end LOOP
+    RAISE NOTICE 'Updating block: %', i;
+
+    DELETE FROM blocks
+    WHERE height = i;
+
+    PERFORM insert_all(b)
+    FROM blocks_raw
+    WHERE height = i;
+  END LOOP;
+END
+$$;
+
+
+--
+-- Name: text_timestamp_cast(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.text_timestamp_cast(text) RETURNS timestamp without time zone
+    LANGUAGE plpgsql
+    AS $_$
+begin
+--   raise notice $1;
+  return to_timestamp($1 :: DOUBLE PRECISION / 1000);
+END
+$_$;
+
+
 SET default_tablespace = '';
 
 SET default_with_oids = false;
@@ -987,7 +961,9 @@ CREATE TABLE public.txs (
     time_stamp timestamp without time zone NOT NULL,
     signature character varying,
     proofs character varying[],
-    tx_version smallint
+    tx_version smallint,
+    sender character varying,
+    sender_public_key character varying
 );
 
 
@@ -996,9 +972,9 @@ CREATE TABLE public.txs (
 --
 
 CREATE TABLE public.txs_3 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
     asset_id character varying NOT NULL,
     asset_name character varying NOT NULL,
     description character varying NOT NULL,
@@ -1037,9 +1013,9 @@ CREATE TABLE public.tickers (
 --
 
 CREATE TABLE public.txs_5 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
     asset_id character varying NOT NULL,
     quantity bigint NOT NULL,
     reissuable boolean NOT NULL
@@ -1052,9 +1028,9 @@ INHERITS (public.txs);
 --
 
 CREATE TABLE public.txs_6 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
     asset_id character varying NOT NULL,
     amount bigint NOT NULL
 )
@@ -1075,7 +1051,10 @@ CREATE VIEW public.assets AS
     issue.time_stamp AS issue_timestamp,
     (((issue.quantity)::numeric + COALESCE(reissue_q.reissued_total, (0)::numeric)) - COALESCE(burn_q.burned_total, (0)::numeric)) AS total_quantity,
     issue.decimals,
-    COALESCE(reissuable_last.reissuable, issue.reissuable) AS reissuable
+        CASE
+            WHEN (r_after.reissuable_after IS NULL) THEN issue.reissuable
+            ELSE (issue.reissuable AND r_after.reissuable_after)
+        END AS reissuable
    FROM ((((public.txs_3 issue
      LEFT JOIN ( SELECT txs_5.asset_id,
             sum(txs_5.quantity) AS reissued_total
@@ -1085,11 +1064,10 @@ CREATE VIEW public.assets AS
             sum(txs_6.amount) AS burned_total
            FROM public.txs_6
           GROUP BY txs_6.asset_id) burn_q ON (((issue.asset_id)::text = (burn_q.asset_id)::text)))
-     LEFT JOIN ( SELECT DISTINCT ON (txs_5.asset_id) txs_5.asset_id,
-            txs_5.time_stamp,
-            txs_5.reissuable
+     LEFT JOIN ( SELECT txs_5.asset_id,
+            bool_and(txs_5.reissuable) AS reissuable_after
            FROM public.txs_5
-          ORDER BY txs_5.asset_id, txs_5.time_stamp DESC) reissuable_last ON (((issue.asset_id)::text = (reissuable_last.asset_id)::text)))
+          GROUP BY txs_5.asset_id) r_after ON (((issue.asset_id)::text = (r_after.asset_id)::text)))
      LEFT JOIN ( SELECT tickers.asset_id,
             tickers.ticker
            FROM public.tickers) t ON (((issue.asset_id)::text = t.asset_id)))
@@ -1136,27 +1114,6 @@ CREATE TABLE public.blocks_raw (
 
 
 --
--- Name: orders; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.orders (
-    id text NOT NULL,
-    sender text NOT NULL,
-    sender_public_key text NOT NULL,
-    matcher_public_key text NOT NULL,
-    order_type text NOT NULL,
-    price_asset text NOT NULL,
-    amount_asset text NOT NULL,
-    price bigint NOT NULL,
-    amount bigint NOT NULL,
-    time_stamp timestamp without time zone NOT NULL,
-    expiration timestamp without time zone NOT NULL,
-    matcher_fee bigint NOT NULL,
-    signature text NOT NULL
-);
-
-
---
 -- Name: test_types; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1189,9 +1146,9 @@ INHERITS (public.txs);
 --
 
 CREATE TABLE public.txs_10 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
     alias character varying NOT NULL
 )
 INHERITS (public.txs);
@@ -1202,9 +1159,9 @@ INHERITS (public.txs);
 --
 
 CREATE TABLE public.txs_11 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
     asset_id character varying NOT NULL,
     attachment character varying NOT NULL
 )
@@ -1228,9 +1185,9 @@ CREATE TABLE public.txs_11_transfers (
 --
 
 CREATE TABLE public.txs_12 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
-    sender_public_key character varying NOT NULL
+    sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL
 )
 INHERITS (public.txs);
 
@@ -1256,9 +1213,9 @@ CREATE TABLE public.txs_12_data (
 --
 
 CREATE TABLE public.txs_13 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
     script character varying
 )
 INHERITS (public.txs);
@@ -1269,11 +1226,11 @@ INHERITS (public.txs);
 --
 
 CREATE TABLE public.txs_14 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
     asset_id character varying NOT NULL,
-    min_sponsored_asset_fee bigint NOT NULL
+    min_sponsored_asset_fee bigint
 )
 INHERITS (public.txs);
 
@@ -1283,9 +1240,9 @@ INHERITS (public.txs);
 --
 
 CREATE TABLE public.txs_2 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
     recipient character varying NOT NULL,
     amount bigint NOT NULL
 )
@@ -1297,9 +1254,9 @@ INHERITS (public.txs);
 --
 
 CREATE TABLE public.txs_4 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
     asset_id character varying NOT NULL,
     amount bigint NOT NULL,
     recipient character varying NOT NULL,
@@ -1307,6 +1264,7 @@ CREATE TABLE public.txs_4 (
     attachment character varying NOT NULL
 )
 INHERITS (public.txs);
+ALTER TABLE ONLY public.txs_4 ALTER COLUMN sender SET STATISTICS 1000;
 
 
 --
@@ -1314,11 +1272,11 @@ INHERITS (public.txs);
 --
 
 CREATE TABLE public.txs_7 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
-    order1 character varying NOT NULL,
-    order2 character varying NOT NULL,
+    fee bigint NOT NULL,
+    order1 jsonb NOT NULL,
+    order2 jsonb NOT NULL,
     amount_asset character varying NOT NULL,
     price_asset character varying NOT NULL,
     amount bigint NOT NULL,
@@ -1334,9 +1292,9 @@ INHERITS (public.txs);
 --
 
 CREATE TABLE public.txs_8 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
     recipient character varying NOT NULL,
     amount bigint NOT NULL
 )
@@ -1348,9 +1306,9 @@ INHERITS (public.txs);
 --
 
 CREATE TABLE public.txs_9 (
-    fee bigint NOT NULL,
     sender character varying NOT NULL,
     sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
     lease_id character varying NOT NULL
 )
 INHERITS (public.txs);
@@ -1373,14 +1331,6 @@ ALTER TABLE ONLY public.blocks_raw
 
 
 --
--- Name: orders orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.orders
-    ADD CONSTRAINT orders_pkey PRIMARY KEY (id);
-
-
---
 -- Name: tickers tickers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1393,7 +1343,7 @@ ALTER TABLE ONLY public.tickers
 --
 
 ALTER TABLE ONLY public.txs_10
-    ADD CONSTRAINT txs_10_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT txs_10_pkey PRIMARY KEY (id, time_stamp);
 
 
 --
@@ -1525,31 +1475,24 @@ ALTER TABLE ONLY public.txs
 
 
 --
--- Name: orders_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: order_senders_timestamp_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX orders_sender_idx ON public.orders USING btree (sender);
-
-
---
--- Name: orders_sender_idx1; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX orders_sender_idx1 ON public.orders USING hash (sender);
+CREATE INDEX order_senders_timestamp_id_idx ON public.txs_7 USING gin ((ARRAY[(order1 ->> 'sender'::text), (order2 ->> 'sender'::text)]), time_stamp, id);
 
 
 --
--- Name: orders_time_stamp_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: tickers_ticker_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX orders_time_stamp_idx ON public.orders USING btree (time_stamp);
+CREATE UNIQUE INDEX tickers_ticker_idx ON public.tickers USING btree (ticker);
 
 
 --
--- Name: tickers_asset_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_10_alias_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX tickers_asset_id_idx ON public.tickers USING hash (asset_id);
+CREATE INDEX txs_10_alias_idx ON public.txs_10 USING hash (alias);
 
 
 --
@@ -1560,10 +1503,59 @@ CREATE INDEX txs_10_height_idx ON public.txs_10 USING btree (height);
 
 
 --
+-- Name: txs_10_sender_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_10_sender_idx ON public.txs_10 USING hash (sender);
+
+
+--
+-- Name: txs_10_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_10_time_stamp_asc_id_asc_idx ON public.txs_10 USING btree (time_stamp, id);
+
+
+--
+-- Name: txs_11_asset_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_11_asset_id_idx ON public.txs_11 USING hash (asset_id);
+
+
+--
 -- Name: txs_11_height_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX txs_11_height_idx ON public.txs_11 USING btree (height);
+
+
+--
+-- Name: txs_11_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_11_sender_time_stamp_id_idx ON public.txs_11 USING btree (sender, time_stamp, id);
+
+
+--
+-- Name: txs_11_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_11_time_stamp_desc_id_desc_idx ON public.txs_11 USING btree (time_stamp DESC, id);
+
+
+--
+-- Name: txs_11_transfers_recipient_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_11_transfers_recipient_index ON public.txs_11_transfers USING btree (recipient);
+
+
+--
+-- Name: txs_11_transfers_tx_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_11_transfers_tx_id_index ON public.txs_11_transfers USING btree (tx_id);
 
 
 --
@@ -1616,17 +1608,17 @@ CREATE INDEX txs_12_height_idx ON public.txs_12 USING btree (height);
 
 
 --
+-- Name: txs_12_sender_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_12_sender_idx ON public.txs_12 USING hash (sender);
+
+
+--
 -- Name: txs_12_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX txs_12_time_stamp_id_idx ON public.txs_12 USING btree (time_stamp, id);
-
-
---
--- Name: txs_12_time_stamp_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_12_time_stamp_idx ON public.txs_12 USING btree (time_stamp);
 
 
 --
@@ -1637,10 +1629,45 @@ CREATE INDEX txs_13_height_idx ON public.txs_13 USING btree (height);
 
 
 --
+-- Name: txs_13_script_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_13_script_idx ON public.txs_13 USING hash (script);
+
+
+--
+-- Name: txs_13_sender_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_13_sender_idx ON public.txs_13 USING hash (sender);
+
+
+--
+-- Name: txs_13_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_13_time_stamp_id_idx ON public.txs_13 USING btree (time_stamp, id);
+
+
+--
 -- Name: txs_14_height_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX txs_14_height_idx ON public.txs_14 USING btree (height);
+
+
+--
+-- Name: txs_14_sender_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_14_sender_idx ON public.txs_14 USING hash (sender);
+
+
+--
+-- Name: txs_14_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_14_time_stamp_id_idx ON public.txs_14 USING btree (time_stamp, id);
 
 
 --
@@ -1658,6 +1685,20 @@ CREATE INDEX txs_2_height_idx ON public.txs_2 USING btree (height);
 
 
 --
+-- Name: txs_2_sender_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_2_sender_idx ON public.txs_2 USING hash (sender);
+
+
+--
+-- Name: txs_2_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_2_time_stamp_desc_id_asc_idx ON public.txs_2 USING btree (time_stamp DESC, id);
+
+
+--
 -- Name: txs_3_asset_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1672,10 +1713,80 @@ CREATE INDEX txs_3_height_idx ON public.txs_3 USING btree (height);
 
 
 --
+-- Name: txs_3_sender_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_3_sender_idx ON public.txs_3 USING hash (sender);
+
+
+--
+-- Name: txs_3_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_3_time_stamp_asc_id_asc_idx ON public.txs_3 USING btree (time_stamp, id);
+
+
+--
+-- Name: txs_3_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_3_time_stamp_desc_id_asc_idx ON public.txs_3 USING btree (time_stamp DESC, id);
+
+
+--
+-- Name: txs_3_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_3_time_stamp_desc_id_desc_idx ON public.txs_3 USING btree (time_stamp DESC, id DESC);
+
+
+--
+-- Name: txs_4_asset_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_4_asset_id_index ON public.txs_4 USING btree (asset_id);
+
+
+--
 -- Name: txs_4_height_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX txs_4_height_idx ON public.txs_4 USING btree (height);
+
+
+--
+-- Name: txs_4_recipient_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_4_recipient_idx ON public.txs_4 USING btree (recipient);
+
+
+--
+-- Name: txs_4_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_4_sender_time_stamp_id_idx ON public.txs_4 USING btree (sender, time_stamp, id);
+
+
+--
+-- Name: txs_4_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_4_time_stamp_asc_id_asc_idx ON public.txs_4 USING btree (time_stamp, id);
+
+
+--
+-- Name: txs_4_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_4_time_stamp_desc_id_asc_idx ON public.txs_4 USING btree (time_stamp DESC, id);
+
+
+--
+-- Name: txs_4_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_4_time_stamp_desc_id_desc_idx ON public.txs_4 USING btree (time_stamp DESC, id DESC);
 
 
 --
@@ -1693,6 +1804,34 @@ CREATE INDEX txs_5_height_idx ON public.txs_5 USING btree (height);
 
 
 --
+-- Name: txs_5_sender_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_5_sender_idx ON public.txs_5 USING hash (sender);
+
+
+--
+-- Name: txs_5_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_5_time_stamp_asc_id_asc_idx ON public.txs_5 USING btree (time_stamp, id);
+
+
+--
+-- Name: txs_5_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_5_time_stamp_desc_id_asc_idx ON public.txs_5 USING btree (time_stamp DESC, id);
+
+
+--
+-- Name: txs_5_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_5_time_stamp_desc_id_desc_idx ON public.txs_5 USING btree (time_stamp DESC, id DESC);
+
+
+--
 -- Name: txs_6_asset_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1707,24 +1846,38 @@ CREATE INDEX txs_6_height_idx ON public.txs_6 USING btree (height);
 
 
 --
--- Name: txs_7_amount_asset_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_6_sender_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX txs_7_amount_asset_idx ON public.txs_7 USING hash (amount_asset);
-
-
---
--- Name: txs_7_amount_asset_price_asset_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_7_amount_asset_price_asset_idx ON public.txs_7 USING btree (amount_asset, price_asset);
+CREATE INDEX txs_6_sender_idx ON public.txs_6 USING hash (sender);
 
 
 --
--- Name: txs_7_expr_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_6_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX txs_7_expr_idx ON public.txs_7 USING hash (((((amount_asset)::text || '/'::text) || (price_asset)::text)));
+CREATE INDEX txs_6_time_stamp_asc_id_asc_idx ON public.txs_6 USING btree (time_stamp, id);
+
+
+--
+-- Name: txs_6_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_6_time_stamp_desc_id_asc_idx ON public.txs_6 USING btree (time_stamp DESC, id);
+
+
+--
+-- Name: txs_6_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_6_time_stamp_desc_id_desc_idx ON public.txs_6 USING btree (time_stamp DESC, id DESC);
+
+
+--
+-- Name: txs_7_amount_asset_price_asset_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_7_amount_asset_price_asset_time_stamp_id_idx ON public.txs_7 USING btree (amount_asset, price_asset, time_stamp, id);
 
 
 --
@@ -1735,20 +1888,6 @@ CREATE INDEX txs_7_height_idx ON public.txs_7 USING btree (height);
 
 
 --
--- Name: txs_7_order1_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_7_order1_idx ON public.txs_7 USING hash (order1);
-
-
---
--- Name: txs_7_order2_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_7_order2_idx ON public.txs_7 USING hash (order2);
-
-
---
 -- Name: txs_7_price_asset_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1756,38 +1895,31 @@ CREATE INDEX txs_7_price_asset_idx ON public.txs_7 USING hash (price_asset);
 
 
 --
--- Name: txs_7_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_7_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX txs_7_sender_idx ON public.txs_7 USING btree (sender);
-
-
---
--- Name: txs_7_time_stamp_amount_asset_price_asset_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_7_time_stamp_amount_asset_price_asset_idx ON public.txs_7 USING btree (time_stamp, amount_asset, price_asset);
+CREATE INDEX txs_7_sender_time_stamp_id_idx ON public.txs_7 USING btree (sender, time_stamp, id);
 
 
 --
--- Name: txs_7_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_7_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX txs_7_time_stamp_id_idx ON public.txs_7 USING btree (time_stamp, id);
-
-
---
--- Name: txs_7_time_stamp_id_idx1; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_7_time_stamp_id_idx1 ON public.txs_7 USING btree (time_stamp DESC, id);
+CREATE INDEX txs_7_time_stamp_asc_id_asc_idx ON public.txs_7 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_7_time_stamp_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_7_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX txs_7_time_stamp_idx ON public.txs_7 USING btree (time_stamp);
+CREATE INDEX txs_7_time_stamp_desc_id_asc_idx ON public.txs_7 USING btree (time_stamp DESC, id);
+
+
+--
+-- Name: txs_7_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_7_time_stamp_desc_id_desc_idx ON public.txs_7 USING btree (time_stamp DESC, id DESC);
 
 
 --
@@ -1798,10 +1930,80 @@ CREATE INDEX txs_8_height_idx ON public.txs_8 USING btree (height);
 
 
 --
+-- Name: txs_8_recipient_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_8_recipient_idx ON public.txs_8 USING btree (recipient);
+
+
+--
+-- Name: txs_8_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_8_sender_time_stamp_id_idx ON public.txs_8 USING btree (sender, time_stamp, id);
+
+
+--
+-- Name: txs_8_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_8_time_stamp_asc_id_asc_idx ON public.txs_8 USING btree (time_stamp, id);
+
+
+--
+-- Name: txs_8_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_8_time_stamp_desc_id_asc_idx ON public.txs_8 USING btree (time_stamp DESC, id);
+
+
+--
+-- Name: txs_8_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_8_time_stamp_desc_id_desc_idx ON public.txs_8 USING btree (time_stamp DESC, id DESC);
+
+
+--
 -- Name: txs_9_height_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX txs_9_height_idx ON public.txs_9 USING btree (height);
+
+
+--
+-- Name: txs_9_lease_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_9_lease_id_idx ON public.txs_9 USING hash (lease_id);
+
+
+--
+-- Name: txs_9_sender_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_9_sender_idx ON public.txs_9 USING hash (sender);
+
+
+--
+-- Name: txs_9_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_9_time_stamp_asc_id_asc_idx ON public.txs_9 USING btree (time_stamp, id);
+
+
+--
+-- Name: txs_9_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_9_time_stamp_desc_id_asc_idx ON public.txs_9 USING btree (time_stamp DESC, id);
+
+
+--
+-- Name: txs_9_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_9_time_stamp_desc_id_desc_idx ON public.txs_9 USING btree (time_stamp DESC, id DESC);
 
 
 --
@@ -1825,13 +2027,6 @@ CREATE TRIGGER block_insert_trigger BEFORE INSERT ON public.blocks_raw FOR EACH 
 --
 
 CREATE TRIGGER block_update_trigger BEFORE UPDATE ON public.blocks_raw FOR EACH ROW EXECUTE PROCEDURE public.on_block_update();
-
-
---
--- Name: txs_7 delete_orphan_orders; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER delete_orphan_orders AFTER DELETE ON public.txs_7 FOR EACH ROW EXECUTE PROCEDURE public.delete_orders_after_tx();
 
 
 --
@@ -1936,22 +2131,6 @@ ALTER TABLE ONLY public.txs_13
 
 ALTER TABLE ONLY public.txs_14
     ADD CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES public.blocks(height) ON DELETE CASCADE;
-
-
---
--- Name: txs_7 fk_orders_1; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.txs_7
-    ADD CONSTRAINT fk_orders_1 FOREIGN KEY (order1) REFERENCES public.orders(id) ON DELETE RESTRICT;
-
-
---
--- Name: txs_7 fk_orders_2; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.txs_7
-    ADD CONSTRAINT fk_orders_2 FOREIGN KEY (order2) REFERENCES public.orders(id) ON DELETE RESTRICT;
 
 
 --

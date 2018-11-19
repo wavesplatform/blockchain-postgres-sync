@@ -20,6 +20,6 @@ A set of scripts to download and update Waves blockchain history data into a Pos
 
 5. 🔄 To keep your database up-to-date: 
    ```bash
-   npm run update
+   npm run updateComposite
    ```
    This is a continuous script, so you may want to run it in the background. We recommend using some kind of process manager (e.g. `pm2`) to restart the process on crash.

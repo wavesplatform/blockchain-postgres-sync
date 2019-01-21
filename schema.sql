@@ -16,35 +16,35 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: -
+-- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
 --
 
 CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
 
 --
--- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: -
+-- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
 --
 
 COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
 --
--- Name: btree_gin; Type: EXTENSION; Schema: -; Owner: -
+-- Name: btree_gin; Type: EXTENSION; Schema: -; Owner: 
 --
 
 CREATE EXTENSION IF NOT EXISTS btree_gin WITH SCHEMA public;
 
 
 --
--- Name: EXTENSION btree_gin; Type: COMMENT; Schema: -; Owner: -
+-- Name: EXTENSION btree_gin; Type: COMMENT; Schema: -; Owner: 
 --
 
 COMMENT ON EXTENSION btree_gin IS 'support for indexing common datatypes in GIN';
 
 
 --
--- Name: find_missing_blocks(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: find_missing_blocks(); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.find_missing_blocks() RETURNS TABLE(missing_height integer)
@@ -81,8 +81,10 @@ BEGIN
 END; $$;
 
 
+ALTER FUNCTION public.find_missing_blocks() OWNER TO dba;
+
 --
--- Name: get_asset_id(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_asset_id(text); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.get_asset_id(text) RETURNS text
@@ -92,8 +94,10 @@ CREATE FUNCTION public.get_asset_id(text) RETURNS text
 $_$;
 
 
+ALTER FUNCTION public.get_asset_id(text) OWNER TO dba;
+
 --
--- Name: insert_all(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_all(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_all(b jsonb) RETURNS void
@@ -115,12 +119,15 @@ begin
 	PERFORM insert_txs_12 (b);
   PERFORM insert_txs_13 (b);
 	PERFORM insert_txs_14 (b);
+	PERFORM insert_txs_15 (b);
 END
 $$;
 
 
+ALTER FUNCTION public.insert_all(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_block(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_block(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_block(b jsonb) RETURNS void
@@ -146,8 +153,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_block(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_1(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_1(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_1(b jsonb) RETURNS void
@@ -188,8 +197,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_1(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_10(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_10(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_10(b jsonb) RETURNS void
@@ -233,8 +244,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_10(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_11(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_11(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_11(b jsonb) RETURNS void
@@ -301,8 +314,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_11(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_12(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_12(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_12(b jsonb) RETURNS void
@@ -382,8 +397,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_12(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_13(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_13(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_13(b jsonb) RETURNS void
@@ -427,8 +444,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_13(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_14(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_14(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_14(b jsonb) RETURNS void
@@ -474,8 +493,59 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_14(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_2(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_15(jsonb); Type: FUNCTION; Schema: public; Owner: apetrov
+--
+
+CREATE FUNCTION public.insert_txs_15(b jsonb) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+begin
+	insert into txs_15 (
+		height,
+		tx_type,
+		id,
+		time_stamp,
+		signature,
+		proofs,
+		tx_version,
+		fee,
+		sender,
+		sender_public_key,
+		asset_id,
+	    script
+	)
+	select
+		-- common
+		(t->>'height')::int4,
+		(t->>'type')::smallint,
+		t->>'id',
+    to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
+		t->>'signature',
+		jsonb_array_cast_text(t->'proofs'),
+		(t->>'version')::smallint,
+		(t->>'fee')::bigint,
+		-- with sender
+		t->>'sender',
+		t->>'senderPublicKey',
+		-- type specific
+		t->>'assetId',
+	    t->>'script'
+	from (
+		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
+	) as txs
+	where (t->>'type') = '15'
+	on conflict do nothing;
+END
+$$;
+
+
+ALTER FUNCTION public.insert_txs_15(b jsonb) OWNER TO apetrov;
+
+--
+-- Name: insert_txs_2(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_2(b jsonb) RETURNS void
@@ -521,8 +591,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_2(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_3(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_3(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_3(b jsonb) RETURNS void
@@ -576,8 +648,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_3(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_4(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_4(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_4(b jsonb) RETURNS void
@@ -611,8 +685,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_4(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_5(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_5(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_5(b jsonb) RETURNS void
@@ -660,8 +736,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_5(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_6(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_6(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_6(b jsonb) RETURNS void
@@ -707,8 +785,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_6(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_7(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_7(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_7(b jsonb) RETURNS void
@@ -766,8 +846,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_7(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_8(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_8(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_8(b jsonb) RETURNS void
@@ -813,8 +895,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_8(b jsonb) OWNER TO dba;
+
 --
--- Name: insert_txs_9(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_txs_9(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.insert_txs_9(b jsonb) RETURNS void
@@ -858,8 +942,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.insert_txs_9(b jsonb) OWNER TO dba;
+
 --
--- Name: jsonb_array_cast_int(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: jsonb_array_cast_int(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.jsonb_array_cast_int(jsonb) RETURNS integer[]
@@ -869,8 +955,10 @@ CREATE FUNCTION public.jsonb_array_cast_int(jsonb) RETURNS integer[]
 $_$;
 
 
+ALTER FUNCTION public.jsonb_array_cast_int(jsonb) OWNER TO dba;
+
 --
--- Name: jsonb_array_cast_text(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: jsonb_array_cast_text(jsonb); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.jsonb_array_cast_text(jsonb) RETURNS text[]
@@ -880,8 +968,10 @@ CREATE FUNCTION public.jsonb_array_cast_text(jsonb) RETURNS text[]
 $_$;
 
 
+ALTER FUNCTION public.jsonb_array_cast_text(jsonb) OWNER TO dba;
+
 --
--- Name: on_block_insert(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: on_block_insert(); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.on_block_insert() RETURNS trigger
@@ -894,8 +984,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.on_block_insert() OWNER TO dba;
+
 --
--- Name: on_block_update(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: on_block_update(); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.on_block_update() RETURNS trigger
@@ -910,8 +1002,10 @@ END
 $$;
 
 
+ALTER FUNCTION public.on_block_update() OWNER TO dba;
+
 --
--- Name: reinsert_range(integer, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: reinsert_range(integer, integer); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.reinsert_range(range_start integer, range_end integer) RETURNS void
@@ -932,8 +1026,31 @@ END
 $$;
 
 
+ALTER FUNCTION public.reinsert_range(range_start integer, range_end integer) OWNER TO dba;
+
 --
--- Name: text_timestamp_cast(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: reinsert_txs_15_range(integer, integer); Type: FUNCTION; Schema: public; Owner: apetrov
+--
+
+CREATE FUNCTION public.reinsert_txs_15_range(range_start integer, range_end integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  FOR i IN range_start..range_end LOOP
+    RAISE NOTICE 'Updating block: %', i;
+
+    PERFORM insert_txs_15(b)
+    FROM blocks_raw
+    WHERE height = i;
+  END LOOP;
+END
+$$;
+
+
+ALTER FUNCTION public.reinsert_txs_15_range(range_start integer, range_end integer) OWNER TO apetrov;
+
+--
+-- Name: text_timestamp_cast(text); Type: FUNCTION; Schema: public; Owner: dba
 --
 
 CREATE FUNCTION public.text_timestamp_cast(text) RETURNS timestamp without time zone
@@ -946,12 +1063,14 @@ END
 $_$;
 
 
+ALTER FUNCTION public.text_timestamp_cast(text) OWNER TO dba;
+
 SET default_tablespace = '';
 
 SET default_with_oids = false;
 
 --
--- Name: txs; Type: TABLE; Schema: public; Owner: -
+-- Name: txs; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs (
@@ -967,8 +1086,10 @@ CREATE TABLE public.txs (
 );
 
 
+ALTER TABLE public.txs OWNER TO dba;
+
 --
--- Name: txs_3; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_3; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_3 (
@@ -985,8 +1106,10 @@ CREATE TABLE public.txs_3 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_3 OWNER TO dba;
+
 --
--- Name: asset_decimals; Type: VIEW; Schema: public; Owner: -
+-- Name: asset_decimals; Type: VIEW; Schema: public; Owner: dba
 --
 
 CREATE VIEW public.asset_decimals AS
@@ -998,8 +1121,10 @@ UNION ALL
     8 AS decimals;
 
 
+ALTER TABLE public.asset_decimals OWNER TO dba;
+
 --
--- Name: tickers; Type: TABLE; Schema: public; Owner: -
+-- Name: tickers; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.tickers (
@@ -1008,8 +1133,10 @@ CREATE TABLE public.tickers (
 );
 
 
+ALTER TABLE public.tickers OWNER TO dba;
+
 --
--- Name: txs_5; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_5; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_5 (
@@ -1023,8 +1150,10 @@ CREATE TABLE public.txs_5 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_5 OWNER TO dba;
+
 --
--- Name: txs_6; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_6; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_6 (
@@ -1037,8 +1166,10 @@ CREATE TABLE public.txs_6 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_6 OWNER TO dba;
+
 --
--- Name: assets; Type: VIEW; Schema: public; Owner: -
+-- Name: assets; Type: VIEW; Schema: public; Owner: dba
 --
 
 CREATE VIEW public.assets AS
@@ -1084,8 +1215,10 @@ UNION ALL
     false AS reissuable;
 
 
+ALTER TABLE public.assets OWNER TO dba;
+
 --
--- Name: blocks; Type: TABLE; Schema: public; Owner: -
+-- Name: blocks; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.blocks (
@@ -1103,8 +1236,10 @@ CREATE TABLE public.blocks (
 );
 
 
+ALTER TABLE public.blocks OWNER TO dba;
+
 --
--- Name: blocks_raw; Type: TABLE; Schema: public; Owner: -
+-- Name: blocks_raw; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.blocks_raw (
@@ -1113,8 +1248,54 @@ CREATE TABLE public.blocks_raw (
 );
 
 
+ALTER TABLE public.blocks_raw OWNER TO dba;
+
 --
--- Name: test_types; Type: TABLE; Schema: public; Owner: -
+-- Name: candles; Type: TABLE; Schema: public; Owner: dba
+--
+
+CREATE TABLE public.candles (
+    time_start timestamp without time zone NOT NULL,
+    amount_asset_id character varying(255) NOT NULL,
+    price_asset_id character varying(255) NOT NULL,
+    low numeric NOT NULL,
+    high numeric NOT NULL,
+    volume numeric NOT NULL,
+    quote_volume numeric NOT NULL,
+    max_height integer NOT NULL,
+    txs_count integer NOT NULL,
+    weighted_average_price numeric NOT NULL,
+    open numeric NOT NULL,
+    close numeric NOT NULL,
+    interval_in_secs integer NOT NULL
+);
+
+
+ALTER TABLE public.candles OWNER TO dba;
+
+--
+-- Name: pairs; Type: TABLE; Schema: public; Owner: dba
+--
+
+CREATE TABLE public.pairs (
+    amount_asset_id character varying(255) NOT NULL,
+    price_asset_id character varying(255) NOT NULL,
+    first_price numeric NOT NULL,
+    last_price numeric NOT NULL,
+    volume numeric NOT NULL,
+    volume_waves numeric,
+    quote_volume numeric NOT NULL,
+    high numeric NOT NULL,
+    low numeric NOT NULL,
+    weighted_average_price numeric NOT NULL,
+    txs_count integer NOT NULL
+);
+
+
+ALTER TABLE public.pairs OWNER TO dba;
+
+--
+-- Name: test_types; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.test_types (
@@ -1129,8 +1310,10 @@ CREATE TABLE public.test_types (
 );
 
 
+ALTER TABLE public.test_types OWNER TO dba;
+
 --
--- Name: txs_1; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_1; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_1 (
@@ -1141,8 +1324,10 @@ CREATE TABLE public.txs_1 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_1 OWNER TO dba;
+
 --
--- Name: txs_10; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_10; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_10 (
@@ -1154,8 +1339,10 @@ CREATE TABLE public.txs_10 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_10 OWNER TO dba;
+
 --
--- Name: txs_11; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_11; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_11 (
@@ -1168,8 +1355,10 @@ CREATE TABLE public.txs_11 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_11 OWNER TO dba;
+
 --
--- Name: txs_11_transfers; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_11_transfers; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_11_transfers (
@@ -1180,8 +1369,10 @@ CREATE TABLE public.txs_11_transfers (
 );
 
 
+ALTER TABLE public.txs_11_transfers OWNER TO dba;
+
 --
--- Name: txs_12; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_12; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_12 (
@@ -1192,8 +1383,10 @@ CREATE TABLE public.txs_12 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_12 OWNER TO dba;
+
 --
--- Name: txs_12_data; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_12_data; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_12_data (
@@ -1208,8 +1401,10 @@ CREATE TABLE public.txs_12_data (
 );
 
 
+ALTER TABLE public.txs_12_data OWNER TO dba;
+
 --
--- Name: txs_13; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_13; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_13 (
@@ -1221,8 +1416,10 @@ CREATE TABLE public.txs_13 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_13 OWNER TO dba;
+
 --
--- Name: txs_14; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_14; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_14 (
@@ -1235,8 +1432,26 @@ CREATE TABLE public.txs_14 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_14 OWNER TO dba;
+
 --
--- Name: txs_2; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_15; Type: TABLE; Schema: public; Owner: dba
+--
+
+CREATE TABLE public.txs_15 (
+    sender character varying NOT NULL,
+    sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
+    asset_id character varying NOT NULL,
+    script character varying NOT NULL
+)
+INHERITS (public.txs);
+
+
+ALTER TABLE public.txs_15 OWNER TO dba;
+
+--
+-- Name: txs_2; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_2 (
@@ -1249,8 +1464,10 @@ CREATE TABLE public.txs_2 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_2 OWNER TO dba;
+
 --
--- Name: txs_4; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_4; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_4 (
@@ -1267,8 +1484,10 @@ INHERITS (public.txs);
 ALTER TABLE ONLY public.txs_4 ALTER COLUMN sender SET STATISTICS 1000;
 
 
+ALTER TABLE public.txs_4 OWNER TO dba;
+
 --
--- Name: txs_7; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_7; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_7 (
@@ -1287,8 +1506,10 @@ CREATE TABLE public.txs_7 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_7 OWNER TO dba;
+
 --
--- Name: txs_8; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_8; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_8 (
@@ -1301,8 +1522,10 @@ CREATE TABLE public.txs_8 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_8 OWNER TO dba;
+
 --
--- Name: txs_9; Type: TABLE; Schema: public; Owner: -
+-- Name: txs_9; Type: TABLE; Schema: public; Owner: dba
 --
 
 CREATE TABLE public.txs_9 (
@@ -1314,8 +1537,24 @@ CREATE TABLE public.txs_9 (
 INHERITS (public.txs);
 
 
+ALTER TABLE public.txs_9 OWNER TO dba;
+
 --
--- Name: blocks blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_index; Type: TABLE; Schema: public; Owner: dba
+--
+
+CREATE TABLE public.txs_index (
+    id character varying NOT NULL,
+    height integer NOT NULL,
+    tx_type smallint NOT NULL,
+    addresses character varying[] NOT NULL
+);
+
+
+ALTER TABLE public.txs_index OWNER TO dba;
+
+--
+-- Name: blocks blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.blocks
@@ -1323,7 +1562,7 @@ ALTER TABLE ONLY public.blocks
 
 
 --
--- Name: blocks_raw blocks_raw_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: blocks_raw blocks_raw_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.blocks_raw
@@ -1331,7 +1570,15 @@ ALTER TABLE ONLY public.blocks_raw
 
 
 --
--- Name: tickers tickers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: candles candles_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
+--
+
+ALTER TABLE ONLY public.candles
+    ADD CONSTRAINT candles_pkey PRIMARY KEY (interval_in_secs, time_start, amount_asset_id, price_asset_id);
+
+
+--
+-- Name: tickers tickers_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.tickers
@@ -1339,7 +1586,7 @@ ALTER TABLE ONLY public.tickers
 
 
 --
--- Name: txs_10 txs_10_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_10 txs_10_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_10
@@ -1347,7 +1594,7 @@ ALTER TABLE ONLY public.txs_10
 
 
 --
--- Name: txs_11 txs_11_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_11 txs_11_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_11
@@ -1355,7 +1602,7 @@ ALTER TABLE ONLY public.txs_11
 
 
 --
--- Name: txs_11_transfers txs_11_transfers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_11_transfers txs_11_transfers_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_11_transfers
@@ -1363,7 +1610,7 @@ ALTER TABLE ONLY public.txs_11_transfers
 
 
 --
--- Name: txs_12_data txs_12_data_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_12_data txs_12_data_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_12_data
@@ -1371,7 +1618,7 @@ ALTER TABLE ONLY public.txs_12_data
 
 
 --
--- Name: txs_12 txs_12_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_12 txs_12_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_12
@@ -1379,7 +1626,7 @@ ALTER TABLE ONLY public.txs_12
 
 
 --
--- Name: txs_13 txs_13_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_13 txs_13_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_13
@@ -1387,7 +1634,7 @@ ALTER TABLE ONLY public.txs_13
 
 
 --
--- Name: txs_14 txs_14_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_14 txs_14_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_14
@@ -1395,7 +1642,15 @@ ALTER TABLE ONLY public.txs_14
 
 
 --
--- Name: txs_1 txs_1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_15 txs_15_pk; Type: CONSTRAINT; Schema: public; Owner: dba
+--
+
+ALTER TABLE ONLY public.txs_15
+    ADD CONSTRAINT txs_15_pk PRIMARY KEY (id);
+
+
+--
+-- Name: txs_1 txs_1_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_1
@@ -1403,7 +1658,7 @@ ALTER TABLE ONLY public.txs_1
 
 
 --
--- Name: txs_2 txs_2_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_2 txs_2_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_2
@@ -1411,7 +1666,7 @@ ALTER TABLE ONLY public.txs_2
 
 
 --
--- Name: txs_3 txs_3_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_3 txs_3_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_3
@@ -1419,7 +1674,7 @@ ALTER TABLE ONLY public.txs_3
 
 
 --
--- Name: txs_4 txs_4_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_4 txs_4_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_4
@@ -1427,7 +1682,7 @@ ALTER TABLE ONLY public.txs_4
 
 
 --
--- Name: txs_5 txs_5_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_5 txs_5_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_5
@@ -1435,7 +1690,7 @@ ALTER TABLE ONLY public.txs_5
 
 
 --
--- Name: txs_6 txs_6_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_6 txs_6_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_6
@@ -1443,7 +1698,7 @@ ALTER TABLE ONLY public.txs_6
 
 
 --
--- Name: txs_7 txs_7_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_7 txs_7_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_7
@@ -1451,7 +1706,7 @@ ALTER TABLE ONLY public.txs_7
 
 
 --
--- Name: txs_8 txs_8_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_8 txs_8_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_8
@@ -1459,7 +1714,7 @@ ALTER TABLE ONLY public.txs_8
 
 
 --
--- Name: txs_9 txs_9_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_9 txs_9_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_9
@@ -1467,7 +1722,7 @@ ALTER TABLE ONLY public.txs_9
 
 
 --
--- Name: txs txs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: txs txs_pkey; Type: CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs
@@ -1475,539 +1730,588 @@ ALTER TABLE ONLY public.txs
 
 
 --
--- Name: order_senders_timestamp_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: candles_max_height_index; Type: INDEX; Schema: public; Owner: dba
+--
+
+CREATE INDEX candles_max_height_index ON public.candles USING btree (max_height);
+
+
+--
+-- Name: order_senders_timestamp_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX order_senders_timestamp_id_idx ON public.txs_7 USING gin ((ARRAY[(order1 ->> 'sender'::text), (order2 ->> 'sender'::text)]), time_stamp, id);
 
 
 --
--- Name: tickers_ticker_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: tickers_ticker_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE UNIQUE INDEX tickers_ticker_idx ON public.tickers USING btree (ticker);
 
 
 --
--- Name: txs_10_alias_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_10_alias_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_10_alias_idx ON public.txs_10 USING hash (alias);
 
 
 --
--- Name: txs_10_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_10_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_10_height_idx ON public.txs_10 USING btree (height);
 
 
 --
--- Name: txs_10_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_10_sender_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_10_sender_idx ON public.txs_10 USING hash (sender);
 
 
 --
--- Name: txs_10_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_10_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_10_time_stamp_asc_id_asc_idx ON public.txs_10 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_11_asset_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_11_asset_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_11_asset_id_idx ON public.txs_11 USING hash (asset_id);
 
 
 --
--- Name: txs_11_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_11_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_11_height_idx ON public.txs_11 USING btree (height);
 
 
 --
--- Name: txs_11_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_11_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_11_sender_time_stamp_id_idx ON public.txs_11 USING btree (sender, time_stamp, id);
 
 
 --
--- Name: txs_11_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_11_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_11_time_stamp_desc_id_desc_idx ON public.txs_11 USING btree (time_stamp DESC, id);
 
 
 --
--- Name: txs_11_transfers_recipient_index; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_11_transfers_recipient_index; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_11_transfers_recipient_index ON public.txs_11_transfers USING btree (recipient);
 
 
 --
--- Name: txs_11_transfers_tx_id_index; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_11_transfers_tx_id_index; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_11_transfers_tx_id_index ON public.txs_11_transfers USING btree (tx_id);
 
 
 --
--- Name: txs_12_data_data_key_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_12_data_data_key_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_12_data_data_key_idx ON public.txs_12_data USING hash (data_key);
 
 
 --
--- Name: txs_12_data_data_type_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_12_data_data_type_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_12_data_data_type_idx ON public.txs_12_data USING hash (data_type);
 
 
 --
--- Name: txs_12_data_value_binary_partial_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_12_data_value_binary_partial_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_12_data_value_binary_partial_idx ON public.txs_12_data USING hash (data_value_binary) WHERE (data_type = 'binary'::text);
 
 
 --
--- Name: txs_12_data_value_boolean_partial_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_12_data_value_boolean_partial_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_12_data_value_boolean_partial_idx ON public.txs_12_data USING btree (data_value_boolean) WHERE (data_type = 'boolean'::text);
 
 
 --
--- Name: txs_12_data_value_integer_partial_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_12_data_value_integer_partial_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_12_data_value_integer_partial_idx ON public.txs_12_data USING btree (data_value_integer) WHERE (data_type = 'integer'::text);
 
 
 --
--- Name: txs_12_data_value_string_partial_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_12_data_value_string_partial_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_12_data_value_string_partial_idx ON public.txs_12_data USING hash (data_value_string) WHERE (data_type = 'string'::text);
 
 
 --
--- Name: txs_12_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_12_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_12_height_idx ON public.txs_12 USING btree (height);
 
 
 --
--- Name: txs_12_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_12_sender_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_12_sender_idx ON public.txs_12 USING hash (sender);
 
 
 --
--- Name: txs_12_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_12_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_12_time_stamp_id_idx ON public.txs_12 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_13_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_13_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_13_height_idx ON public.txs_13 USING btree (height);
 
 
 --
--- Name: txs_13_script_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_13_script_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_13_script_idx ON public.txs_13 USING hash (script);
 
 
 --
--- Name: txs_13_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_13_sender_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_13_sender_idx ON public.txs_13 USING hash (sender);
 
 
 --
--- Name: txs_13_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_13_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_13_time_stamp_id_idx ON public.txs_13 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_14_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_14_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_14_height_idx ON public.txs_14 USING btree (height);
 
 
 --
--- Name: txs_14_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_14_sender_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_14_sender_idx ON public.txs_14 USING hash (sender);
 
 
 --
--- Name: txs_14_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_14_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_14_time_stamp_id_idx ON public.txs_14 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_1_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_15_height_idx; Type: INDEX; Schema: public; Owner: dba
+--
+
+CREATE INDEX txs_15_height_idx ON public.txs_15 USING btree (height);
+
+
+--
+-- Name: txs_15_script_idx; Type: INDEX; Schema: public; Owner: dba
+--
+
+CREATE INDEX txs_15_script_idx ON public.txs_15 USING btree (script);
+
+
+--
+-- Name: txs_15_sender_idx; Type: INDEX; Schema: public; Owner: dba
+--
+
+CREATE INDEX txs_15_sender_idx ON public.txs_15 USING btree (sender);
+
+
+--
+-- Name: txs_15_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: dba
+--
+
+CREATE INDEX txs_15_time_stamp_id_idx ON public.txs_15 USING btree (time_stamp, id);
+
+
+--
+-- Name: txs_1_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_1_height_idx ON public.txs_1 USING btree (height);
 
 
 --
--- Name: txs_2_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_2_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_2_height_idx ON public.txs_2 USING btree (height);
 
 
 --
--- Name: txs_2_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_2_sender_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_2_sender_idx ON public.txs_2 USING hash (sender);
 
 
 --
--- Name: txs_2_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_2_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_2_time_stamp_desc_id_asc_idx ON public.txs_2 USING btree (time_stamp DESC, id);
 
 
 --
--- Name: txs_3_asset_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_3_asset_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_3_asset_id_idx ON public.txs_3 USING hash (asset_id);
 
 
 --
--- Name: txs_3_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_3_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_3_height_idx ON public.txs_3 USING btree (height);
 
 
 --
--- Name: txs_3_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_3_sender_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_3_sender_idx ON public.txs_3 USING hash (sender);
 
 
 --
--- Name: txs_3_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_3_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_3_time_stamp_asc_id_asc_idx ON public.txs_3 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_3_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_3_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_3_time_stamp_desc_id_asc_idx ON public.txs_3 USING btree (time_stamp DESC, id);
 
 
 --
--- Name: txs_3_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_3_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_3_time_stamp_desc_id_desc_idx ON public.txs_3 USING btree (time_stamp DESC, id DESC);
 
 
 --
--- Name: txs_4_asset_id_index; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_4_asset_id_index; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_4_asset_id_index ON public.txs_4 USING btree (asset_id);
 
 
 --
--- Name: txs_4_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_4_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_4_height_idx ON public.txs_4 USING btree (height);
 
 
 --
--- Name: txs_4_recipient_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_4_recipient_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_4_recipient_idx ON public.txs_4 USING btree (recipient);
 
 
 --
--- Name: txs_4_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_4_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_4_sender_time_stamp_id_idx ON public.txs_4 USING btree (sender, time_stamp, id);
 
 
 --
--- Name: txs_4_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_4_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_4_time_stamp_asc_id_asc_idx ON public.txs_4 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_4_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_4_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_4_time_stamp_desc_id_asc_idx ON public.txs_4 USING btree (time_stamp DESC, id);
 
 
 --
--- Name: txs_4_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_4_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_4_time_stamp_desc_id_desc_idx ON public.txs_4 USING btree (time_stamp DESC, id DESC);
 
 
 --
--- Name: txs_5_asset_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_5_asset_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_5_asset_id_idx ON public.txs_5 USING hash (asset_id);
 
 
 --
--- Name: txs_5_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_5_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_5_height_idx ON public.txs_5 USING btree (height);
 
 
 --
--- Name: txs_5_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_5_sender_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_5_sender_idx ON public.txs_5 USING hash (sender);
 
 
 --
--- Name: txs_5_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_5_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_5_time_stamp_asc_id_asc_idx ON public.txs_5 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_5_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_5_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_5_time_stamp_desc_id_asc_idx ON public.txs_5 USING btree (time_stamp DESC, id);
 
 
 --
--- Name: txs_5_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_5_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_5_time_stamp_desc_id_desc_idx ON public.txs_5 USING btree (time_stamp DESC, id DESC);
 
 
 --
--- Name: txs_6_asset_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_6_asset_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_6_asset_id_idx ON public.txs_6 USING hash (asset_id);
 
 
 --
--- Name: txs_6_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_6_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_6_height_idx ON public.txs_6 USING btree (height);
 
 
 --
--- Name: txs_6_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_6_sender_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_6_sender_idx ON public.txs_6 USING hash (sender);
 
 
 --
--- Name: txs_6_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_6_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_6_time_stamp_asc_id_asc_idx ON public.txs_6 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_6_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_6_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_6_time_stamp_desc_id_asc_idx ON public.txs_6 USING btree (time_stamp DESC, id);
 
 
 --
--- Name: txs_6_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_6_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_6_time_stamp_desc_id_desc_idx ON public.txs_6 USING btree (time_stamp DESC, id DESC);
 
 
 --
--- Name: txs_7_amount_asset_price_asset_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_7_amount_asset_price_asset_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_7_amount_asset_price_asset_time_stamp_id_idx ON public.txs_7 USING btree (amount_asset, price_asset, time_stamp, id);
 
 
 --
--- Name: txs_7_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_7_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_7_height_idx ON public.txs_7 USING btree (height);
 
 
 --
--- Name: txs_7_price_asset_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_7_price_asset_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_7_price_asset_idx ON public.txs_7 USING hash (price_asset);
 
 
 --
--- Name: txs_7_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_7_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_7_sender_time_stamp_id_idx ON public.txs_7 USING btree (sender, time_stamp, id);
 
 
 --
--- Name: txs_7_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_7_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_7_time_stamp_asc_id_asc_idx ON public.txs_7 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_7_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_7_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_7_time_stamp_desc_id_asc_idx ON public.txs_7 USING btree (time_stamp DESC, id);
 
 
 --
--- Name: txs_7_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_7_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_7_time_stamp_desc_id_desc_idx ON public.txs_7 USING btree (time_stamp DESC, id DESC);
 
 
 --
--- Name: txs_8_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_8_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_8_height_idx ON public.txs_8 USING btree (height);
 
 
 --
--- Name: txs_8_recipient_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_8_recipient_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_8_recipient_idx ON public.txs_8 USING btree (recipient);
 
 
 --
--- Name: txs_8_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_8_sender_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_8_sender_time_stamp_id_idx ON public.txs_8 USING btree (sender, time_stamp, id);
 
 
 --
--- Name: txs_8_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_8_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_8_time_stamp_asc_id_asc_idx ON public.txs_8 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_8_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_8_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_8_time_stamp_desc_id_asc_idx ON public.txs_8 USING btree (time_stamp DESC, id);
 
 
 --
--- Name: txs_8_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_8_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_8_time_stamp_desc_id_desc_idx ON public.txs_8 USING btree (time_stamp DESC, id DESC);
 
 
 --
--- Name: txs_9_height_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_9_height_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_9_height_idx ON public.txs_9 USING btree (height);
 
 
 --
--- Name: txs_9_lease_id_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_9_lease_id_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_9_lease_id_idx ON public.txs_9 USING hash (lease_id);
 
 
 --
--- Name: txs_9_sender_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_9_sender_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_9_sender_idx ON public.txs_9 USING hash (sender);
 
 
 --
--- Name: txs_9_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_9_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_9_time_stamp_asc_id_asc_idx ON public.txs_9 USING btree (time_stamp, id);
 
 
 --
--- Name: txs_9_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_9_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_9_time_stamp_desc_id_asc_idx ON public.txs_9 USING btree (time_stamp DESC, id);
 
 
 --
--- Name: txs_9_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: txs_9_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: dba
 --
 
 CREATE INDEX txs_9_time_stamp_desc_id_desc_idx ON public.txs_9 USING btree (time_stamp DESC, id DESC);
 
 
 --
--- Name: blocks_raw block_delete; Type: RULE; Schema: public; Owner: -
+-- Name: txs_index_addresses_idx; Type: INDEX; Schema: public; Owner: dba
+--
+
+CREATE INDEX txs_index_addresses_idx ON public.txs_index USING gin (addresses);
+
+
+--
+-- Name: txs_index_height_idx; Type: INDEX; Schema: public; Owner: dba
+--
+
+CREATE INDEX txs_index_height_idx ON public.txs_index USING btree (height);
+
+
+--
+-- Name: blocks_raw block_delete; Type: RULE; Schema: public; Owner: dba
 --
 
 CREATE RULE block_delete AS
@@ -2016,21 +2320,21 @@ CREATE RULE block_delete AS
 
 
 --
--- Name: blocks_raw block_insert_trigger; Type: TRIGGER; Schema: public; Owner: -
+-- Name: blocks_raw block_insert_trigger; Type: TRIGGER; Schema: public; Owner: dba
 --
 
 CREATE TRIGGER block_insert_trigger BEFORE INSERT ON public.blocks_raw FOR EACH ROW EXECUTE PROCEDURE public.on_block_insert();
 
 
 --
--- Name: blocks_raw block_update_trigger; Type: TRIGGER; Schema: public; Owner: -
+-- Name: blocks_raw block_update_trigger; Type: TRIGGER; Schema: public; Owner: dba
 --
 
 CREATE TRIGGER block_update_trigger BEFORE UPDATE ON public.blocks_raw FOR EACH ROW EXECUTE PROCEDURE public.on_block_update();
 
 
 --
--- Name: txs_1 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_1 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_1
@@ -2038,7 +2342,7 @@ ALTER TABLE ONLY public.txs_1
 
 
 --
--- Name: txs_2 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_2 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_2
@@ -2046,7 +2350,7 @@ ALTER TABLE ONLY public.txs_2
 
 
 --
--- Name: txs_3 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_3 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_3
@@ -2054,7 +2358,7 @@ ALTER TABLE ONLY public.txs_3
 
 
 --
--- Name: txs_4 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_4 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_4
@@ -2062,7 +2366,7 @@ ALTER TABLE ONLY public.txs_4
 
 
 --
--- Name: txs_5 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_5 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_5
@@ -2070,7 +2374,7 @@ ALTER TABLE ONLY public.txs_5
 
 
 --
--- Name: txs_6 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_6 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_6
@@ -2078,7 +2382,7 @@ ALTER TABLE ONLY public.txs_6
 
 
 --
--- Name: txs_7 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_7 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_7
@@ -2086,7 +2390,7 @@ ALTER TABLE ONLY public.txs_7
 
 
 --
--- Name: txs_8 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_8 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_8
@@ -2094,7 +2398,7 @@ ALTER TABLE ONLY public.txs_8
 
 
 --
--- Name: txs_9 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_9 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_9
@@ -2102,7 +2406,7 @@ ALTER TABLE ONLY public.txs_9
 
 
 --
--- Name: txs_10 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_10 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_10
@@ -2110,7 +2414,7 @@ ALTER TABLE ONLY public.txs_10
 
 
 --
--- Name: txs_11 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_11 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_11
@@ -2118,7 +2422,7 @@ ALTER TABLE ONLY public.txs_11
 
 
 --
--- Name: txs_13 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_13 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_13
@@ -2126,7 +2430,7 @@ ALTER TABLE ONLY public.txs_13
 
 
 --
--- Name: txs_14 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_14 fk_blocks; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_14
@@ -2134,7 +2438,7 @@ ALTER TABLE ONLY public.txs_14
 
 
 --
--- Name: txs_11_transfers fk_tx_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_11_transfers fk_tx_id; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_11_transfers
@@ -2142,7 +2446,7 @@ ALTER TABLE ONLY public.txs_11_transfers
 
 
 --
--- Name: txs_12_data txs_12_data_tx_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_12_data txs_12_data_tx_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_12_data
@@ -2150,11 +2454,19 @@ ALTER TABLE ONLY public.txs_12_data
 
 
 --
--- Name: txs_12 txs_12_height_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: txs_12 txs_12_height_fkey; Type: FK CONSTRAINT; Schema: public; Owner: dba
 --
 
 ALTER TABLE ONLY public.txs_12
     ADD CONSTRAINT txs_12_height_fkey FOREIGN KEY (height) REFERENCES public.blocks(height) ON DELETE CASCADE;
+
+
+--
+-- Name: txs_15 txs_15_blocks_fk; Type: FK CONSTRAINT; Schema: public; Owner: dba
+--
+
+ALTER TABLE ONLY public.txs_15
+    ADD CONSTRAINT txs_15_blocks_fk FOREIGN KEY (height) REFERENCES public.blocks(height) ON DELETE CASCADE;
 
 
 --

@@ -3,7 +3,7 @@
 --
 
 -- Dumped from database version 10.5 (Ubuntu 10.5-1.pgdg18.04+1)
--- Dumped by pg_dump version 10.6 (Ubuntu 10.6-0ubuntu0.18.04.1)
+-- Dumped by pg_dump version 10.5 (Ubuntu 10.5-1.pgdg16.04+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -593,7 +593,8 @@ begin
 		description,
 		quantity,
 		decimals,
-		reissuable
+		reissuable,
+		script
 	)
 	select
 		-- common
@@ -614,7 +615,8 @@ begin
 		t->>'description',
 		(t->>'quantity')::bigint,
 		(t->>'decimals')::smallint,
-		(t->>'reissuable')::bool
+		(t->>'reissuable')::bool,
+		t->>'script'
 	from (
 		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
 	) as txs
@@ -981,20 +983,56 @@ $$;
 
 
 --
--- Name: reinsert_txs_15_range(integer, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: search_asset(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.reinsert_txs_15_range(range_start integer, range_end integer) RETURNS void
+CREATE FUNCTION public.search_asset(q text) RETURNS TABLE(asset_id character varying, rank numeric)
     LANGUAGE plpgsql
     AS $$
-BEGIN
-  FOR i IN range_start..range_end LOOP
-    RAISE NOTICE 'Updating block: %', i;
-
-    PERFORM insert_txs_15(b)
-    FROM blocks_raw
-    WHERE height = i;
-  END LOOP;
+begin
+  return query select a.asset_id, a.rank
+               from (
+                      select t.asset_id                                        as asset_id,
+                             t.asset_name                                      as asset_name,
+                             t.height                                          as height,
+                             ti.ticker                                         as ticker,
+                             ts_rank(to_tsvector('simple', t.asset_id), to_tsquery(q), 3) *
+                             case when ti.ticker is null then 128 else 256 end as rank
+                      from txs_3 t
+                             left join tickers ti on t.asset_id = ti.asset_id
+                      where t.asset_id = q
+                      union all
+                      select asset_id,
+                             asset_name,
+                             height,
+                             ticker,
+                             ts_rank(to_tsvector('simple', asset_name), to_tsquery(q + ':*'), 3) *
+                             case when ticker is null then 64 else 128 end as rank
+                      from (values ('8LQW8f7P5d5PZM7GtZEBgaqRPGSzS3DfPuiXrURJ4AJS', 'bitcoin', 1340000,
+                                    'wbtc')) as t (asset_id, asset_name, height, ticker)
+                      where asset_name LIKE q + '%'
+                      union all
+                      select ti.asset_id                                                       as asset_id,
+                             t.asset_name                                                      as asset_name,
+                             t.height                                                          as height,
+                             ti.ticker                                                         as ticker,
+                             ts_rank(to_tsvector('simple', ticker), to_tsquery(q + ':*')) * 32 as rank
+                      from tickers ti
+                             left join txs_3 t on ti.asset_id = t.asset_id
+                      where ticker = q + '*'
+                      union all
+                      select t.asset_id                                      as asset_id,
+                             t.asset_name                                    as asset_name,
+                             t.height                                        as height,
+                             ti.ticker                                       as ticker,
+                             ts_rank(searchable_asset_name, to_tsquery(q + ':*'), 3) *
+                             case when ti.ticker is null then 16 else 32 end as rank
+                      from txs_3 t
+                             left join tickers ti on t.asset_id = ti.asset_id
+                      where searchable_asset_name @@ to_tsquery(q + ':*')
+                    ) a
+               order by rank desc, height asc, asset_id asc
+               limit 100;
 END
 $$;
 
@@ -1047,7 +1085,8 @@ CREATE TABLE public.txs_3 (
     description character varying NOT NULL,
     quantity bigint NOT NULL,
     decimals smallint NOT NULL,
-    reissuable boolean NOT NULL
+    reissuable boolean NOT NULL,
+    script character varying
 )
 INHERITS (public.txs);
 
@@ -1073,6 +1112,34 @@ CREATE TABLE public.tickers (
     asset_id text NOT NULL,
     ticker text NOT NULL
 );
+
+
+--
+-- Name: txs_14; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.txs_14 (
+    sender character varying NOT NULL,
+    sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
+    asset_id character varying NOT NULL,
+    min_sponsored_asset_fee bigint
+)
+INHERITS (public.txs);
+
+
+--
+-- Name: txs_15; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.txs_15 (
+    sender character varying NOT NULL,
+    sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
+    asset_id character varying NOT NULL,
+    script character varying
+)
+INHERITS (public.txs);
 
 
 --
@@ -1109,6 +1176,49 @@ INHERITS (public.txs);
 --
 
 CREATE VIEW public.assets AS
+ WITH smart_assets_cte AS (
+         WITH RECURSIVE asset_with_script_ids_cte AS (
+                 SELECT min((txs_15.asset_id)::text) AS asset_id
+                   FROM public.txs_15
+                UNION ALL
+                 SELECT ( SELECT min((txs_15.asset_id)::text) AS min
+                           FROM public.txs_15
+                          WHERE ((txs_15.asset_id)::text > asset_with_script_ids_cte_1.asset_id)) AS asset_id
+                   FROM asset_with_script_ids_cte asset_with_script_ids_cte_1
+                  WHERE (asset_with_script_ids_cte_1.asset_id IS NOT NULL)
+                )
+         SELECT scripts.asset_id,
+            scripts.script
+           FROM asset_with_script_ids_cte,
+            LATERAL ( SELECT txs_15.asset_id,
+                    txs_15.script
+                   FROM public.txs_15
+                  WHERE ((txs_15.asset_id)::text = asset_with_script_ids_cte.asset_id)
+                  ORDER BY txs_15.height DESC
+                 LIMIT 1) scripts
+          WHERE (asset_with_script_ids_cte.asset_id IS NOT NULL)
+        ), sponsored_assets_cte AS (
+         WITH RECURSIVE asset_ids_cte AS (
+                 SELECT min((txs_14.asset_id)::text) AS asset_id
+                   FROM public.txs_14
+                UNION ALL
+                 SELECT ( SELECT min((txs_14.asset_id)::text) AS min
+                           FROM public.txs_14
+                          WHERE ((txs_14.asset_id)::text > asset_ids_cte_1.asset_id)) AS asset_id
+                   FROM asset_ids_cte asset_ids_cte_1
+                  WHERE (asset_ids_cte_1.asset_id IS NOT NULL)
+                )
+         SELECT fees.asset_id,
+            fees.min_sponsored_asset_fee
+           FROM asset_ids_cte,
+            LATERAL ( SELECT txs_14.asset_id,
+                    txs_14.min_sponsored_asset_fee
+                   FROM public.txs_14
+                  WHERE ((txs_14.asset_id)::text = asset_ids_cte.asset_id)
+                  ORDER BY txs_14.height DESC
+                 LIMIT 1) fees
+          WHERE (asset_ids_cte.asset_id IS NOT NULL)
+        )
  SELECT issue.asset_id,
     t.ticker,
     issue.asset_name,
@@ -1121,8 +1231,13 @@ CREATE VIEW public.assets AS
         CASE
             WHEN (r_after.reissuable_after IS NULL) THEN issue.reissuable
             ELSE (issue.reissuable AND r_after.reissuable_after)
-        END AS reissuable
-   FROM ((((public.txs_3 issue
+        END AS reissuable,
+        CASE
+            WHEN ((issue.script IS NOT NULL) OR (smart.script IS NOT NULL)) THEN true
+            ELSE false
+        END AS has_script,
+    sponsored.min_sponsored_asset_fee
+   FROM ((((((public.txs_3 issue
      LEFT JOIN ( SELECT txs_5.asset_id,
             sum(txs_5.quantity) AS reissued_total
            FROM public.txs_5
@@ -1138,6 +1253,8 @@ CREATE VIEW public.assets AS
      LEFT JOIN ( SELECT tickers.asset_id,
             tickers.ticker
            FROM public.tickers) t ON (((issue.asset_id)::text = t.asset_id)))
+     LEFT JOIN smart_assets_cte smart ON (((issue.asset_id)::text = (smart.asset_id)::text)))
+     LEFT JOIN sponsored_assets_cte sponsored ON (((issue.asset_id)::text = (sponsored.asset_id)::text)))
 UNION ALL
  SELECT 'WAVES'::character varying AS asset_id,
     'WAVES'::text AS ticker,
@@ -1148,7 +1265,9 @@ UNION ALL
     '2016-04-11 21:00:00'::timestamp without time zone AS issue_timestamp,
     ('10000000000000000'::bigint)::numeric AS total_quantity,
     8 AS decimals,
-    false AS reissuable;
+    false AS reissuable,
+    false AS has_script,
+    NULL::bigint AS min_sponsored_asset_fee;
 
 
 --
@@ -1324,34 +1443,6 @@ CREATE TABLE public.txs_13 (
     sender_public_key character varying NOT NULL,
     fee bigint NOT NULL,
     script character varying
-)
-INHERITS (public.txs);
-
-
---
--- Name: txs_14; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.txs_14 (
-    sender character varying NOT NULL,
-    sender_public_key character varying NOT NULL,
-    fee bigint NOT NULL,
-    asset_id character varying NOT NULL,
-    min_sponsored_asset_fee bigint
-)
-INHERITS (public.txs);
-
-
---
--- Name: txs_15; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.txs_15 (
-    sender character varying NOT NULL,
-    sender_public_key character varying NOT NULL,
-    fee bigint NOT NULL,
-    asset_id character varying NOT NULL,
-    script character varying NOT NULL
 )
 INHERITS (public.txs);
 
@@ -1626,6 +1717,13 @@ CREATE INDEX order_senders_timestamp_id_idx ON public.txs_7 USING gin ((ARRAY[(o
 
 
 --
+-- Name: pairs_amount_asset_id_price_asset_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pairs_amount_asset_id_price_asset_id_index ON public.pairs USING btree (amount_asset_id, price_asset_id);
+
+
+--
 -- Name: tickers_ticker_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1882,6 +1980,13 @@ CREATE INDEX txs_3_asset_id_idx ON public.txs_3 USING hash (asset_id);
 --
 
 CREATE INDEX txs_3_height_idx ON public.txs_3 USING btree (height);
+
+
+--
+-- Name: txs_3_script_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_3_script_idx ON public.txs_3 USING btree (script);
 
 
 --

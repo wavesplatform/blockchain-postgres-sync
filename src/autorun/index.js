@@ -5,7 +5,7 @@ const createRequestApiHeight = require('../api/requestHeight');
 const run = require('../run');
 const { update } = require('../updateComposite');
 
-const getOptions = require('../utils/getOptions');
+const getOptions = require('./getOptionsEnv');
 
 const { autorun } = require('./logic');
 

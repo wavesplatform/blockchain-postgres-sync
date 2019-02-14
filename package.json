@@ -6,9 +6,10 @@
   "author": "Dmitry Shuranov <shuranov@wavesplatform.com>",
   "license": "MIT",
   "scripts": {
+    "test": "jest",
     "download": "node src/runForRange.js",
     "update": "node src/update.js",
-    "updateComposite": "node src/updateComposite.js",
+    "updateComposite": "node src/updateComposite/run.js",
     "rollbackMonitor": "node src/rollbackMonitor.js",
     "reinsertBlocks": "node src/reinsertBlocks.js"
   },
@@ -19,5 +20,8 @@
     "superagent": "^3.8.2",
     "throttle-debounce": "^1.0.1",
     "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "jest": "^24.1.0"
   }
 }

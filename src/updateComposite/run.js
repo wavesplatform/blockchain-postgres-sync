@@ -1,0 +1,2 @@
+const { update } = require('.');
+update();

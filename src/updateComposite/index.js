@@ -10,9 +10,9 @@ const {
   timeout,
 } = require('rxjs/operators');
 
-const getOptions = require('./utils/getOptions');
-const run = require('./run');
-const requestHeight = require('./api/requestHeight');
+const getOptions = require('../utils/getOptions');
+const run = require('../run');
+const requestHeight = require('../api/requestHeight');
 
 const options = getOptions();
 
@@ -83,11 +83,16 @@ const log = e =>
     } blocks`
   );
 
-requests$.subscribe(
-  e => {
-    log(e);
-    if (e.type === 'error') console.error(e.error);
-  },
-  console.error,
-  () => console.log('Stream finished')
-);
+const update = () =>
+  requests$.subscribe(
+    e => {
+      log(e);
+      if (e.type === 'error') console.error(e.error);
+    },
+    console.error,
+    () => console.log('Stream finished')
+  );
+
+module.exports = {
+  update,
+};

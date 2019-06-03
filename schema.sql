@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 10.5 (Ubuntu 10.5-1.pgdg18.04+1)
--- Dumped by pg_dump version 10.5 (Ubuntu 10.5-1.pgdg16.04+1)
+-- Dumped from database version 11.1 (Ubuntu 11.1-3.pgdg18.04+1)
+-- Dumped by pg_dump version 11.2 (Ubuntu 11.2-1.pgdg16.04+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -14,20 +14,6 @@ SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
-
-
---
--- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
-
 
 --
 -- Name: btree_gin; Type: EXTENSION; Schema: -; Owner: -
@@ -155,36 +141,34 @@ CREATE FUNCTION public.insert_txs_1(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
 begin
-	insert into txs_1 (
-		height,
-		tx_type,
-		id,
-		time_stamp,
-		signature,
-		proofs,
-		tx_version,
-		fee,
-		recipient,
-		amount
-	)
-	select
-		-- common
-		(t->>'height')::int4,
-		(t->>'type')::smallint,
-		t->>'id',
-		to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
-		t->>'signature',
-		jsonb_array_cast_text(t->'proofs'),
-		(t->>'version')::smallint,
-		(t->>'fee')::bigint,
-		-- type specific
-		t->>'recipient',
-		(t->>'amount')::bigint
-	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
-	where (t->>'type') = '1'
-	on conflict do nothing;
+  insert into txs_1 (height,
+                     tx_type,
+                     id,
+                     time_stamp,
+                     signature,
+                     proofs,
+                     tx_version,
+                     fee,
+                     recipient,
+                     amount)
+  select
+    -- common
+    (t ->> 'height')::int4,
+    (t ->> 'type')::smallint,
+    t ->> 'id',
+    to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
+    t ->> 'signature',
+    jsonb_array_cast_text(t -> 'proofs'),
+    (t ->> 'version')::smallint,
+    (t ->> 'fee')::bigint,
+    -- type specific
+    t ->> 'recipient',
+    (t ->> 'amount')::bigint
+  from (
+         select jsonb_array_elements(b -> 'transactions') || jsonb_build_object('height', b -> 'height') as t
+       ) as txs
+  where (t ->> 'type') = '1'
+  on conflict do nothing;
 END
 $$;
 
@@ -242,61 +226,56 @@ CREATE FUNCTION public.insert_txs_11(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  INSERT INTO txs_11 (
-    height,
-    tx_type,
-    id,
-    time_stamp,
-    signature,
-    proofs,
-    tx_version,
-    fee,
-    sender,
-    sender_public_key,
-    asset_id,
-    attachment
-  )
-    SELECT
-      -- common
-      (t ->> 'height') :: INT4,
-      (t ->> 'type') :: SMALLINT,
-      t ->> 'id',
-      to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
-      t ->> 'signature',
-      jsonb_array_cast_text(t -> 'proofs'),
-      (t ->> 'version') :: SMALLINT,
-      (t ->> 'fee') :: BIGINT,
-      -- with sender
-      t ->> 'sender',
-      t ->> 'senderPublicKey',
-      -- type specific
-      get_asset_id(t ->> 'assetId'),
-      t ->> 'attachment'
-    FROM (
-           SELECT jsonb_array_elements(b -> 'transactions') || jsonb_build_object('height', b -> 'height') AS t
-         ) AS txs
-    WHERE (t ->> 'type') = '11'
+  INSERT INTO txs_11 (height,
+                      tx_type,
+                      id,
+                      time_stamp,
+                      signature,
+                      proofs,
+                      tx_version,
+                      fee,
+                      sender,
+                      sender_public_key,
+                      asset_id,
+                      attachment)
+  SELECT
+    -- common
+    (t ->> 'height') :: INT4,
+    (t ->> 'type') :: SMALLINT,
+    t ->> 'id',
+    to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
+    t ->> 'signature',
+    jsonb_array_cast_text(t -> 'proofs'),
+    (t ->> 'version') :: SMALLINT,
+    (t ->> 'fee') :: BIGINT,
+    -- with sender
+    t ->> 'sender',
+    t ->> 'senderPublicKey',
+    -- type specific
+    get_asset_id(t ->> 'assetId'),
+    t ->> 'attachment'
+  FROM (
+         SELECT jsonb_array_elements(b -> 'transactions') || jsonb_build_object('height', b -> 'height') AS t
+       ) AS txs
+  WHERE (t ->> 'type') = '11'
   ON CONFLICT DO NOTHING;
-
-  INSERT INTO txs_11_transfers (
-    tx_id,
-    recipient,
-    amount,
-    position_in_tx
-  )
-    SELECT
-      t ->> 'tx_id',
-      t ->> 'recipient',
-      (t ->> 'amount') :: BIGINT,
-      row_number()
-      OVER (
-        PARTITION BY t ->> 'tx_id' ) - 1
-    FROM (
-           SELECT jsonb_array_elements(tx -> 'transfers') || jsonb_build_object('tx_id', tx ->> 'id') AS t
-           FROM (
-                  SELECT jsonb_array_elements(b -> 'transactions') AS tx
-                ) AS txs
-         ) AS transfers
+  -- transfers
+  INSERT INTO txs_11_transfers (tx_id,
+                                recipient,
+                                amount,
+                                position_in_tx)
+  SELECT t ->> 'tx_id',
+         t ->> 'recipient',
+         (t ->> 'amount') :: BIGINT,
+         row_number()
+             OVER (
+               PARTITION BY t ->> 'tx_id' ) - 1
+  FROM (
+         SELECT jsonb_array_elements(tx -> 'transfers') || jsonb_build_object('tx_id', tx ->> 'id') AS t
+         FROM (
+                SELECT jsonb_array_elements(b -> 'transactions') AS tx
+              ) AS txs
+       ) AS transfers
   ON CONFLICT DO NOTHING;
 END
 $$;
@@ -622,6 +601,21 @@ begin
 	) as txs
 	where (t->>'type') = '3'
 	on conflict do nothing;
+	-- insert into assets names map
+	insert into assets_names_map (
+		asset_id,
+		asset_name,
+		searchable_asset_name
+	)
+	select
+		get_asset_id(t->>'assetId'),
+		t->>'name',
+		to_tsvector(t->>'name')
+	from (
+		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
+	) as txs
+	where (t->>'type') = '3'
+	on conflict do nothing;
 END
 $$;
 
@@ -747,7 +741,7 @@ begin
 		t->>'senderPublicKey',
 		-- type specific
 		get_asset_id(t->>'assetId'),
-		(t->>'amount')::bigint	
+		(t->>'amount')::bigint
 	from (
 		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
 	) as txs
@@ -765,53 +759,51 @@ CREATE FUNCTION public.insert_txs_7(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
 begin
-	insert into txs_7 (
-		height,
-		tx_type,
-		id,
-		time_stamp,
-		signature,
-		proofs,
-		tx_version,
-		fee,
-		sender,
-		sender_public_key,
-		order1,
-		order2,
-		amount_asset,
-		price_asset,
-		amount,
-		price,
-		buy_matcher_fee,
-		sell_matcher_fee
-	)
-	select
-		-- common
-		(t->>'height')::int4,
-		(t->>'type')::smallint,
-		t->>'id',
-		to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
-		t->>'signature',
-		jsonb_array_cast_text(t->'proofs'),
-		(t->>'version')::smallint,
-		(t->>'fee')::bigint,
-		-- with sender
-		t->>'sender',
-		t->>'senderPublicKey',
-		-- type specific
-		t->'order1',
-		t->'order2',
-		get_asset_id(t->'order1'->'assetPair'->>'amountAsset'),
-		get_asset_id(t->'order1'->'assetPair'->>'priceAsset'),
-		(t->>'amount')::bigint,
-		(t->>'price')::bigint,
-		(t->>'buyMatcherFee')::bigint,
-		(t->>'sellMatcherFee')::bigint		
-	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
-	where (t->>'type') = '7'
-	on conflict do nothing;
+  insert into txs_7 (height,
+                     tx_type,
+                     id,
+                     time_stamp,
+                     signature,
+                     proofs,
+                     tx_version,
+                     fee,
+                     sender,
+                     sender_public_key,
+                     order1,
+                     order2,
+                     amount_asset,
+                     price_asset,
+                     amount,
+                     price,
+                     buy_matcher_fee,
+                     sell_matcher_fee)
+  select
+    -- common
+    (t ->> 'height')::int4,
+    (t ->> 'type')::smallint,
+    t ->> 'id',
+    to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
+    t ->> 'signature',
+    jsonb_array_cast_text(t -> 'proofs'),
+    (t ->> 'version')::smallint,
+    (t ->> 'fee')::bigint,
+    -- with sender
+    t ->> 'sender',
+    t ->> 'senderPublicKey',
+    -- type specific
+    t -> 'order1',
+    t -> 'order2',
+    get_asset_id(t -> 'order1' -> 'assetPair' ->> 'amountAsset'),
+    get_asset_id(t -> 'order1' -> 'assetPair' ->> 'priceAsset'),
+    (t ->> 'amount')::bigint,
+    (t ->> 'price')::bigint,
+    (t ->> 'buyMatcherFee')::bigint,
+    (t ->> 'sellMatcherFee')::bigint
+  from (
+         select jsonb_array_elements(b -> 'transactions') || jsonb_build_object('height', b -> 'height') as t
+       ) as txs
+  where (t ->> 'type') = '7'
+  on conflict do nothing;
 END
 $$;
 
@@ -983,6 +975,28 @@ $$;
 
 
 --
+-- Name: reinsert_range(integer, integer, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.reinsert_range(range_start integer, range_end integer, step integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  FOR i IN 0..(range_end/step) LOOP
+    RAISE NOTICE 'Updating block: %', i*step + range_start;
+
+    DELETE FROM blocks
+    WHERE height >= i*step + range_start and height <= i*(step + 1) + range_start;
+
+    PERFORM insert_all(b)
+    FROM blocks_raw
+    WHERE height >= i*step + range_start and height <= i*(step + 1) + range_start;
+  END LOOP;
+END
+$$;
+
+
+--
 -- Name: text_timestamp_cast(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1074,20 +1088,6 @@ INHERITS (public.txs);
 
 
 --
--- Name: txs_15; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.txs_15 (
-    sender character varying NOT NULL,
-    sender_public_key character varying NOT NULL,
-    fee bigint NOT NULL,
-    asset_id character varying NOT NULL,
-    script character varying
-)
-INHERITS (public.txs);
-
-
---
 -- Name: txs_5; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1121,49 +1121,6 @@ INHERITS (public.txs);
 --
 
 CREATE VIEW public.assets AS
- WITH smart_assets_cte AS (
-         WITH RECURSIVE asset_with_script_ids_cte AS (
-                 SELECT min((txs_15.asset_id)::text) AS asset_id
-                   FROM public.txs_15
-                UNION ALL
-                 SELECT ( SELECT min((txs_15.asset_id)::text) AS min
-                           FROM public.txs_15
-                          WHERE ((txs_15.asset_id)::text > asset_with_script_ids_cte_1.asset_id)) AS asset_id
-                   FROM asset_with_script_ids_cte asset_with_script_ids_cte_1
-                  WHERE (asset_with_script_ids_cte_1.asset_id IS NOT NULL)
-                )
-         SELECT scripts.asset_id,
-            scripts.script
-           FROM asset_with_script_ids_cte,
-            LATERAL ( SELECT txs_15.asset_id,
-                    txs_15.script
-                   FROM public.txs_15
-                  WHERE ((txs_15.asset_id)::text = asset_with_script_ids_cte.asset_id)
-                  ORDER BY txs_15.height DESC
-                 LIMIT 1) scripts
-          WHERE (asset_with_script_ids_cte.asset_id IS NOT NULL)
-        ), sponsored_assets_cte AS (
-         WITH RECURSIVE asset_ids_cte AS (
-                 SELECT min((txs_14.asset_id)::text) AS asset_id
-                   FROM public.txs_14
-                UNION ALL
-                 SELECT ( SELECT min((txs_14.asset_id)::text) AS min
-                           FROM public.txs_14
-                          WHERE ((txs_14.asset_id)::text > asset_ids_cte_1.asset_id)) AS asset_id
-                   FROM asset_ids_cte asset_ids_cte_1
-                  WHERE (asset_ids_cte_1.asset_id IS NOT NULL)
-                )
-         SELECT fees.asset_id,
-            fees.min_sponsored_asset_fee
-           FROM asset_ids_cte,
-            LATERAL ( SELECT txs_14.asset_id,
-                    txs_14.min_sponsored_asset_fee
-                   FROM public.txs_14
-                  WHERE ((txs_14.asset_id)::text = asset_ids_cte.asset_id)
-                  ORDER BY txs_14.height DESC
-                 LIMIT 1) fees
-          WHERE (asset_ids_cte.asset_id IS NOT NULL)
-        )
  SELECT issue.asset_id,
     t.ticker,
     issue.asset_name,
@@ -1178,11 +1135,11 @@ CREATE VIEW public.assets AS
             ELSE (issue.reissuable AND r_after.reissuable_after)
         END AS reissuable,
         CASE
-            WHEN ((issue.script IS NOT NULL) OR (smart.script IS NOT NULL)) THEN true
+            WHEN (issue.script IS NOT NULL) THEN true
             ELSE false
         END AS has_script,
-    sponsored.min_sponsored_asset_fee
-   FROM ((((((public.txs_3 issue
+    txs_14.min_sponsored_asset_fee
+   FROM (((((public.txs_3 issue
      LEFT JOIN ( SELECT txs_5.asset_id,
             sum(txs_5.quantity) AS reissued_total
            FROM public.txs_5
@@ -1198,8 +1155,10 @@ CREATE VIEW public.assets AS
      LEFT JOIN ( SELECT tickers.asset_id,
             tickers.ticker
            FROM public.tickers) t ON (((issue.asset_id)::text = t.asset_id)))
-     LEFT JOIN smart_assets_cte smart ON (((issue.asset_id)::text = (smart.asset_id)::text)))
-     LEFT JOIN sponsored_assets_cte sponsored ON (((issue.asset_id)::text = (sponsored.asset_id)::text)))
+     LEFT JOIN ( SELECT DISTINCT ON (txs_14_1.asset_id) txs_14_1.asset_id,
+            txs_14_1.min_sponsored_asset_fee
+           FROM public.txs_14 txs_14_1
+          ORDER BY txs_14_1.asset_id, txs_14_1.height DESC) txs_14 ON (((issue.asset_id)::text = (txs_14.asset_id)::text)))
 UNION ALL
  SELECT 'WAVES'::character varying AS asset_id,
     'WAVES'::text AS ticker,
@@ -1213,6 +1172,29 @@ UNION ALL
     false AS reissuable,
     false AS has_script,
     NULL::bigint AS min_sponsored_asset_fee;
+
+
+--
+-- Name: assets_metadata; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.assets_metadata (
+    asset_id character varying NOT NULL,
+    asset_name character varying,
+    ticker character varying,
+    height integer
+);
+
+
+--
+-- Name: assets_names_map; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.assets_names_map (
+    asset_id character varying NOT NULL,
+    asset_name character varying NOT NULL,
+    searchable_asset_name tsvector NOT NULL
+);
 
 
 --
@@ -1281,22 +1263,6 @@ CREATE TABLE public.pairs (
     low numeric NOT NULL,
     weighted_average_price numeric NOT NULL,
     txs_count integer NOT NULL
-);
-
-
---
--- Name: test_types; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.test_types (
-    i8 bigint,
-    f4 double precision,
-    f8 double precision,
-    n numeric,
-    i8a bigint[],
-    f4a double precision[],
-    f8a double precision[],
-    na numeric[]
 );
 
 
@@ -1393,6 +1359,20 @@ INHERITS (public.txs);
 
 
 --
+-- Name: txs_15; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.txs_15 (
+    sender character varying NOT NULL,
+    sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
+    asset_id character varying NOT NULL,
+    script character varying
+)
+INHERITS (public.txs);
+
+
+--
 -- Name: txs_2; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1469,6 +1449,14 @@ CREATE TABLE public.txs_9 (
     lease_id character varying NOT NULL
 )
 INHERITS (public.txs);
+
+
+--
+-- Name: assets_names_map assets_map_pk; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assets_names_map
+    ADD CONSTRAINT assets_map_pk PRIMARY KEY (asset_id);
 
 
 --
@@ -1648,6 +1636,13 @@ ALTER TABLE ONLY public.txs
 
 
 --
+-- Name: assets_names_map_asset_name_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX assets_names_map_asset_name_idx ON public.assets_names_map USING btree (asset_name varchar_pattern_ops);
+
+
+--
 -- Name: candles_max_height_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1666,6 +1661,13 @@ CREATE INDEX order_senders_timestamp_id_idx ON public.txs_7 USING gin ((ARRAY[(o
 --
 
 CREATE INDEX pairs_amount_asset_id_price_asset_id_index ON public.pairs USING btree (amount_asset_id, price_asset_id);
+
+
+--
+-- Name: searchable_asset_name_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX searchable_asset_name_idx ON public.assets_names_map USING gin (searchable_asset_name);
 
 
 --
@@ -1736,13 +1738,6 @@ CREATE INDEX txs_11_time_stamp_desc_id_desc_idx ON public.txs_11 USING btree (ti
 --
 
 CREATE INDEX txs_11_transfers_recipient_index ON public.txs_11_transfers USING btree (recipient);
-
-
---
--- Name: txs_11_transfers_tx_id_index; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_11_transfers_tx_id_index ON public.txs_11_transfers USING btree (tx_id);
 
 
 --

@@ -1243,7 +1243,8 @@ CREATE TABLE public.candles (
     weighted_average_price numeric NOT NULL,
     open numeric NOT NULL,
     close numeric NOT NULL,
-    interval_in_secs integer NOT NULL
+    interval_in_secs integer NOT NULL,
+    matcher character varying(255) NOT NULL
 );
 
 
@@ -1480,7 +1481,7 @@ ALTER TABLE ONLY public.blocks_raw
 --
 
 ALTER TABLE ONLY public.candles
-    ADD CONSTRAINT candles_pkey PRIMARY KEY (interval_in_secs, time_start, amount_asset_id, price_asset_id);
+    ADD CONSTRAINT candles_pkey PRIMARY KEY (interval_in_secs, time_start, amount_asset_id, price_asset_id, matcher);
 
 
 --

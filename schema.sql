@@ -99,9 +99,10 @@ begin
 	PERFORM insert_txs_10 (b);
 	PERFORM insert_txs_11 (b);
 	PERFORM insert_txs_12 (b);
-  PERFORM insert_txs_13 (b);
+  	PERFORM insert_txs_13 (b);
 	PERFORM insert_txs_14 (b);
 	PERFORM insert_txs_15 (b);
+	PERFORM insert_txs_16 (b);
 END
 $$;
 
@@ -496,6 +497,111 @@ begin
 		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
 	) as txs
 	where (t->>'type') = '15'
+	on conflict do nothing;
+END
+$$;
+
+
+--
+-- Name: insert_txs_16(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_txs_16(b jsonb) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+begin
+	insert into txs_16 (
+		height,
+		tx_type,
+		id,
+		time_stamp,
+		signature,
+		proofs,
+		tx_version,
+		fee,
+		sender,
+		sender_public_key,
+		dapp,
+	    function_name
+	)
+	select
+		-- common
+		(t->>'height')::int4,
+		(t->>'type')::smallint,
+		t->>'id',
+    to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
+		t->>'signature',
+		jsonb_array_cast_text(t->'proofs'),
+		(t->>'version')::smallint,
+		(t->>'fee')::bigint,
+		-- with sender
+		t->>'sender',
+		t->>'senderPublicKey',
+		-- type specific
+		t->>'dApp',
+	    t->'call'->>'function'
+	from (
+		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
+	) as txs
+	where (t->>'type') = '16'
+	on conflict do nothing;
+
+	insert into txs_16_args (
+		tx_id,
+		arg_type,
+		arg_value_integer,
+		arg_value_boolean,
+		arg_value_binary,
+		arg_value_string,
+		position_in_args
+	)
+	select
+		arg->>'tx_id' as tx_id,
+		arg->>'type' as arg_type,
+		case when arg->>'type' = 'integer'
+			then (arg->>'value')::bigint
+			else null
+		end as arg_value_integer,
+		case when arg->>'type' = 'boolean'
+			then (arg->>'value')::boolean
+			else null
+		end as arg_value_boolean,
+		case when arg->>'type' = 'binary'
+			then arg->>'value'
+			else null
+		end as arg_value_binary,
+		case when arg->>'type' = 'string'
+			then arg->>'value'
+			else null
+		end as arg_value_string,
+		row_number() over (PARTITION BY arg->>'tx_id') - 1 as position_in_args
+	from (
+		select jsonb_array_elements(tx->'call'->'args') || jsonb_build_object('tx_id', tx->>'id') as arg
+			from (
+				select jsonb_array_elements(b->'transactions') as tx
+			) as txs
+			where (tx->>'type') = '16'
+	) as data
+	on conflict do nothing;
+
+	insert into txs_16_payment (
+		tx_id,
+		amount,
+		asset_id,
+		position_in_payment
+	)
+	select
+		p->>'tx_id' as tx_id,
+		(p->>'amount')::bigint as amount,
+		p->>'assetId' as asset_id,
+		row_number() over (PARTITION BY p->>'tx_id') - 1 as position_in_payment
+	from (
+		select jsonb_array_elements(tx->'payment') || jsonb_build_object('tx_id', tx->>'id') as p
+			from (
+				select jsonb_array_elements(b->'transactions') as tx
+			) as txs
+			where (tx->>'type') = '16'
+	) as data
 	on conflict do nothing;
 END
 $$;
@@ -1263,7 +1369,8 @@ CREATE TABLE public.pairs (
     high numeric NOT NULL,
     low numeric NOT NULL,
     weighted_average_price numeric NOT NULL,
-    txs_count integer NOT NULL
+    txs_count integer NOT NULL,
+    matcher character varying(255) NOT NULL
 );
 
 
@@ -1371,6 +1478,47 @@ CREATE TABLE public.txs_15 (
     script character varying
 )
 INHERITS (public.txs);
+
+
+--
+-- Name: txs_16; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.txs_16 (
+    sender character varying NOT NULL,
+    sender_public_key character varying NOT NULL,
+    fee bigint NOT NULL,
+    dapp character varying NOT NULL,
+    function_name character varying
+)
+INHERITS (public.txs);
+
+
+--
+-- Name: txs_16_args; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.txs_16_args (
+    tx_id text NOT NULL,
+    arg_type text NOT NULL,
+    arg_value_integer bigint,
+    arg_value_boolean boolean,
+    arg_value_binary text,
+    arg_value_string text,
+    position_in_args smallint NOT NULL
+);
+
+
+--
+-- Name: txs_16_payment; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.txs_16_payment (
+    tx_id text NOT NULL,
+    amount bigint NOT NULL,
+    asset_id text,
+    position_in_payment smallint NOT NULL
+);
 
 
 --
@@ -1554,6 +1702,30 @@ ALTER TABLE ONLY public.txs_14
 
 ALTER TABLE ONLY public.txs_15
     ADD CONSTRAINT txs_15_pk PRIMARY KEY (id);
+
+
+--
+-- Name: txs_16_args txs_16_args_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.txs_16_args
+    ADD CONSTRAINT txs_16_args_pkey PRIMARY KEY (tx_id, position_in_args);
+
+
+--
+-- Name: txs_16_payment txs_16_payment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.txs_16_payment
+    ADD CONSTRAINT txs_16_payment_pkey PRIMARY KEY (tx_id, position_in_payment);
+
+
+--
+-- Name: txs_16 txs_16_pk; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.txs_16
+    ADD CONSTRAINT txs_16_pk PRIMARY KEY (id);
 
 
 --
@@ -1882,6 +2054,48 @@ CREATE INDEX txs_15_time_stamp_id_idx ON public.txs_15 USING btree (time_stamp, 
 
 
 --
+-- Name: txs_16_args_arg_type_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_16_args_arg_type_idx ON public.txs_16_args USING hash (arg_type);
+
+
+--
+-- Name: txs_16_args_arg_value_binary_partial_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_16_args_arg_value_binary_partial_idx ON public.txs_16_args USING hash (arg_value_binary) WHERE (arg_type = 'binary'::text);
+
+
+--
+-- Name: txs_16_args_arg_value_boolean_partial_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_16_args_arg_value_boolean_partial_idx ON public.txs_16_args USING btree (arg_value_boolean) WHERE (arg_type = 'boolean'::text);
+
+
+--
+-- Name: txs_16_args_arg_value_integer_partial_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_16_args_arg_value_integer_partial_idx ON public.txs_16_args USING btree (arg_value_integer) WHERE (arg_type = 'integer'::text);
+
+
+--
+-- Name: txs_16_args_arg_value_string_partial_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_16_args_arg_value_string_partial_idx ON public.txs_16_args USING hash (arg_value_string) WHERE (arg_type = 'string'::text);
+
+
+--
+-- Name: txs_16_height_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_16_height_idx ON public.txs_16 USING btree (height);
+
+
+--
 -- Name: txs_1_height_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1984,13 +2198,6 @@ CREATE INDEX txs_4_recipient_idx ON public.txs_4 USING btree (recipient);
 --
 
 CREATE INDEX txs_4_sender_time_stamp_id_idx ON public.txs_4 USING btree (sender, time_stamp, id);
-
-
---
--- Name: txs_4_time_stamp_asc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_4_time_stamp_asc_id_asc_idx ON public.txs_4 USING btree (time_stamp, id);
 
 
 --
@@ -2124,13 +2331,6 @@ CREATE INDEX txs_7_sender_time_stamp_id_idx ON public.txs_7 USING btree (sender,
 --
 
 CREATE INDEX txs_7_time_stamp_asc_id_asc_idx ON public.txs_7 USING btree (time_stamp, id);
-
-
---
--- Name: txs_7_time_stamp_desc_id_asc_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX txs_7_time_stamp_desc_id_asc_idx ON public.txs_7 USING btree (time_stamp DESC, id);
 
 
 --
@@ -2381,6 +2581,30 @@ ALTER TABLE ONLY public.txs_12
 
 ALTER TABLE ONLY public.txs_15
     ADD CONSTRAINT txs_15_blocks_fk FOREIGN KEY (height) REFERENCES public.blocks(height) ON DELETE CASCADE;
+
+
+--
+-- Name: txs_16_args txs_16_args_tx_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.txs_16_args
+    ADD CONSTRAINT txs_16_args_tx_id_fkey FOREIGN KEY (tx_id) REFERENCES public.txs_16(id) ON DELETE CASCADE;
+
+
+--
+-- Name: txs_16 txs_16_blocks_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.txs_16
+    ADD CONSTRAINT txs_16_blocks_fk FOREIGN KEY (height) REFERENCES public.blocks(height) ON DELETE CASCADE;
+
+
+--
+-- Name: txs_16_payment txs_16_payment_tx_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.txs_16_payment
+    ADD CONSTRAINT txs_16_payment_tx_id_fkey FOREIGN KEY (tx_id) REFERENCES public.txs_16(id) ON DELETE CASCADE;
 
 
 --

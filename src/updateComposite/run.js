@@ -1,2 +1,4 @@
 const { update } = require('.');
-update();
+const getOptions = require('../utils/getOptions');
+const options = getOptions();
+update(options);

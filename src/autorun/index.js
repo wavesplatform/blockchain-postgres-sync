@@ -14,7 +14,12 @@ const launch = () => {
   const db = createDb(options);
   const requestDbHeight = () => createRequestDbHeight(db);
   const requestApiHeight = () => createRequestApiHeight(options);
-  return autorun(options)({ requestDbHeight, requestApiHeight, run, update });
+  return autorun(options)({
+    requestDbHeight,
+    requestApiHeight,
+    run,
+    update: () => update(options),
+  });
 };
 
 launch();

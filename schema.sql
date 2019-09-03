@@ -2341,6 +2341,20 @@ CREATE INDEX txs_7_time_stamp_desc_id_desc_idx ON public.txs_7 USING btree (time
 
 
 --
+-- Name: txs_7_time_stamp_desc_id_desc_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_7_amount_asset_price_asset_time_stamp_id_partial_idx ON public.txs_7 USING btree (amount_asset, price_asset, time_stamp, id) WHERE ((sender)::text = '3PJaDyprvekvPXPuAtxrapacuDJopgJRaU3'::text);
+
+
+--
+-- Name: txs_7_time_stamp_id_partial_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_7_time_stamp_id_partial_idx ON public.txs_7 USING btree (time_stamp, id) WHERE ((sender)::text = '3PJaDyprvekvPXPuAtxrapacuDJopgJRaU3'::text);
+
+
+--
 -- Name: txs_8_height_idx; Type: INDEX; Schema: public; Owner: -
 --
 

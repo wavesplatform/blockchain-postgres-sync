@@ -2096,6 +2096,13 @@ CREATE INDEX txs_16_height_idx ON public.txs_16 USING btree (height);
 
 
 --
+-- Name: txs_16_time_stamp_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_16_time_stamp_id_idx ON public.txs_16 USING btree (time_stamp, id);
+
+
+--
 -- Name: txs_1_height_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2338,6 +2345,13 @@ CREATE INDEX txs_7_time_stamp_asc_id_asc_idx ON public.txs_7 USING btree (time_s
 --
 
 CREATE INDEX txs_7_time_stamp_desc_id_desc_idx ON public.txs_7 USING btree (time_stamp DESC, id DESC);
+
+
+--
+-- Name: txs_7_order_ids_timestamp_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX txs_7_order_ids_timestamp_id_idx ON public.txs_7 USING gin ((ARRAY[(order1 ->> 'id'::text), (order2 ->> 'id'::text)]), time_stamp, id);
 
 
 --

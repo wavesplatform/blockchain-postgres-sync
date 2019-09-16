@@ -1,12 +1,17 @@
 const YAML = require('yamljs');
 const path = require('path');
+const fs = require('fs');
 
 const getEnvInt = varName => parseInt(process.env[varName]) || undefined;
 
 module.exports = () => {
   let config;
   try {
-    config = YAML.load(path.join(__dirname, '../../config.yml'));
+    const fileContents = fs.readFileSync(
+      path.join(__dirname, '../../config.yml'),
+      { encoding: 'utf-8' }
+    );
+    config = YAML.parse(fileContents);
   } catch (err) {
     // eslint-disable-next-line
     console.error(err);

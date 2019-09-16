@@ -51,11 +51,14 @@ const run = async (batches, options) => {
   const insertBatch = singleInsert(options);
 
   const requestMore = index => {
-    console.time('Requesting blocks');
+    const label = `Requesting blocks ${batches[index]} — ${batches[index] +
+      options.blocksPerRequest -
+      1}`;
+    console.time(label);
     return index >= batches.length
       ? Promise.resolve(null)
       : requestBlocksBatch(batches[index], options).then(r => {
-          console.timeEnd('Requesting blocks');
+          console.timeEnd(label);
           return r;
         });
   };

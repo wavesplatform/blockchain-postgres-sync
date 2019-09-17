@@ -18,4 +18,4 @@ ENTRYPOINT ["/sbin/tini", "--"]
 # NodeJS launch
 USER node
 ENV NODE_ENV production
-CMD ["node", "--max-old-space-size=2048", "src/autorun/index.js"]
+CMD ["/bin/sh", "/opt/app/entrypoint.sh"]

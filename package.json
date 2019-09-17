@@ -11,7 +11,8 @@
     "update": "node src/update.js",
     "updateComposite": "node src/updateComposite/run.js",
     "rollbackMonitor": "node src/rollbackMonitor.js",
-    "reinsertBlocks": "node src/reinsertBlocks.js"
+    "reinsertBlocks": "node src/reinsertBlocks.js",
+    "migrate": "knex migrate:latest --client postgresql --migrations-directory migrations"
   },
   "dependencies": {
     "check-env": "^1.3.0",

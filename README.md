@@ -31,10 +31,10 @@ A set of scripts to download and update Waves blockchain history data into a Pos
 1. Create migration:
    ```bash
    ./node_modules/.bin/knex --migrations-directory migrations migrate:make $MIGRATION_NAME
-   # OR
-   npm run migrate -- --connection postgresql://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$DB
    ```
 2. Migrate latest:
    ```bash
    ./node_modules/.bin/knex migrate:latest --client postgresql --connection postgresql://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$DB --migrations-directory migrations
+   # OR
+   npm run migrate -- --connection postgresql://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$DB
    ```

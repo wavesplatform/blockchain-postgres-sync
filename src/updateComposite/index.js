@@ -17,7 +17,7 @@ const update = options => {
   const launchIter = async blocksPerUpdate => {
     const height = await requestHeight(options);
 
-    const batches = [height - blocksPerUpdate + 1];
+    const batches = [Math.max(0, height - blocksPerUpdate) + 1];
 
     return run(batches, {
       ...options,

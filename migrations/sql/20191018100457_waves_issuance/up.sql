@@ -100,4 +100,4 @@ with recursive w as
 	union all
 	select br.height, w.quantity + (b->>'reward')::bigint as quantity from blocks_raw as br join w on w.height = br.height - 1 where br.height > 1740000
 )
-insert into test_waves_data select * from w;
+insert into waves_data select * from w;

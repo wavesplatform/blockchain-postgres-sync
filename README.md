@@ -9,8 +9,12 @@ A set of scripts to download and update Waves blockchain history data into a Pos
    npm install
    ```
 2. Create `config.yml` file in the project, using `config.example.yml` for reference.
-3. In PostgreSQL, create empty database, initialize it using `schema.sql` in the project root
-4. ⬇️ To download a range of blocks to database:
+
+3. In PostgreSQL, create empty database. 
+
+4. Set environment variable `MIGRATE` to `true` (or just run crawler like this: `MIGRATE=true npm run ...`), it will apply initial and all additional migrations to yours database.
+
+5. ⬇️ To download a range of blocks to database:
 
    ```bash
    npm run download {start} {end},
@@ -20,7 +24,7 @@ A set of scripts to download and update Waves blockchain history data into a Pos
 
    Blocks from the range get inserted in a single transaction, so either all get inserted, or none. In our experience ranges of 10000—100000 work best.
 
-5. 🔄 To keep your database up-to-date:
+6. 🔄 To keep your database up-to-date:
    ```bash
    npm run updateComposite
    ```

@@ -1,0 +1,1 @@
+DROP INDEX txs_3_md5_script_idx;

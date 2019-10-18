@@ -2,7 +2,6 @@ CREATE INDEX txs_sender_time_stamp_id_idx ON public.txs (sender,time_stamp,id);
 CREATE INDEX txs_1_sender_time_stamp_id_idx ON public.txs_1 (sender,time_stamp,id);
 CREATE INDEX txs_2_sender_time_stamp_id_idx ON public.txs_2 (sender,time_stamp,id);
 CREATE INDEX txs_3_sender_time_stamp_id_idx ON public.txs_3 (sender,time_stamp,id);
-CREATE INDEX txs_4_sender_time_stamp_id_idx ON public.txs_4 (sender,time_stamp,id);
 CREATE INDEX txs_5_sender_time_stamp_id_idx ON public.txs_5 (sender,time_stamp,id);
 CREATE INDEX txs_6_sender_time_stamp_id_idx ON public.txs_6 (sender,time_stamp,id);
 CREATE INDEX txs_9_sender_time_stamp_id_idx ON public.txs_9 (sender,time_stamp,id);

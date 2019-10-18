@@ -2,7 +2,6 @@ DROP INDEX txs_sender_time_stamp_id_idx;
 DROP INDEX txs_1_sender_time_stamp_id_idx;
 DROP INDEX txs_2_sender_time_stamp_id_idx;
 DROP INDEX txs_3_sender_time_stamp_id_idx;
-DROP INDEX txs_4_sender_time_stamp_id_idx;
 DROP INDEX txs_5_sender_time_stamp_id_idx;
 DROP INDEX txs_6_sender_time_stamp_id_idx;
 DROP INDEX txs_9_sender_time_stamp_id_idx;

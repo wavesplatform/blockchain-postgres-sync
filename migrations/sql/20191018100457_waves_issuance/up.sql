@@ -86,7 +86,7 @@ begin
 
 	if b->>'reward' is not null then
 		insert into waves_data (height, quantity) 
-		values ((b->>'height')::integer, (select quantity from waves_data order by height desc limit 1) + (b->>'reward')::bigint) 
+		values ((b->>'height')::integer, (select quantity from waves_data where height = (b->>'height')::integer - 1) + (b->>'reward')::bigint) 
 		on conflict do nothing;
 	end if;
 END

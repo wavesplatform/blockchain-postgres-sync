@@ -38,7 +38,7 @@ A set of scripts to download and update Waves blockchain history data into a Pos
    ```
 2. Migrate latest:
    ```bash
-   ./node_modules/.bin/knex migrate:latest --client postgresql --connection postgresql://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$DB --migrations-directory migrations
+   ./node_modules/.bin/knex migrate:latest --client postgresql --connection postgresql://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE --migrations-directory migrations
    # OR
-   npm run migrate -- --connection postgresql://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$DB
+   npm run migrate -- --connection postgresql://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE
    ```

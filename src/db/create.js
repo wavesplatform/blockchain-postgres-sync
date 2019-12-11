@@ -10,6 +10,7 @@ module.exports = options => {
       database: options.postgresDatabase,
       user: options.postgresUser,
       password: options.postgresPassword,
+      statement_timeout: options.postgresStatementTimeout
     });
   }
 

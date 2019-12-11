@@ -1832,7 +1832,7 @@ ALTER TABLE public.assets OWNER TO dba;
 
 
 CREATE TABLE public.assets_metadata (
-    asset_id character varying NOT NULL,
+    asset_uid bigint NOT NULL,
     asset_name character varying,
     ticker character varying,
     height integer

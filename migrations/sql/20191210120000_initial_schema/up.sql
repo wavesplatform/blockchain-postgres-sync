@@ -29,17 +29,18 @@ $$;
 ALTER FUNCTION public.count_affected_rows() OWNER TO dba;
 
 
-CREATE FUNCTION public.create_asset(_asset_id character varying, _name character varying, _description text, _height integer, _timestamp timestamp with time zone, _quantity bigint, _decimals smallint, _reissuable boolean, _has_script boolean, _min_sponsored_asset_fee numeric) RETURNS bigint
+CREATE FUNCTION public.create_asset(_asset_id character varying, _issuer_address_uid bigint, _name character varying, _description text, _height integer, _timestamp timestamp with time zone, _quantity bigint, _decimals smallint, _reissuable boolean, _has_script boolean, _min_sponsored_asset_fee numeric) RETURNS bigint
     LANGUAGE plpgsql
     AS $$
 	declare
 		asset_uid bigint;
 	begin
 		insert 
-			into assets (asset_id, asset_name, searchable_asset_name, description, first_appeared_on_height, issue_timestamp, quantity, decimals, reissuable, has_script, min_sponsored_asset_fee) 
-			values (_asset_id, _name, to_tsvector(_name), _description, _height, _timestamp, _quantity, _decimals, _reissuable, _has_script, _min_sponsored_asset_fee) 
+			into assets (asset_id, issuer_address_uid, asset_name, searchable_asset_name, description, first_appeared_on_height, issue_timestamp, quantity, decimals, reissuable, has_script, min_sponsored_asset_fee) 
+			values (_asset_id, _issuer_address_uid, _name, to_tsvector(_name), _description, _height, _timestamp, _quantity, _decimals, _reissuable, _has_script, _min_sponsored_asset_fee) 
 			on conflict (asset_id) 
 			do update set 
+                issuer_address_uid=EXCLUDED.issuer_address_uid,
 				asset_name=EXCLUDED.asset_name, 
 				searchable_asset_name=EXCLUDED.searchable_asset_name, 
 				description=EXCLUDED.description, 
@@ -53,7 +54,7 @@ CREATE FUNCTION public.create_asset(_asset_id character varying, _name character
 $$;
 
 
-ALTER FUNCTION public.create_asset(_asset_id character varying, _name character varying, _description text, _height integer, _timestamp timestamp with time zone, _quantity bigint, _decimals smallint, _reissuable boolean, _has_script boolean, _min_sponsored_asset_fee numeric) OWNER TO dba;
+ALTER FUNCTION public.create_asset(_asset_id character varying, _issuer_address_uid bigint, _name character varying, _description text, _height integer, _timestamp timestamp with time zone, _quantity bigint, _decimals smallint, _reissuable boolean, _has_script boolean, _min_sponsored_asset_fee numeric) OWNER TO dba;
 
 
 CREATE FUNCTION public.create_range_partitions(_tbl_name character varying, _count integer, _partition_size integer, _since integer) RETURNS void
@@ -929,10 +930,11 @@ begin
 		get_tuid_by_tx_id_and_timestamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
 		(t->>'height')::int4,
 		-- with sender
-		get_address_uid(t->>'sender', t->>'senderPublicKey', (t->>'height')::int4),
+		(t->>'sender_uid')::bigint,
 		-- type specific
 		create_asset(
-			t->>'assetId', 
+			t->>'assetId',
+            (t->>'sender_uid')::bigint,
 			t->>'name', 
 			t->>'description',
 			(t->>'height')::int4, 
@@ -950,7 +952,11 @@ begin
 		(t->>'reissuable')::bool,
 		t->>'script'
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
+        select 
+            t || jsonb_build_object('sender_uid', get_address_uid(t->>'sender', t->>'senderPublicKey', (t->>'height')::int4)) as t
+        from (
+            select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
+        ) as t
 	) as txs
 	where (t->>'type') = '3'
 	on conflict do nothing;
@@ -1812,6 +1818,7 @@ ALTER TABLE public.addresses_z OWNER TO apetrov;
 
 CREATE TABLE public.assets (
     uid bigint NOT NULL,
+    issuer_address_uid bigint,
     asset_id character varying NOT NULL,
     first_appeared_on_height integer,
     asset_name character varying NOT NULL,
@@ -1826,7 +1833,7 @@ CREATE TABLE public.assets (
     min_sponsored_asset_fee numeric
 );
 
-INSERT INTO public.assets VALUES (0, 'WAVES', null, 'Waves', to_tsvector('Waves'), '', 8, 'WAVES', '2016-04-12 00:00:00', 10000000000000000, false, false, null);
+INSERT INTO public.assets VALUES (0, null, 'WAVES', null, 'Waves', to_tsvector('Waves'), '', 8, 'WAVES', '2016-04-12 00:00:00', 10000000000000000, false, false, null);
 
 ALTER TABLE public.assets OWNER TO dba;
 

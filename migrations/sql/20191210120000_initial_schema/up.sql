@@ -1118,7 +1118,9 @@ begin
                      amount,
                      price,
                      buy_matcher_fee,
-                     sell_matcher_fee)
+                     sell_matcher_fee,
+                     amount_asset_uid,
+                     price_asset_uid)
   select
     -- common
     (t->>'tuid')::bigint,

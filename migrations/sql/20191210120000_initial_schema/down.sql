@@ -3,6 +3,8 @@ DROP TRIGGER IF EXISTS block_update_trigger on public.blocks_raw;
 
 DROP RULE IF EXISTS block_delete on public.blocks_raw;
 
+DROP FUNCTION IF EXISTS public.check_tx_uid_existance;
+DROP FUNCTION IF EXISTS public.count_affected_rows;
 DROP FUNCTION IF EXISTS public.create_asset;
 DROP FUNCTION IF EXISTS public.create_range_partitions;
 DROP FUNCTION IF EXISTS public.get_address_or_alias_uid;

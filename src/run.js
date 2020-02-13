@@ -1,14 +1,20 @@
-const requestBlocksBatch = require('./api/requestBlocksBatch');
+const requestBlocksBatch = require("./api/requestBlocksBatch");
 
 // init db
-const pgp = require('./db/pgp');
-const schema = require('./db/schema');
-const createDb = require('./db/create');
+const pgp = require("./db/pgp");
+const schema = require("./db/schema");
+const createDb = require("./db/create");
 
-const transformBlock = b => ({
-  height: b.height,
-  b,
-});
+const heightRegExp = /\"height\":(\d+)/;
+
+const transformBlock = b => {
+  const res = heightRegExp.exec(b);
+  const height = parseInt(res["1"]);
+  return {
+    height,
+    b
+  };
+};
 
 const singleInsert = ({ onConflict }) => {
   const ON_CONFLICT_OPTIONS = {
@@ -23,18 +29,19 @@ const singleInsert = ({ onConflict }) => {
         height = excluded.height,
         b = excluded.b;
     `,
-    nothing: ` on conflict do nothing`,
+    nothing: ` on conflict do nothing`
   };
 
   return (q, data) => {
+    const blocks = data.map(transformBlock);
+
     const insert =
-      pgp.helpers.insert(data.map(transformBlock), schema.blocks_raw) +
+      pgp.helpers.insert(blocks, schema.blocks_raw) +
       ON_CONFLICT_OPTIONS[onConflict];
 
-    const timer = `${data[0].height} — ${
-      data[data.length - 1].height
-    } insert, ${data.length} objects`;
-
+    const timer = `${blocks[0].height} — ${
+      blocks[blocks.length - 1].height
+    } insert, ${blocks.length} objects`;
     // console.log(timer + ' started');
     console.time(timer);
 
@@ -66,7 +73,7 @@ const run = async (batches, options) => {
   // either do a transaction wita many insert, or one
   // single insert without transaction
   return batches.length > 1
-    ? db.tx('massive-insert', t =>
+    ? db.tx("massive-insert", t =>
         t.sequence(index =>
           requestMore(index).then(data => {
             if (data && data.length) {

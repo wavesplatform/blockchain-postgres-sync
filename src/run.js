@@ -1,16 +1,11 @@
-const requestBlocksBatch = require('./api/requestBlocksBatch');
+const requestBlocksBatch = require("./api/requestBlocksBatch");
 
 // init db
-const pgp = require('./db/pgp');
-const schema = require('./db/schema');
-const createDb = require('./db/create');
+const pgp = require("./db/pgp");
+const schema = require("./db/schema");
+const createDb = require("./db/create");
 
-const transformBlock = b => ({
-  height: b.height,
-  b,
-});
-
-const singleInsert = ({ onConflict }) => {
+const singleInsert = ({ onConflict, blocksPerRequest }) => {
   const ON_CONFLICT_OPTIONS = {
     update: ` on conflict on constraint blocks_raw_pkey
       do update set 
@@ -23,18 +18,19 @@ const singleInsert = ({ onConflict }) => {
         height = excluded.height,
         b = excluded.b;
     `,
-    nothing: ` on conflict do nothing`,
+    nothing: ` on conflict do nothing`
   };
 
-  return (q, data) => {
+  return (q, data, startHeight) => {
     const insert =
-      pgp.helpers.insert(data.map(transformBlock), schema.blocks_raw) +
-      ON_CONFLICT_OPTIONS[onConflict];
+      pgp.helpers.insert(
+        data.map((b, i) => ({ height: startHeight + i, b })),
+        schema.blocks_raw
+      ) + ON_CONFLICT_OPTIONS[onConflict];
 
-    const timer = `${data[0].height} — ${
-      data[data.length - 1].height
-    } insert, ${data.length} objects`;
-
+    const timer = `${startHeight} — ${startHeight +
+      blocksPerRequest -
+      1} insert, ${data.length} objects`;
     // console.log(timer + ' started');
     console.time(timer);
 
@@ -66,16 +62,16 @@ const run = async (batches, options) => {
   // either do a transaction wita many insert, or one
   // single insert without transaction
   return batches.length > 1
-    ? db.tx('massive-insert', t =>
+    ? db.tx("massive-insert", t =>
         t.sequence(index =>
           requestMore(index).then(data => {
             if (data && data.length) {
-              return insertBatch(t, data);
+              return insertBatch(t, data, batches[index]);
             }
           })
         )
       )
-    : requestMore(0).then(data => insertBatch(db, data));
+    : requestMore(0).then(data => insertBatch(db, data, batches[0]));
 };
 
 module.exports = run;

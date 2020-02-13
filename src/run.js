@@ -5,7 +5,7 @@ const pgp = require("./db/pgp");
 const schema = require("./db/schema");
 const createDb = require("./db/create");
 
-const singleInsert = ({ onConflict }) => {
+const singleInsert = ({ onConflict, blocksPerRequest }) => {
   const ON_CONFLICT_OPTIONS = {
     update: ` on conflict on constraint blocks_raw_pkey
       do update set 
@@ -21,14 +21,16 @@ const singleInsert = ({ onConflict }) => {
     nothing: ` on conflict do nothing`
   };
 
-  return (q, data, startHeight, endHeight) => {
+  return (q, data, startHeight) => {
     const insert =
       pgp.helpers.insert(
         data.map((b, i) => ({ height: startHeight + i, b })),
         schema.blocks_raw
       ) + ON_CONFLICT_OPTIONS[onConflict];
 
-    const timer = `${startHeight} — ${endHeight} insert, ${data.length} objects`;
+    const timer = `${startHeight} — ${startHeight +
+      blocksPerRequest -
+      1} insert, ${data.length} objects`;
     // console.log(timer + ' started');
     console.time(timer);
 
@@ -64,24 +66,12 @@ const run = async (batches, options) => {
         t.sequence(index =>
           requestMore(index).then(data => {
             if (data && data.length) {
-              return insertBatch(
-                t,
-                data,
-                batches[index],
-                batches[index] + options.blocksPerRequest - 1
-              );
+              return insertBatch(t, data, batches[index]);
             }
           })
         )
       )
-    : requestMore(0).then(data =>
-        insertBatch(
-          db,
-          data,
-          batches[0],
-          batches[0] + options.blocksPerRequest - 1
-        )
-      );
+    : requestMore(0).then(data => insertBatch(db, data, batches[0]));
 };
 
 module.exports = run;

@@ -1743,7 +1743,7 @@ CREATE TABLE public.assets (
     min_sponsored_asset_fee numeric
 );
 
-INSERT INTO public.assets VALUES (0, null, 'WAVES', null, 'Waves', to_tsvector('Waves'), '', 8, 'WAVES', '2016-04-12 00:00:00', 10000000000000000, false, false, null)
+INSERT INTO public.assets VALUES (0, null, 'WAVES', null, 'Waves', to_tsvector('Waves'), '', 8, 'WAVES', '2016-04-12 00:00:00', 10000000000000000, false, false, null);
 
 
 CREATE TABLE public.assets_metadata (
@@ -2376,7 +2376,7 @@ ALTER TABLE public.orders ADD CONSTRAINT orders_uid_key UNIQUE (uid);
 ALTER TABLE public.pairs ADD CONSTRAINT pairs_pk PRIMARY KEY (amount_asset_uid, price_asset_uid, matcher_address_uid);
 
 
-ALTER TABLE public.txs ADD CONSTRAINT txs_pk PRIMARY KEY (id, time_stamp);
+ALTER TABLE public.txs ADD CONSTRAINT txs_pk PRIMARY KEY (id, time_stamp, uid);
 
 
 ALTER TABLE public.txs_10 ADD CONSTRAINT txs_10_tx_uid_key UNIQUE (tx_uid);
@@ -2404,9 +2404,6 @@ ALTER TABLE public.txs_15 ADD CONSTRAINT txs_15_tx_uid_key UNIQUE (tx_uid);
 
 
 ALTER TABLE public.txs_16 ADD CONSTRAINT txs_16_un UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_16_default ADD CONSTRAINT txs_16_default_tx_uid_key UNIQUE (tx_uid);
 
 
 ALTER TABLE public.txs_16_args ADD CONSTRAINT txs_16_args_pk PRIMARY KEY (tx_uid, position_in_args);
@@ -2517,9 +2514,6 @@ CREATE INDEX txs_tx_type_idx ON public.txs USING btree (tx_type);
 CREATE INDEX txs_uid_idx ON public.txs USING btree (uid);
 
 
-CREATE UNIQUE INDEX txs_uk ON public.txs USING btree (id, time_stamp, uid);
-
-
 CREATE INDEX txs_10_alias_idx ON public.txs_10 USING hash (alias);
 
 
@@ -2610,7 +2604,7 @@ CREATE INDEX txs_15_md5_script_idx ON public.txs_15 USING btree (md5((script)::t
 CREATE INDEX txs_15_sender_uid_idx ON public.txs_15 USING btree (sender_uid);
 
 
-CREATE INDEX txs_16_dapp_address_uid_idx ON public.txs_16 USING btree (dapp_address_uid);
+CREATE INDEX txs_16_dapp_address_uid_tx_uid_idx ON public.txs_16 USING btree (dapp_address_uid, tx_uid);
 
 
 CREATE INDEX txs_16_function_name_idx ON public.txs_16 USING btree (function_name);
@@ -2619,7 +2613,7 @@ CREATE INDEX txs_16_function_name_idx ON public.txs_16 USING btree (function_nam
 CREATE INDEX txs_16_height_idx ON public.txs_16 USING btree (height);
 
 
-CREATE INDEX txs_16_sender_uid_idx O public.txs_16 USING btree (sender_uid);
+CREATE INDEX txs_16_sender_uid_idx ON public.txs_16 USING btree (sender_uid);
 
 
 CREATE INDEX txs_16_args_height_idx ON public.txs_16_args USING btree (height);
@@ -2743,7 +2737,7 @@ CREATE INDEX txs_9_sender_idx ON public.txs_9 USING hash (sender_uid);
 
 
 CREATE RULE block_delete AS
-    ON DELETE TO public.blocks_raw DO  DELETE FROM public.blocks
+    ON DELETE TO public.blocks_raw DO DELETE FROM public.blocks
   WHERE (blocks.height = old.height);
 
 

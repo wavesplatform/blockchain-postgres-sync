@@ -2508,6 +2508,12 @@ CREATE INDEX txs_time_stamp_idx ON public.txs USING btree (time_stamp);
 CREATE INDEX txs_time_stamp_uid_idx ON public.txs USING btree (time_stamp, uid);
 
 
+CREATE INDEX txs_uid_desc_time_stamp_idx ON txs (uid desc, time_stamp);
+
+
+CREATE INDEX txs_uid_time_stamp_desc_idx ON txs (uid, time_stamp desc);
+
+
 CREATE INDEX txs_tx_type_idx ON public.txs USING btree (tx_type);
 
 

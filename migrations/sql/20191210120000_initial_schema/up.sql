@@ -452,9 +452,10 @@ begin
 	on conflict do nothing;
 
     if b->>'reward' is not null then
+    	-- height has to be more then current height (microblock rollback protection) or null (for clean db)
 		-- condition height is null - height=null is for correct work of foreign key (rollbacks)
 		insert into waves_data (height, quantity) 
-		values ((b->>'height')::integer, (select quantity from waves_data where height < (b->>'height')::integer order by height desc nulls last limit 1) + (b->>'reward')::bigint) 
+		values ((b->>'height')::integer, (select quantity from waves_data where height < (b->>'height')::integer or height is null order by height desc nulls last limit 1) + (b->>'reward')::bigint) 
 		on conflict do nothing;
 	end if;
 END

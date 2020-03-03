@@ -39,24 +39,22 @@ $$;
 ALTER FUNCTION public.count_affected_rows() OWNER TO dba;
 
 
-CREATE FUNCTION public.create_asset(_asset_id character varying, _issuer_address_uid bigint, _name character varying, _description text, _height integer, _timestamp timestamp with time zone, _quantity bigint, _decimals smallint, _reissuable boolean, _has_script boolean, _min_sponsored_asset_fee numeric) RETURNS bigint
+CREATE FUNCTION public.create_asset(_asset_id character varying, _issuer_address_uid bigint, _name character varying, _description text, _height integer, _timestamp timestamp with time zone, _quantity bigint, _decimals smallint, _reissuable boolean, _has_script boolean) RETURNS bigint
     LANGUAGE plpgsql
     AS $$
 	declare
 		asset_uid bigint;
 	begin
 		insert 
-			into assets (asset_id, issuer_address_uid, asset_name, searchable_asset_name, description, first_appeared_on_height, issue_timestamp, quantity, decimals, reissuable, has_script, min_sponsored_asset_fee) 
-			values (_asset_id, _issuer_address_uid, _name, to_tsvector(_name), _description, _height, _timestamp, _quantity, _decimals, _reissuable, _has_script, _min_sponsored_asset_fee) 
+			into assets_data (asset_id, issuer_address_uid, asset_name, description, first_appeared_on_height, issue_timestamp, quantity, decimals, reissuable, has_script) 
+			values (_asset_id, _issuer_address_uid, _name, _description, _height, _timestamp, _quantity, _decimals, _reissuable, _has_script) 
 			on conflict (asset_id) 
 			do update set 
                 issuer_address_uid=EXCLUDED.issuer_address_uid,
 				asset_name=EXCLUDED.asset_name, 
-				searchable_asset_name=EXCLUDED.searchable_asset_name, 
 				description=EXCLUDED.description, 
 				reissuable=EXCLUDED.reissuable, 
-				has_script=EXCLUDED.has_script, 
-				min_sponsored_asset_fee=EXCLUDED.min_sponsored_asset_fee
+				has_script=EXCLUDED.has_script
 			returning uid 
 			into asset_uid;
 		return asset_uid;
@@ -64,7 +62,7 @@ CREATE FUNCTION public.create_asset(_asset_id character varying, _issuer_address
 $$;
 
 
-ALTER FUNCTION public.create_asset(_asset_id character varying, _issuer_address_uid bigint, _name character varying, _description text, _height integer, _timestamp timestamp with time zone, _quantity bigint, _decimals smallint, _reissuable boolean, _has_script boolean, _min_sponsored_asset_fee numeric) OWNER TO dba;
+ALTER FUNCTION public.create_asset(_asset_id character varying, _issuer_address_uid bigint, _name character varying, _description text, _height integer, _timestamp timestamp with time zone, _quantity bigint, _decimals smallint, _reissuable boolean, _has_script boolean) OWNER TO dba;
 
 
 CREATE FUNCTION public.create_range_partitions(_tbl_name character varying, _count integer, _partition_size integer, _since integer) RETURNS void
@@ -237,7 +235,7 @@ CREATE FUNCTION public.get_asset_uid(aid character varying) RETURNS bigint
 		if aid is null then
 			return null;
 		else
-			select uid from assets where asset_id=aid into asset_uid;
+			select uid from assets_data where asset_id=aid into asset_uid;
 			return asset_uid;
 		end if;
 	END;
@@ -454,9 +452,11 @@ begin
 	on conflict do nothing;
 
     if b->>'reward' is not null then
-		update assets 
-        set quantity = quantity + (b->>'reward')::bigint 
-        where asset_id = 'WAVES';
+    	-- height has to be more then current height (microblock rollback protection) or null (for clean db)
+		-- condition height is null - height=null is for correct work of foreign key (rollbacks)
+		insert into waves_data (height, quantity) 
+		values ((b->>'height')::integer, (select quantity from waves_data where height < (b->>'height')::integer or height is null order by height desc nulls last limit 1) + (b->>'reward')::bigint) 
+		on conflict do nothing;
 	end if;
 END
 $$;
@@ -527,6 +527,7 @@ CREATE FUNCTION public.insert_txs_1(b jsonb) RETURNS void
     AS $$
 begin
   insert into txs_1 (tx_uid,
+                     id,
   					 height,
                      sender_uid,
                      recipient_address_uid,
@@ -535,6 +536,7 @@ begin
   select
     -- common
     get_tuid_by_tx_id_and_time_stamp(t ->> 'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+    t ->> 'id',
     (t ->> 'height')::int4,
     -- with sender
 	get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -560,6 +562,7 @@ CREATE FUNCTION public.insert_txs_10(b jsonb) RETURNS void
 begin
 	insert into txs_10 (
 		tx_uid,
+        id,
 		height,
 		sender_uid,
 		alias
@@ -567,6 +570,7 @@ begin
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -589,6 +593,7 @@ CREATE FUNCTION public.insert_txs_11(b jsonb) RETURNS void
     AS $$
 BEGIN
   INSERT INTO txs_11 (tx_uid,
+                      id,
   					  height,
                       sender_uid,
                       asset_uid,
@@ -596,6 +601,7 @@ BEGIN
   SELECT
     -- common
     get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+    t ->> 'id',
     (t ->> 'height') :: INT4,
     -- with sender
 	get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -642,12 +648,14 @@ CREATE FUNCTION public.insert_txs_12(b jsonb) RETURNS void
 begin
 	insert into txs_12 (
 		tx_uid,
+        id,
 		height,
 		sender_uid
 	)
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000))
@@ -710,6 +718,7 @@ CREATE FUNCTION public.insert_txs_13(b jsonb) RETURNS void
 begin
 	insert into txs_13 (
 		tx_uid,
+        id,
 		height,
 		sender_uid,
 	    script
@@ -717,6 +726,7 @@ begin
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -740,6 +750,7 @@ CREATE FUNCTION public.insert_txs_14(b jsonb) RETURNS void
 begin
 	insert into txs_14 (
 		tx_uid,
+        id,
 		height,
 		sender_uid,
 	    asset_uid,
@@ -748,6 +759,7 @@ begin
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -759,13 +771,6 @@ begin
 	) as txs
 	where (t->>'type') = '14'
 	on conflict do nothing;
-
-	update assets
-	set min_sponsored_asset_fee=(t->>'minSponsoredAssetFee')::bigint
-	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
-	where (t->>'type') = '14' and asset_id = t->>'assetId';
 END
 $$;
 
@@ -779,6 +784,7 @@ CREATE FUNCTION public.insert_txs_15(b jsonb) RETURNS void
 begin
 	insert into txs_15 (
 		tx_uid,
+        id,
 		height,
 		sender_uid,
 		asset_uid,
@@ -787,6 +793,7 @@ begin
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -798,13 +805,6 @@ begin
 	) as txs
 	where (t->>'type') = '15'
 	on conflict do nothing;
-
-	update assets
-	set has_script=(t->>'script' is not null)
-	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
-	where (t->>'type') = '15' and asset_id = t->>'assetId';
 END
 $$;
 
@@ -818,6 +818,7 @@ CREATE FUNCTION public.insert_txs_16(b jsonb) RETURNS void
 begin
 	insert into txs_16 (
 		tx_uid,
+        id,
 		height,
 		sender_uid,
 		dapp_address_uid,
@@ -826,6 +827,7 @@ begin
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -912,6 +914,7 @@ CREATE FUNCTION public.insert_txs_2(b jsonb) RETURNS void
 begin
 	insert into txs_2 (
 		tx_uid,
+        id,
 		height,
 		sender_uid,
 		recipient_address_uid,
@@ -921,6 +924,7 @@ begin
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -946,6 +950,7 @@ CREATE FUNCTION public.insert_txs_3(b jsonb) RETURNS void
 begin
 	insert into txs_3 (
 		tx_uid,
+        id,
 		height,
 		sender_uid,
 		asset_uid,
@@ -959,6 +964,7 @@ begin
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		(t->>'sender_uid')::bigint,
@@ -973,8 +979,7 @@ begin
 			(t->>'quantity')::bigint,
 			(t->>'decimals')::smallint, 
 			(t->>'reissuable')::bool, 
-			t->>'script' is not null, 
-			null
+			t->>'script' is not null
 		),
 		t->>'name',
 		t->>'description',
@@ -1004,6 +1009,7 @@ CREATE FUNCTION public.insert_txs_4(b jsonb) RETURNS void
 begin
 	insert into txs_4 (
 		tx_uid,
+        id,
 		height,
 		fee_asset_uid, 
 		sender_uid, 
@@ -1015,6 +1021,7 @@ begin
 	)
 	select
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		get_asset_uid(coalesce(t->>'feeAsset', t->>'feeAssetId')),
 		-- with sender
@@ -1043,6 +1050,7 @@ CREATE FUNCTION public.insert_txs_5(b jsonb) RETURNS void
 begin
 	insert into txs_5 (
 		tx_uid,
+        id,
 		height,
 		sender_uid,
 		asset_uid,
@@ -1052,6 +1060,7 @@ begin
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -1064,15 +1073,6 @@ begin
 	) as txs
 	where (t->>'type') = '5'
 	on conflict do nothing;
-
-	update assets
-	set 
-		quantity = quantity::numeric + (t->>'quantity')::bigint, 
-		reissuable = (t->>'reissuable')::bool
-	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
-	where (t->>'type') = '5' and asset_id = t->>'assetId';
 END
 $$;
 
@@ -1086,6 +1086,7 @@ CREATE FUNCTION public.insert_txs_6(b jsonb) RETURNS void
 begin
 	insert into txs_6 (
 		tx_uid,
+        id,
 		height,
 		sender_uid,
 		asset_uid,
@@ -1094,6 +1095,7 @@ begin
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -1105,14 +1107,6 @@ begin
 	) as txs
 	where (t->>'type') = '6'
 	on conflict do nothing;
-
-	update assets
-	set 
-		quantity = quantity::numeric - (t->>'amount')::bigint
-	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
-	where (t->>'type') = '6' and asset_id = t->>'assetId';
 END
 $$;
 
@@ -1125,6 +1119,7 @@ CREATE FUNCTION public.insert_txs_7(b jsonb) RETURNS void
     AS $$
 begin
   insert into txs_7 (tx_uid,
+                     id,
   					 height,
                      fee_asset_uid,
                      time_stamp,
@@ -1140,6 +1135,7 @@ begin
   select
     -- common
     (t->>'tuid')::bigint,
+    t ->> 'id',
     (t ->> 'height')::int4,
    	get_asset_uid(t->>'feeAssetId'),
     to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000),
@@ -1178,6 +1174,7 @@ CREATE FUNCTION public.insert_txs_8(b jsonb) RETURNS void
 begin
 	insert into txs_8 (
 		tx_uid,
+        id,
 		height,
 		sender_uid,
 		recipient_address_uid,
@@ -1187,6 +1184,7 @@ begin
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -1212,6 +1210,7 @@ CREATE FUNCTION public.insert_txs_9(b jsonb) RETURNS void
 begin
 	insert into txs_9 (
 		tx_uid,
+        id,
 		height,
 		sender_uid,
 		lease_tx_uid
@@ -1219,6 +1218,7 @@ begin
 	select
 		-- common
 		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+        t ->> 'id',
 		(t->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
@@ -1726,24 +1726,22 @@ CREATE TABLE public.addresses_z (
 ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_z DEFAULT;
 
 
-CREATE TABLE public.assets (
+CREATE TABLE public.assets_data (
     uid bigint GENERATED BY DEFAULT AS IDENTITY,
     issuer_address_uid bigint,
     asset_id character varying NOT NULL,
     first_appeared_on_height integer,
     asset_name character varying NOT NULL,
-    searchable_asset_name tsvector NOT NULL,
     description text,
     decimals smallint NOT NULL,
     ticker text,
     issue_timestamp timestamp with time zone,
     quantity numeric,
     reissuable boolean,
-    has_script boolean,
-    min_sponsored_asset_fee numeric
+    has_script boolean
 );
 
-INSERT INTO public.assets VALUES (0, null, 'WAVES', null, 'Waves', to_tsvector('Waves'), '', 8, 'WAVES', '2016-04-12 00:00:00', 10000000000000000, false, false, null);
+INSERT INTO public.assets_data VALUES (0, null, 'WAVES', null, 'Waves', '', 8, 'WAVES', '2016-04-12 00:00:00', 10000000000000000, false, false);
 
 
 CREATE TABLE public.assets_metadata (
@@ -1853,6 +1851,7 @@ SELECT create_range_partitions('txs', 20, 100000000, 0);
 
 CREATE TABLE public.txs_1 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint,
     recipient_address_uid bigint NOT NULL,
@@ -1864,6 +1863,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_1_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint,
     recipient_address_uid bigint NOT NULL,
@@ -1875,6 +1875,7 @@ ALTER TABLE ONLY public.txs_1 ATTACH PARTITION public.txs_1_default DEFAULT;
 
 CREATE TABLE public.txs_10 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     alias character varying NOT NULL
@@ -1884,6 +1885,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_10_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     alias character varying NOT NULL
@@ -1893,6 +1895,7 @@ ALTER TABLE ONLY public.txs_10 ATTACH PARTITION public.txs_10_default DEFAULT;
 
 CREATE TABLE public.txs_11 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -1903,6 +1906,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_11_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -1938,6 +1942,7 @@ ALTER TABLE ONLY public.txs_11_transfers ATTACH PARTITION public.txs_11_transfer
 
 CREATE TABLE public.txs_12 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL
 )
@@ -1946,6 +1951,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_12_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL
 );
@@ -1985,6 +1991,7 @@ ALTER TABLE ONLY public.txs_12_data ATTACH PARTITION public.txs_12_data_default 
 
 CREATE TABLE public.txs_13 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     script character varying
@@ -1994,6 +2001,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_13_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     script character varying
@@ -2003,6 +2011,7 @@ ALTER TABLE ONLY public.txs_13 ATTACH PARTITION public.txs_13_default DEFAULT;
 
 CREATE TABLE public.txs_14 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -2013,6 +2022,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_14_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -2023,6 +2033,7 @@ ALTER TABLE ONLY public.txs_14 ATTACH PARTITION public.txs_14_default DEFAULT;
 
 CREATE TABLE public.txs_15 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -2033,6 +2044,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_15_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -2043,6 +2055,7 @@ ALTER TABLE ONLY public.txs_15 ATTACH PARTITION public.txs_15_default DEFAULT;
 
 CREATE TABLE public.txs_16 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     dapp_address_uid bigint NOT NULL,
@@ -2057,6 +2070,7 @@ SELECT create_range_partitions('txs_16', 20, 50000000, 0);
 
 CREATE TABLE public.txs_16_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     dapp_address_uid bigint NOT NULL,
@@ -2120,6 +2134,7 @@ ALTER TABLE ONLY public.txs_16_payment ATTACH PARTITION public.txs_16_payment_de
 
 CREATE TABLE public.txs_2 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     recipient_address_uid bigint NOT NULL,
@@ -2131,6 +2146,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_2_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     recipient_address_uid bigint NOT NULL,
@@ -2142,6 +2158,7 @@ ALTER TABLE ONLY public.txs_2 ATTACH PARTITION public.txs_2_default DEFAULT;
 
 CREATE TABLE public.txs_3 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -2157,6 +2174,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_3_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -2172,6 +2190,7 @@ ALTER TABLE ONLY public.txs_3 ATTACH PARTITION public.txs_3_default DEFAULT;
 
 CREATE TABLE public.txs_4 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -2189,6 +2208,7 @@ SELECT create_range_partitions('txs_4', 20, 50000000, 0);
 
 CREATE TABLE public.txs_4_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -2203,6 +2223,7 @@ ALTER TABLE ONLY public.txs_4 ATTACH PARTITION public.txs_4_default DEFAULT;
 
 CREATE TABLE public.txs_5 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -2214,6 +2235,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_5_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -2225,6 +2247,7 @@ ALTER TABLE ONLY public.txs_5 ATTACH PARTITION public.txs_5_default DEFAULT;
 
 CREATE TABLE public.txs_6 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -2235,6 +2258,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_6_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -2245,6 +2269,7 @@ ALTER TABLE ONLY public.txs_6 ATTACH PARTITION public.txs_6_default DEFAULT;
 
 CREATE TABLE public.txs_7 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     time_stamp timestamp with time zone NOT NULL,
     sender_uid bigint NOT NULL,
@@ -2266,6 +2291,7 @@ SELECT create_range_partitions('txs_7', 20, 50000000, 0);
 
 CREATE TABLE public.txs_7_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     time_stamp timestamp with time zone NOT NULL,
     sender_uid bigint NOT NULL,
@@ -2311,6 +2337,7 @@ ALTER TABLE ONLY public.txs_7_orders ATTACH PARTITION public.txs_7_orders_defaul
 
 CREATE TABLE public.txs_8 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     recipient_address_uid bigint NOT NULL,
@@ -2322,6 +2349,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_8_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     recipient_address_uid bigint NOT NULL,
@@ -2333,6 +2361,7 @@ ALTER TABLE ONLY public.txs_8 ATTACH PARTITION public.txs_8_default DEFAULT;
 
 CREATE TABLE public.txs_9 (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     lease_tx_uid bigint
@@ -2342,6 +2371,7 @@ PARTITION BY RANGE (tx_uid);
 
 CREATE TABLE public.txs_9_default (
     tx_uid bigint NOT NULL,
+    id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     lease_tx_uid bigint
@@ -2349,16 +2379,78 @@ CREATE TABLE public.txs_9_default (
 ALTER TABLE ONLY public.txs_9 ATTACH PARTITION public.txs_9_default DEFAULT;
 
 
+CREATE TABLE public.waves_data (
+	height int4 NULL,
+	quantity numeric NOT NULL
+);
+
+
+INSERT INTO waves_data (height, quantity) VALUES (null, 10000000000000000);
+
+
+CREATE OR REPLACE VIEW public.assets
+AS SELECT a.uid,
+    a.asset_id,
+    a.ticker,
+    a.asset_name,
+    a.description,
+    a.issuer_address_uid,
+    a.first_appeared_on_height,
+    a.issue_timestamp,
+    a.quantity + COALESCE(reissue_q.reissued_total, 0::numeric) - COALESCE(burn_q.burned_total, 0::numeric) AS quantity,
+    a.decimals,
+        CASE
+            WHEN r_after.reissuable_after IS NULL THEN a.reissuable
+            ELSE a.reissuable AND r_after.reissuable_after
+        END AS reissuable,
+    a.has_script,
+    txs_14.min_sponsored_asset_fee
+   FROM assets_data a
+     LEFT JOIN ( SELECT txs_5.asset_uid,
+            sum(txs_5.quantity) AS reissued_total
+           FROM txs_5
+          GROUP BY txs_5.asset_uid) reissue_q ON a.uid = reissue_q.asset_uid
+     LEFT JOIN ( SELECT txs_6.asset_uid,
+            sum(txs_6.amount) AS burned_total
+           FROM txs_6
+          GROUP BY txs_6.asset_uid) burn_q ON a.uid = burn_q.asset_uid
+     LEFT JOIN ( SELECT txs_5.asset_uid,
+            bool_and(txs_5.reissuable) AS reissuable_after
+           FROM txs_5
+          GROUP BY txs_5.asset_uid) r_after ON a.uid = r_after.asset_uid
+     LEFT JOIN ( SELECT DISTINCT ON (txs_14_1.asset_uid) txs_14_1.asset_uid,
+            txs_14_1.min_sponsored_asset_fee
+           FROM txs_14 txs_14_1
+          ORDER BY txs_14_1.asset_uid DESC) txs_14 ON a.uid = txs_14.asset_uid
+UNION ALL
+ SELECT 0 AS uid,
+    'WAVES'::character varying AS asset_id,
+    'WAVES'::text AS ticker,
+    'Waves'::character varying AS asset_name,
+    ''::character varying AS description,
+    NULL::bigint AS issuer_address_uid,
+    NULL::integer AS first_appeared_on_height,
+    '2016-04-11 21:00:00'::timestamp without time zone AS issue_timestamp,
+    (( SELECT waves_data.quantity
+           FROM waves_data
+          ORDER BY waves_data.height DESC NULLS LAST
+         LIMIT 1))::bigint::numeric AS quantity,
+    8 AS decimals,
+    false AS reissuable,
+    false AS has_script,
+    NULL::bigint AS min_sponsored_asset_fee;
+
+
 ALTER TABLE public.addresses ADD CONSTRAINT addresses_pk PRIMARY KEY (address);
 
 
-ALTER TABLE public.assets ADD CONSTRAINT assets_map_un UNIQUE (uid);
+ALTER TABLE public.assets_data ADD CONSTRAINT assets_data_un UNIQUE (uid);
 
 
-ALTER TABLE public.assets ADD CONSTRAINT assets_map_un_asset_id UNIQUE (asset_id);
+ALTER TABLE public.assets_data ADD CONSTRAINT assets_data_un_asset_id UNIQUE (asset_id);
 
 
-ALTER TABLE public.assets ADD CONSTRAINT assets_map_un_ticker UNIQUE (ticker);
+ALTER TABLE public.assets_data ADD CONSTRAINT assets_data_un_ticker UNIQUE (ticker);
 
 
 ALTER TABLE public.blocks ADD CONSTRAINT blocks_pkey PRIMARY KEY (height);
@@ -2445,6 +2537,9 @@ ALTER TABLE public.txs_9 ADD CONSTRAINT txs_9_tx_uid_key UNIQUE (tx_uid);
 ALTER TABLE public.txs_9 ADD CONSTRAINT txs_9_un UNIQUE (tx_uid, lease_tx_uid);
 
 
+ALTER TABLE public.waves_data ADD CONSTRAINT waves_data_un UNIQUE (height);
+
+
 CREATE INDEX addresses_address_uid_idx ON public.addresses USING btree (address, uid);
 
 
@@ -2460,22 +2555,25 @@ CREATE UNIQUE INDEX addresses_uid_address_public_key_idx ON public.addresses USI
 CREATE INDEX addresses_first_appeared_on_height_idx ON public.addresses USING btree (first_appeared_on_height);
 
 
-CREATE INDEX assets_asset_id_idx ON public.assets USING btree (asset_id);
+CREATE INDEX assets_data_asset_id_idx ON public.assets_data USING btree (asset_id);
 
 
-CREATE INDEX assets_asset_name_idx ON public.assets USING btree (asset_name varchar_pattern_ops);
+CREATE INDEX assets_data_asset_name_idx ON public.assets_data USING btree (asset_name varchar_pattern_ops);
 
 
-CREATE UNIQUE INDEX assets_map_asset_id_first_appeared_on_height_idx ON public.assets USING btree (asset_id, first_appeared_on_height);
+CREATE UNIQUE INDEX assets_data_asset_id_first_appeared_on_height_idx ON public.assets_data USING btree (asset_id, first_appeared_on_height);
 
 
-CREATE INDEX assets_map_first_appeared_on_height_idx ON public.assets USING btree (first_appeared_on_height);
+CREATE INDEX assets_data_first_appeared_on_height_idx ON public.assets_data USING btree (first_appeared_on_height);
 
 
 CREATE INDEX assets_metadata_asset_name_idx ON public.assets_metadata USING btree (asset_name text_pattern_ops);
 
 
-CREATE INDEX assets_ticker_idx ON public.assets USING btree (ticker text_pattern_ops);
+CREATE INDEX assets_data_ticker_idx ON public.assets_data USING btree (ticker text_pattern_ops);
+
+
+CREATE INDEX assets_data_uid_asset_id_decimals_idx ON assets_data (uid, asset_id, decimals);
 
 
 CREATE INDEX candles_max_height_index ON public.candles USING btree (max_height);
@@ -2487,7 +2585,7 @@ CREATE INDEX orders_height_idx ON public.orders USING btree (height);
 CREATE INDEX orders_id_uid_idx ON public.orders USING btree (id, uid);
 
 
-CREATE INDEX searchable_asset_name_idx ON public.assets USING gin (searchable_asset_name);
+CREATE INDEX assets_data_to_tsvector_asset_name_idx ON public.assets_data USING gin (to_tsvector('simple'::regconfig, (asset_name)::text));
 
 
 CREATE INDEX txs_height_idx ON public.txs USING btree (height);
@@ -2505,13 +2603,10 @@ CREATE INDEX txs_sender_uid_uid_idx ON public.txs USING btree (sender_uid, uid);
 CREATE INDEX txs_time_stamp_idx ON public.txs USING btree (time_stamp);
 
 
-CREATE INDEX txs_time_stamp_uid_idx ON public.txs USING btree (time_stamp, uid);
+CREATE UNIQUE INDEX txs_uid_time_stamp_unique_idx on txs (uid, time_stamp);
 
 
-CREATE INDEX txs_uid_desc_time_stamp_idx ON txs (uid desc, time_stamp);
-
-
-CREATE INDEX txs_uid_time_stamp_desc_idx ON txs (uid, time_stamp desc);
+CREATE UNIQUE INDEX txs_uid_desc_time_stamp_unique_idx on txs (uid desc, time_stamp);
 
 
 CREATE INDEX txs_tx_type_idx ON public.txs USING btree (tx_type);
@@ -2568,16 +2663,16 @@ CREATE INDEX txs_12_data_data_key_idx ON public.txs_12_data USING hash (data_key
 CREATE INDEX txs_12_data_data_type_idx ON public.txs_12_data USING hash (data_type);
 
 
-CREATE INDEX txs_12_data_value_binary_partial_idx ON public.txs_12_data USING hash (data_value_binary) WHERE (data_type = 'binary'::text);
+CREATE INDEX txs_12_data_data_value_binary_partial_idx ON public.txs_12_data USING hash (data_value_binary) WHERE (data_type = 'binary'::text);
 
 
-CREATE INDEX txs_12_data_value_boolean_partial_idx ON public.txs_12_data USING btree (data_value_boolean) WHERE (data_type = 'boolean'::text);
+CREATE INDEX txs_12_data_data_value_boolean_partial_idx ON public.txs_12_data USING btree (data_value_boolean) WHERE (data_type = 'boolean'::text);
 
 
-CREATE INDEX txs_12_data_value_integer_partial_idx ON public.txs_12_data USING btree (data_value_integer) WHERE (data_type = 'integer'::text);
+CREATE INDEX txs_12_data_data_value_integer_partial_idx ON public.txs_12_data USING btree (data_value_integer) WHERE (data_type = 'integer'::text);
 
 
-CREATE INDEX txs_12_data_value_string_partial_idx ON public.txs_12_data USING hash (data_value_string) WHERE (data_type = 'string'::text);
+CREATE INDEX txs_12_data_data_value_string_partial_idx ON public.txs_12_data USING hash (data_value_string) WHERE (data_type = 'string'::text);
 
 
 CREATE INDEX txs_12_data_height_idx ON public.txs_12_data USING btree (height);
@@ -2592,7 +2687,13 @@ CREATE INDEX txs_12_height_idx ON public.txs_12 USING btree (height);
 CREATE INDEX txs_12_sender_uid_idx ON public.txs_12 USING hash (sender_uid);
 
 
-create index txs_12_id_tx_uid_idx on public.txs_12 (id, tx_uid);
+CREATE INDEX txs_12_id_tx_uid_idx on public.txs_12 (id, tx_uid);
+
+
+CREATE INDEX txs_12_data_tx_uid_data_key_idx on txs_12_data (tx_uid, data_key);
+
+
+CREATE INDEX txs_12_data_tx_uid_data_type_idx on txs_12_data (tx_uid, data_type);
 
 
 CREATE INDEX txs_13_height_idx ON public.txs_13 USING btree (height);
@@ -2653,6 +2754,9 @@ CREATE INDEX txs_16_payment_height_idx ON public.txs_16_payment USING btree (hei
 
 
 CREATE INDEX txs_16_sender_uid_tx_uid_idx ON public.txs_16 USING btree (sender_uid, tx_uid);
+
+
+CREATE INDEX txs_16_function_name_tx_uid_idx ON txs_16 (function_name, tx_uid);
 
 
 CREATE INDEX txs_1_height_idx ON public.txs_1 USING btree (height);
@@ -2787,7 +2891,10 @@ CREATE INDEX txs_9_height_idx ON public.txs_9 USING btree (height);
 CREATE INDEX txs_9_sender_idx ON public.txs_9 USING hash (sender_uid);
 
 
-create index txs_9_id_tx_uid_idx on public.txs_9 (id, tx_uid);
+CREATE index txs_9_id_tx_uid_idx on public.txs_9 (id, tx_uid);
+
+
+CREATE INDEX waves_data_height_desc_quantity_idx ON public.waves_data (height DESC NULLS LAST, quantity);
 
 
 CREATE RULE block_delete AS
@@ -2805,7 +2912,7 @@ ALTER TABLE public.addresses
     ADD CONSTRAINT fk_blocks FOREIGN KEY (first_appeared_on_height) REFERENCES public.blocks(height) ON DELETE CASCADE;
 
 
-ALTER TABLE public.assets
+ALTER TABLE public.assets_data
     ADD CONSTRAINT fk_blocks FOREIGN KEY (first_appeared_on_height) REFERENCES public.blocks(height) ON DELETE CASCADE;
 
 
@@ -2891,3 +2998,7 @@ ALTER TABLE public.txs_7_orders
 
 ALTER TABLE public.txs
     ADD CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES public.blocks(height) ON DELETE CASCADE;
+
+
+ALTER TABLE public.waves_data
+	ADD CONSTRAINT fk_waves_data FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE;

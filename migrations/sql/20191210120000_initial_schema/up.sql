@@ -2538,6 +2538,9 @@ CREATE INDEX txs_10_sender_uid_idx ON public.txs_10 USING hash (sender_uid);
 CREATE INDEX txs_10_tx_uid_alias_idx ON public.txs_10 USING btree (tx_uid, alias);
 
 
+create index txs_10_id_tx_uid_idx on public.txs_10 (id, tx_uid);
+
+
 CREATE INDEX txs_11_asset_uid_idx ON public.txs_11 USING hash (asset_uid);
 
 
@@ -2545,6 +2548,9 @@ CREATE INDEX txs_11_height_idx ON public.txs_11 USING btree (height);
 
 
 CREATE INDEX txs_11_sender_uid_idx ON public.txs_11 USING btree (sender_uid, tx_uid);
+
+
+create index txs_11_id_tx_uid_idx on public.txs_11 (id, tx_uid);
 
 
 CREATE INDEX txs_11_transfers_height_idx ON public.txs_11_transfers USING btree (height);
@@ -2586,6 +2592,9 @@ CREATE INDEX txs_12_height_idx ON public.txs_12 USING btree (height);
 CREATE INDEX txs_12_sender_uid_idx ON public.txs_12 USING hash (sender_uid);
 
 
+create index txs_12_id_tx_uid_idx on public.txs_12 (id, tx_uid);
+
+
 CREATE INDEX txs_13_height_idx ON public.txs_13 USING btree (height);
 
 
@@ -2595,10 +2604,16 @@ CREATE INDEX txs_13_md5_script_idx ON public.txs_13 USING btree (md5((script)::t
 CREATE INDEX txs_13_sender_uid_idx ON public.txs_13 USING hash (sender_uid);
 
 
+create index txs_13_id_tx_uid_idx on public.txs_13 (id, tx_uid);
+
+
 CREATE INDEX txs_14_height_idx ON public.txs_14 USING btree (height);
 
 
 CREATE INDEX txs_14_sender_uid_idx ON public.txs_14 USING hash (sender_uid);
+
+
+create index txs_14_id_tx_uid_idx on public.txs_14 (id, tx_uid);
 
 
 CREATE INDEX txs_15_height_idx ON public.txs_15 USING btree (height);
@@ -2608,6 +2623,9 @@ CREATE INDEX txs_15_md5_script_idx ON public.txs_15 USING btree (md5((script)::t
 
 
 CREATE INDEX txs_15_sender_uid_idx ON public.txs_15 USING btree (sender_uid);
+
+
+create index txs_15_id_tx_uid_idx on public.txs_15 (id, tx_uid);
 
 
 CREATE INDEX txs_16_dapp_address_uid_tx_uid_idx ON public.txs_16 USING btree (dapp_address_uid, tx_uid);
@@ -2620,6 +2638,9 @@ CREATE INDEX txs_16_height_idx ON public.txs_16 USING btree (height);
 
 
 CREATE INDEX txs_16_sender_uid_idx ON public.txs_16 USING btree (sender_uid);
+
+
+create index txs_16_id_tx_uid_idx on public.txs_16 (id, tx_uid);
 
 
 CREATE INDEX txs_16_args_height_idx ON public.txs_16_args USING btree (height);
@@ -2640,10 +2661,16 @@ CREATE INDEX txs_1_height_idx ON public.txs_1 USING btree (height);
 CREATE INDEX txs_1_sender_uid_idx ON public.txs_1 USING btree (sender_uid);
 
 
+create index txs_1_id_tx_uid_idx on public.txs_1 (id, tx_uid);
+
+
 CREATE INDEX txs_2_height_idx ON public.txs_2 USING btree (height);
 
 
 CREATE INDEX txs_2_sender_uid_idx ON public.txs_2 USING hash (sender_uid);
+
+
+create index txs_2_id_tx_uid_idx on public.txs_2 (id, tx_uid);
 
 
 CREATE INDEX txs_3_asset_uid_idx ON public.txs_3 USING hash (asset_uid);
@@ -2656,6 +2683,9 @@ CREATE INDEX txs_3_md5_script_idx ON public.txs_3 USING btree (md5((script)::tex
 
 
 CREATE INDEX txs_3_sender_uid_idx ON public.txs_3 USING hash (sender_uid);
+
+
+create index txs_3_id_tx_uid_idx on public.txs_3 (id, tx_uid);
 
 
 CREATE INDEX txs_4_asset_uid_idx ON public.txs_4 USING btree (asset_uid);
@@ -2673,6 +2703,9 @@ CREATE INDEX txs_4_recipient_address_uid_idx ON public.txs_4 USING btree (recipi
 CREATE INDEX txs_4_sender_uid_idx ON public.txs_4 USING btree (sender_uid);
 
 
+create index txs_4_id_tx_uid_idx on public.txs_4 (id, tx_uid);
+
+
 CREATE INDEX txs_5_asset_uid_idx ON public.txs_5 USING hash (asset_uid);
 
 
@@ -2682,6 +2715,9 @@ CREATE INDEX txs_5_height_idx ON public.txs_5 USING btree (height);
 CREATE INDEX txs_5_sender_uid_idx ON public.txs_5 USING hash (sender_uid);
 
 
+create index txs_5_id_tx_uid_idx on public.txs_5 (id, tx_uid);
+
+
 CREATE INDEX txs_6_asset_uid_idx ON public.txs_6 USING hash (asset_uid);
 
 
@@ -2689,6 +2725,9 @@ CREATE INDEX txs_6_height_idx ON public.txs_6 USING btree (height);
 
 
 CREATE INDEX txs_6_sender_uid_idx ON public.txs_6 USING hash (sender_uid);
+
+
+create index txs_6_id_tx_uid_idx on public.txs_6 (id, tx_uid);
 
 
 CREATE INDEX txs_7_height_idx ON public.txs_7 USING btree (height);
@@ -2701,6 +2740,9 @@ CREATE INDEX txs_7_tx_uid_height_idx ON public.txs_7 USING btree (tx_uid, height
 
 
 CREATE INDEX txs_7_tx_uid_order1_uid_order2_uid_idx ON public.txs_7 USING btree (tx_uid, order1_uid, order2_uid);
+
+
+create index txs_7_id_tx_uid_idx on public.txs_7 (id, tx_uid);
 
 
 CREATE INDEX txs_7_orders_amount_asset_uid_price_asset_uid_tuid_idx ON public.txs_7_orders USING btree (amount_asset_uid, price_asset_uid, tx_uid);
@@ -2736,10 +2778,16 @@ CREATE INDEX txs_8_recipient_address_uid_tx_uid_idx ON public.txs_8 USING btree 
 CREATE INDEX txs_8_sender_uid_idx ON public.txs_8 USING btree (sender_uid);
 
 
+create index txs_8_id_tx_uid_idx on public.txs_8 (id, tx_uid);
+
+
 CREATE INDEX txs_9_height_idx ON public.txs_9 USING btree (height);
 
 
 CREATE INDEX txs_9_sender_idx ON public.txs_9 USING hash (sender_uid);
+
+
+create index txs_9_id_tx_uid_idx on public.txs_9 (id, tx_uid);
 
 
 CREATE RULE block_delete AS

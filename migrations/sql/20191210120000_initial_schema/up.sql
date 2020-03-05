@@ -1399,331 +1399,10 @@ CREATE TABLE public.addresses (
     public_key character varying,
     first_appeared_on_height integer NOT NULL
 )
-PARTITION BY RANGE (address);
+PARTITION BY RANGE (uid);
 
 
-CREATE TABLE public.addresses_0_1 (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_0_1 FOR VALUES FROM ('3P0') TO ('3P1');
-
-
-CREATE TABLE public.addresses_1_2 (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_1_2 FOR VALUES FROM ('3P1') TO ('3P2');
-
-
-CREATE TABLE public.addresses_2_3 (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_2_3 FOR VALUES FROM ('3P2') TO ('3P3');
-
-
-CREATE TABLE public.addresses_3_4 (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_3_4 FOR VALUES FROM ('3P3') TO ('3P4');
-
-
-CREATE TABLE public.addresses_4_5 (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_4_5 FOR VALUES FROM ('3P4') TO ('3P5');
-
-
-CREATE TABLE public.addresses_5_6 (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_5_6 FOR VALUES FROM ('3P5') TO ('3P6');
-
-
-CREATE TABLE public.addresses_6_7 (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_6_7 FOR VALUES FROM ('3P6') TO ('3P7');
-
-
-CREATE TABLE public.addresses_7_8 (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_7_8 FOR VALUES FROM ('3P7') TO ('3P8');
-
-
-CREATE TABLE public.addresses_8_9 (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_8_9 FOR VALUES FROM ('3P8') TO ('3P9');
-
-
-CREATE TABLE public.addresses_9_a (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_9_a FOR VALUES FROM ('3P9') TO ('3Pa');
-
-
-CREATE TABLE public.addresses_a_b (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_a_b FOR VALUES FROM ('3Pa') TO ('3Pb');
-
-
-CREATE TABLE public.addresses_b_c (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_b_c FOR VALUES FROM ('3Pb') TO ('3Pc');
-
-
-CREATE TABLE public.addresses_c_d (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_c_d FOR VALUES FROM ('3Pc') TO ('3Pd');
-
-
-CREATE TABLE public.addresses_d_e (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_d_e FOR VALUES FROM ('3Pd') TO ('3Pe');
-
-
-CREATE TABLE public.addresses_e_f (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_e_f FOR VALUES FROM ('3Pe') TO ('3Pf');
-
-
-CREATE TABLE public.addresses_f_g (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_f_g FOR VALUES FROM ('3Pf') TO ('3Pg');
-
-
-CREATE TABLE public.addresses_g_h (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_g_h FOR VALUES FROM ('3Pg') TO ('3Ph');
-
-
-CREATE TABLE public.addresses_h_i (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_h_i FOR VALUES FROM ('3Ph') TO ('3Pi');
-
-
-CREATE TABLE public.addresses_i_j (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_i_j FOR VALUES FROM ('3Pi') TO ('3Pj');
-
-
-CREATE TABLE public.addresses_j_k (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_j_k FOR VALUES FROM ('3Pj') TO ('3Pk');
-
-
-CREATE TABLE public.addresses_k_l (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_k_l FOR VALUES FROM ('3Pk') TO ('3Pl');
-
-
-CREATE TABLE public.addresses_l_m (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_l_m FOR VALUES FROM ('3Pl') TO ('3Pm');
-
-
-CREATE TABLE public.addresses_m_n (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_m_n FOR VALUES FROM ('3Pm') TO ('3Pn');
-
-
-CREATE TABLE public.addresses_n_o (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_n_o FOR VALUES FROM ('3Pn') TO ('3Po');
-
-
-CREATE TABLE public.addresses_o_p (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_o_p FOR VALUES FROM ('3Po') TO ('3Pp');
-
-
-CREATE TABLE public.addresses_p_q (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_p_q FOR VALUES FROM ('3Pp') TO ('3Pq');
-
-
-CREATE TABLE public.addresses_q_r (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_q_r FOR VALUES FROM ('3Pq') TO ('3Pr');
-
-
-CREATE TABLE public.addresses_r_s (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_r_s FOR VALUES FROM ('3Pr') TO ('3Ps');
-
-
-CREATE TABLE public.addresses_s_t (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_s_t FOR VALUES FROM ('3Ps') TO ('3Pt');
-
-
-CREATE TABLE public.addresses_t_u (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_t_u FOR VALUES FROM ('3Pt') TO ('3Pu');
-
-
-CREATE TABLE public.addresses_u_v (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_u_v FOR VALUES FROM ('3Pu') TO ('3Pv');
-
-
-CREATE TABLE public.addresses_v_w (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_v_w FOR VALUES FROM ('3Pv') TO ('3Pw');
-
-
-CREATE TABLE public.addresses_w_x (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_w_x FOR VALUES FROM ('3Pw') TO ('3Px');
-
-
-CREATE TABLE public.addresses_x_y (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_x_y FOR VALUES FROM ('3Px') TO ('3Py');
-
-
-CREATE TABLE public.addresses_y_z (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_y_z FOR VALUES FROM ('3Py') TO ('3Pz');
-
-
-CREATE TABLE public.addresses_z (
-    uid bigint DEFAULT nextval('public.addresses_uid_seq'::regclass) NOT NULL,
-    address character varying NOT NULL,
-    public_key character varying,
-    first_appeared_on_height integer NOT NULL
-);
-ALTER TABLE ONLY public.addresses ATTACH PARTITION public.addresses_z DEFAULT;
+CREATE TABLE addresses_default PARTITION OF addresses DEFAULT;
 
 
 CREATE TABLE public.assets_data (
@@ -2439,7 +2118,7 @@ UNION ALL
     NULL::bigint AS min_sponsored_asset_fee;
 
 
-ALTER TABLE public.addresses ADD CONSTRAINT addresses_pk PRIMARY KEY (address);
+ALTER TABLE public.addresses ADD CONSTRAINT addresses_pk PRIMARY KEY (address, uid);
 
 
 ALTER TABLE public.assets_data ADD CONSTRAINT assets_data_un UNIQUE (uid);
@@ -2601,10 +2280,10 @@ CREATE INDEX txs_sender_uid_uid_idx ON public.txs USING btree (sender_uid, uid);
 CREATE INDEX txs_time_stamp_idx ON public.txs USING btree (time_stamp);
 
 
-CREATE UNIQUE INDEX txs_uid_time_stamp_unique_idx on txs (uid, time_stamp);
+CREATE UNIQUE INDEX txs_uid_time_stamp_unique_idx ON txs (uid, time_stamp);
 
 
-CREATE UNIQUE INDEX txs_uid_desc_time_stamp_unique_idx on txs (uid desc, time_stamp);
+CREATE UNIQUE INDEX txs_uid_desc_time_stamp_unique_idx ON txs (uid desc, time_stamp);
 
 
 CREATE INDEX txs_tx_type_idx ON public.txs USING btree (tx_type);
@@ -2631,7 +2310,7 @@ CREATE INDEX txs_10_sender_uid_idx ON public.txs_10 USING hash (sender_uid);
 CREATE INDEX txs_10_tx_uid_alias_idx ON public.txs_10 USING btree (tx_uid, alias);
 
 
-create index txs_10_id_tx_uid_idx on public.txs_10 (id, tx_uid);
+CREATE INDEX txs_10_id_tx_uid_idx ON public.txs_10 (id, tx_uid);
 
 
 CREATE INDEX txs_11_asset_uid_idx ON public.txs_11 USING hash (asset_uid);
@@ -2643,7 +2322,7 @@ CREATE INDEX txs_11_height_idx ON public.txs_11 USING btree (height);
 CREATE INDEX txs_11_sender_uid_idx ON public.txs_11 USING btree (sender_uid, tx_uid);
 
 
-create index txs_11_id_tx_uid_idx on public.txs_11 (id, tx_uid);
+CREATE INDEX txs_11_id_tx_uid_idx ON public.txs_11 (id, tx_uid);
 
 
 CREATE INDEX txs_11_transfers_height_idx ON public.txs_11_transfers USING btree (height);
@@ -2685,13 +2364,13 @@ CREATE INDEX txs_12_height_idx ON public.txs_12 USING btree (height);
 CREATE INDEX txs_12_sender_uid_idx ON public.txs_12 USING hash (sender_uid);
 
 
-CREATE INDEX txs_12_id_tx_uid_idx on public.txs_12 (id, tx_uid);
+CREATE INDEX txs_12_id_tx_uid_idx ON public.txs_12 (id, tx_uid);
 
 
-CREATE INDEX txs_12_data_tx_uid_data_key_idx on txs_12_data (tx_uid, data_key);
+CREATE INDEX txs_12_data_tx_uid_data_key_idx ON txs_12_data (tx_uid, data_key);
 
 
-CREATE INDEX txs_12_data_tx_uid_data_type_idx on txs_12_data (tx_uid, data_type);
+CREATE INDEX txs_12_data_tx_uid_data_type_idx ON txs_12_data (tx_uid, data_type);
 
 
 CREATE INDEX txs_13_height_idx ON public.txs_13 USING btree (height);
@@ -2703,7 +2382,7 @@ CREATE INDEX txs_13_md5_script_idx ON public.txs_13 USING btree (md5((script)::t
 CREATE INDEX txs_13_sender_uid_idx ON public.txs_13 USING hash (sender_uid);
 
 
-create index txs_13_id_tx_uid_idx on public.txs_13 (id, tx_uid);
+CREATE INDEX txs_13_id_tx_uid_idx ON public.txs_13 (id, tx_uid);
 
 
 CREATE INDEX txs_14_height_idx ON public.txs_14 USING btree (height);
@@ -2712,7 +2391,7 @@ CREATE INDEX txs_14_height_idx ON public.txs_14 USING btree (height);
 CREATE INDEX txs_14_sender_uid_idx ON public.txs_14 USING hash (sender_uid);
 
 
-create index txs_14_id_tx_uid_idx on public.txs_14 (id, tx_uid);
+CREATE INDEX txs_14_id_tx_uid_idx ON public.txs_14 (id, tx_uid);
 
 
 CREATE INDEX txs_15_height_idx ON public.txs_15 USING btree (height);
@@ -2724,7 +2403,7 @@ CREATE INDEX txs_15_md5_script_idx ON public.txs_15 USING btree (md5((script)::t
 CREATE INDEX txs_15_sender_uid_idx ON public.txs_15 USING btree (sender_uid);
 
 
-create index txs_15_id_tx_uid_idx on public.txs_15 (id, tx_uid);
+CREATE INDEX txs_15_id_tx_uid_idx ON public.txs_15 (id, tx_uid);
 
 
 CREATE INDEX txs_16_dapp_address_uid_tx_uid_idx ON public.txs_16 USING btree (dapp_address_uid, tx_uid);
@@ -2739,7 +2418,7 @@ CREATE INDEX txs_16_height_idx ON public.txs_16 USING btree (height);
 CREATE INDEX txs_16_sender_uid_idx ON public.txs_16 USING btree (sender_uid);
 
 
-create index txs_16_id_tx_uid_idx on public.txs_16 (id, tx_uid);
+CREATE INDEX txs_16_id_tx_uid_idx ON public.txs_16 (id, tx_uid);
 
 
 CREATE INDEX txs_16_args_height_idx ON public.txs_16_args USING btree (height);
@@ -2763,7 +2442,7 @@ CREATE INDEX txs_1_height_idx ON public.txs_1 USING btree (height);
 CREATE INDEX txs_1_sender_uid_idx ON public.txs_1 USING btree (sender_uid);
 
 
-create index txs_1_id_tx_uid_idx on public.txs_1 (id, tx_uid);
+CREATE INDEX txs_1_id_tx_uid_idx ON public.txs_1 (id, tx_uid);
 
 
 CREATE INDEX txs_2_height_idx ON public.txs_2 USING btree (height);
@@ -2772,7 +2451,7 @@ CREATE INDEX txs_2_height_idx ON public.txs_2 USING btree (height);
 CREATE INDEX txs_2_sender_uid_idx ON public.txs_2 USING hash (sender_uid);
 
 
-create index txs_2_id_tx_uid_idx on public.txs_2 (id, tx_uid);
+CREATE INDEX txs_2_id_tx_uid_idx ON public.txs_2 (id, tx_uid);
 
 
 CREATE INDEX txs_3_asset_uid_idx ON public.txs_3 USING hash (asset_uid);
@@ -2787,7 +2466,7 @@ CREATE INDEX txs_3_md5_script_idx ON public.txs_3 USING btree (md5((script)::tex
 CREATE INDEX txs_3_sender_uid_idx ON public.txs_3 USING hash (sender_uid);
 
 
-create index txs_3_id_tx_uid_idx on public.txs_3 (id, tx_uid);
+CREATE INDEX txs_3_id_tx_uid_idx ON public.txs_3 (id, tx_uid);
 
 
 CREATE INDEX txs_4_asset_uid_idx ON public.txs_4 USING btree (asset_uid);
@@ -2805,7 +2484,16 @@ CREATE INDEX txs_4_recipient_address_uid_idx ON public.txs_4 USING btree (recipi
 CREATE INDEX txs_4_sender_uid_idx ON public.txs_4 USING btree (sender_uid);
 
 
-create index txs_4_id_tx_uid_idx on public.txs_4 (id, tx_uid);
+CREATE INDEX txs_4_id_tx_uid_idx ON public.txs_4 (id, tx_uid);
+
+
+CREATE INDEX txs_4_recipient_address_uid_tx_uid_idx ON txs_4 (recipient_address_uid, tx_uid);
+
+
+CREATE INDEX txs_4_sender_uid_tx_uid_idx ON txs_4 (sender_uid, tx_uid);
+
+
+CREATE INDEX txs_4_asset_uid_tx_uid ON txs_4 (asset_uid, tx_uid);
 
 
 CREATE INDEX txs_5_asset_uid_idx ON public.txs_5 USING hash (asset_uid);
@@ -2817,7 +2505,7 @@ CREATE INDEX txs_5_height_idx ON public.txs_5 USING btree (height);
 CREATE INDEX txs_5_sender_uid_idx ON public.txs_5 USING hash (sender_uid);
 
 
-create index txs_5_id_tx_uid_idx on public.txs_5 (id, tx_uid);
+CREATE INDEX txs_5_id_tx_uid_idx ON public.txs_5 (id, tx_uid);
 
 
 CREATE INDEX txs_6_asset_uid_idx ON public.txs_6 USING hash (asset_uid);
@@ -2829,7 +2517,7 @@ CREATE INDEX txs_6_height_idx ON public.txs_6 USING btree (height);
 CREATE INDEX txs_6_sender_uid_idx ON public.txs_6 USING hash (sender_uid);
 
 
-create index txs_6_id_tx_uid_idx on public.txs_6 (id, tx_uid);
+CREATE INDEX txs_6_id_tx_uid_idx ON public.txs_6 (id, tx_uid);
 
 
 CREATE INDEX txs_7_height_idx ON public.txs_7 USING btree (height);
@@ -2844,7 +2532,7 @@ CREATE INDEX txs_7_tx_uid_height_idx ON public.txs_7 USING btree (tx_uid, height
 CREATE INDEX txs_7_tx_uid_order1_uid_order2_uid_idx ON public.txs_7 USING btree (tx_uid, order1_uid, order2_uid);
 
 
-create index txs_7_id_tx_uid_idx on public.txs_7 (id, tx_uid);
+CREATE INDEX txs_7_id_tx_uid_idx ON public.txs_7 (id, tx_uid);
 
 
 CREATE INDEX txs_7_orders_amount_asset_uid_price_asset_uid_tuid_idx ON public.txs_7_orders USING btree (amount_asset_uid, price_asset_uid, tx_uid);
@@ -2880,7 +2568,7 @@ CREATE INDEX txs_8_recipient_address_uid_tx_uid_idx ON public.txs_8 USING btree 
 CREATE INDEX txs_8_sender_uid_idx ON public.txs_8 USING btree (sender_uid);
 
 
-create index txs_8_id_tx_uid_idx on public.txs_8 (id, tx_uid);
+CREATE INDEX txs_8_id_tx_uid_idx ON public.txs_8 (id, tx_uid);
 
 
 CREATE INDEX txs_9_height_idx ON public.txs_9 USING btree (height);
@@ -2889,7 +2577,7 @@ CREATE INDEX txs_9_height_idx ON public.txs_9 USING btree (height);
 CREATE INDEX txs_9_sender_idx ON public.txs_9 USING hash (sender_uid);
 
 
-CREATE index txs_9_id_tx_uid_idx on public.txs_9 (id, tx_uid);
+CREATE index txs_9_id_tx_uid_idx ON public.txs_9 (id, tx_uid);
 
 
 CREATE INDEX waves_data_height_desc_quantity_idx ON public.waves_data (height DESC NULLS LAST, quantity);

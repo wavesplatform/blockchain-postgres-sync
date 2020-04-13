@@ -15,6 +15,7 @@ const loadConfig = () => {
 
     onConflict: process.env.ON_CONFLICT || 'update',
     blocksPerRequest: parseInt(process.env.BLOCKS_PER_REQUEST) || 100,
+    nodePollingRetriesCount: parseInt(process.env.NODE_POLLING_RETRIES_COUNT) || 2,
     updateThrottleInterval: parseInt(process.env.UPDATE_THROTTLE_INTERVAL) || 500,
     updateStrategy: [
       {

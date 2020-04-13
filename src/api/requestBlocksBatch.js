@@ -56,7 +56,7 @@ const requestBlocksBatch = (start, options) =>
         1}`
     )
     .set("User-Agent", USER_AGENT)
-    .retry(2)
+    .retry(options.nodePollingRetriesCount)
     .buffer(true)
     .parse(parseBlocks(sanitize))
     .then(r => r.body);

@@ -1,4 +1,5 @@
 const request = require("superagent");
+require('superagent-retry-delay')(request);
 const { USER_AGENT } = require("./constants");
 
 function unfold(fn, seed) {
@@ -56,7 +57,7 @@ const requestBlocksBatch = (start, options) =>
         1}`
     )
     .set("User-Agent", USER_AGENT)
-    .retry(options.nodePollingRetriesCount)
+    .retry(options.nodePollingRetriesCount, options.nodePollingRetriesDelay)
     .buffer(true)
     .parse(parseBlocks(sanitize))
     .then(r => r.body);

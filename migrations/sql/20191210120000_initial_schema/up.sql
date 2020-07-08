@@ -14,16 +14,6 @@ CREATE EXTENSION IF NOT EXISTS btree_gin WITH SCHEMA public;
 COMMENT ON EXTENSION btree_gin IS 'support for indexing common datatypes in GIN';
 
 
-CREATE FUNCTION public.check_tx_uid_existance(_uid bigint, _id varchar, _time_stamp timestamptz)
-    RETURNS boolean
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    return (select not exists(select * from txs where uid != _uid and id = _id and time_stamp = _time_stamp limit 1));
-END
-$$;
-
-
 CREATE FUNCTION public.count_affected_rows() RETURNS integer
     LANGUAGE plpgsql
     AS $$
@@ -65,13 +55,13 @@ $$;
 ALTER FUNCTION public.create_asset(_asset_id character varying, _issuer_address_uid bigint, _name character varying, _description text, _height integer, _timestamp timestamp with time zone, _quantity bigint, _decimals smallint, _reissuable boolean, _has_script boolean) OWNER TO dba;
 
 
-CREATE FUNCTION public.create_range_partitions(_tbl_name character varying, _count integer, _partition_size integer, _since integer) RETURNS void
+CREATE FUNCTION public.create_range_partitions(_tbl_name character varying, _count integer, _partition_size bigint, _since integer) RETURNS void
     LANGUAGE plpgsql
     AS $$
 	declare 
 		loop_start int4;
-		from_num int4;
-		to_num int4;
+		from_num bigint;
+		to_num bigint;
 		partition_name varchar;
 		execution_result varchar;
 	begin
@@ -87,7 +77,7 @@ CREATE FUNCTION public.create_range_partitions(_tbl_name character varying, _cou
 $$;
 
 
-ALTER FUNCTION public.create_range_partitions(_tbl_name character varying, _count integer, _partition_size integer, _since integer) OWNER TO dba;
+ALTER FUNCTION public.create_range_partitions(_tbl_name character varying, _count integer, _partition_size bigint, _since integer) OWNER TO dba;
 
 
 CREATE FUNCTION public.find_missing_blocks() RETURNS TABLE(missing_height integer)
@@ -198,7 +188,7 @@ $$;
 ALTER FUNCTION public.get_address_uid(_addr character varying, _public_key character varying, _height integer) OWNER TO dba;
 
 
-CREATE FUNCTION public.get_alias_uid(a character varying) RETURNS bigint
+CREATE FUNCTION public.get_alias_uid(_raw_alias character varying) RETURNS bigint
     LANGUAGE plpgsql
     AS $$
 	declare
@@ -206,14 +196,14 @@ CREATE FUNCTION public.get_alias_uid(a character varying) RETURNS bigint
 		_alias varchar;
 		alias_uid bigint;
 	begin
-		_alias := substring(a from alias_regex);
+		_alias := substring(_raw_alias from alias_regex);
 		select tx_uid from txs_10 where alias = _alias into alias_uid;
 		return alias_uid;
 	END;
 $$;
 
 
-ALTER FUNCTION public.get_alias_uid(a character varying) OWNER TO dba;
+ALTER FUNCTION public.get_alias_uid(_raw_alias character varying) OWNER TO dba;
 
 
 CREATE FUNCTION public.get_asset_id(text) RETURNS text
@@ -226,38 +216,38 @@ $_$;
 ALTER FUNCTION public.get_asset_id(text) OWNER TO dba;
 
 
-CREATE FUNCTION public.get_asset_uid(aid character varying) RETURNS bigint
+CREATE FUNCTION public.get_asset_uid(_aid character varying) RETURNS bigint
     LANGUAGE plpgsql
     AS $$
 	declare 
 		asset_uid bigint;
 	begin
-		if aid is null then
+		if _aid is null then
 			return null;
 		else
-			select uid from assets_data where asset_id=aid into asset_uid;
+			select uid from assets_data where asset_id=_aid into asset_uid;
 			return asset_uid;
 		end if;
 	END;
 $$;
 
 
-ALTER FUNCTION public.get_asset_uid(aid character varying) OWNER TO dba;
+ALTER FUNCTION public.get_asset_uid(_aid character varying) OWNER TO dba;
 
 
-CREATE FUNCTION public.get_height_by_tx_uid(tx_uid bigint) RETURNS integer
+CREATE FUNCTION public.get_height_by_tx_uid(_tx_uid bigint) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 	declare
 		h int4;
 	BEGIN
-		select height from txs where uid = tx_uid into h;
+		select height from txs where uid = _tx_uid into h;
 		return h;
 	END;
 $$;
 
 
-ALTER FUNCTION public.get_height_by_tx_uid(tx_uid bigint) OWNER TO dba;
+ALTER FUNCTION public.get_height_by_tx_uid(_tx_uid bigint) OWNER TO dba;
 
 
 CREATE FUNCTION public.get_order_uid(_o jsonb, _height integer, _tuid bigint, _sender_uid bigint) RETURNS bigint
@@ -270,24 +260,6 @@ CREATE FUNCTION public.get_order_uid(_o jsonb, _height integer, _tuid bigint, _s
 	
 		if order_uid is null then
 			insert into orders (id, tx_uid, height, "order") values(_o->>'id', _tuid, _height, _o) returning uid into order_uid;
-			insert into txs_7_orders (
-				height, 
-				tx_uid, 
-				order_uid, 
-				sender_uid, 
-				order_sender_uid, 
-				amount_asset_uid, 
-				price_asset_uid
-			) values (
-				_height, 
-				_tuid, 
-				order_uid, 
-				_sender_uid, 
-				get_address_or_alias_uid(_o->>'sender', _o->>'senderPublicKey', _height),
-				get_asset_uid(_o->'assetPair'->>'amountAsset'),
-				get_asset_uid(_o->'assetPair'->>'priceAsset')
-			);
-		
 			return order_uid;
 		else 
 			return order_uid;
@@ -360,19 +332,31 @@ $$;
 ALTER FUNCTION public.get_tuid_by_tx_id_and_time_stamp(_tx_id character varying, _timestamp timestamp with time zone) OWNER TO dba;
 
 
-CREATE FUNCTION public.get_tx_sender_uid_by_tx_id_and_time_stamp(_tx_id character varying, _time_stamp timestamp with time zone) RETURNS bigint
+CREATE FUNCTION public.get_tuid_by_tx_height_and_position_in_block(_height int4, _position_in_block int4) RETURNS bigint
+    LANGUAGE plpgsql
+    AS $$
+	begin
+		return _height::bigint * 100000::bigint + _position_in_block::bigint;
+	end;
+$$;
+
+
+ALTER FUNCTION public.get_tuid_by_tx_height_and_position_in_block(_height int4, _position_in_block int4) OWNER TO dba;
+
+
+CREATE FUNCTION public.get_tx_sender_uid_by_tx_uid(_tx_uid bigint) RETURNS bigint
     LANGUAGE plpgsql
     AS $$
 	declare
 		tx_sender_uid bigint;
 	begin
-		select sender_uid from txs where id = _tx_id and time_stamp = _time_stamp into tx_sender_uid;
+		select sender_uid from txs where uid = _tx_uid into tx_sender_uid;
 		return tx_sender_uid;
 	end;
 $$;
 
 
-ALTER FUNCTION public.get_tx_sender_uid_by_tx_id_and_time_stamp(_tx_id character varying, _time_stamp timestamp with time zone) OWNER TO dba;
+ALTER FUNCTION public.get_tx_sender_uid_by_tx_uid(_tx_uid bigint) OWNER TO dba;
 
 
 CREATE FUNCTION public.insert_address(addr character varying, public_key character varying, height integer) RETURNS bigint
@@ -420,10 +404,6 @@ begin
 	PERFORM insert_txs_14 (b);
 	PERFORM insert_txs_15 (b);
 	PERFORM insert_txs_16 (b);
-exception
-    when check_violation then
-        GET STACKED DIAGNOSTICS check_constraint_name = CONSTRAINT_NAME;
-        if check_constraint_name = 'txs_uid_check' then end if;
 END
 $$;
 
@@ -491,6 +471,7 @@ CREATE FUNCTION public.insert_txs(b jsonb) RETURNS void
     AS $$
 begin
   insert into txs (
+    uid,
   	id, 
   	time_stamp, 
   	height, 
@@ -502,17 +483,21 @@ begin
   	sender_uid
   )
   select
+    get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (t->>'rn')::int4 - 1),
 	t->>'id',
     to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
-    (t->>'height')::int4,
+    (b->>'height')::int4,
     (t ->> 'type')::smallint,
     t ->> 'signature',
     jsonb_array_cast_text(t -> 'proofs'),
-    (t ->> 'version')::smallint,
-    (t ->> 'fee')::bigint,
-    get_address_uid(t ->> 'sender', t->>'senderPublicKey', (t->>'height')::int4)
+    (t->>'version')::smallint,
+    (t->>'fee')::bigint,
+    get_address_uid(t->>'sender', t->>'senderPublicKey', (b->>'height')::int4)
   from (
-    select jsonb_array_elements(b -> 'transactions') || jsonb_build_object('height', b -> 'height') as t
+    select t || jsonb_build_object('rn', row_number() over ()) as t
+    from (
+      select jsonb_array_elements(b->'transactions') as t
+    ) as txs
   ) as txs
   on conflict do nothing;
 END
@@ -535,18 +520,21 @@ begin
                      amount)
   select
     -- common
-    get_tuid_by_tx_id_and_time_stamp(t ->> 'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
-    t ->> 'id',
-    (t ->> 'height')::int4,
+    (t->>'uid')::bigint,
+    t->>'id',
+    (b->>'height')::int4,
     -- with sender
-	get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+	get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
     -- type specific
-    get_address_or_alias_uid(t ->> 'recipient', null, (t->>'height')::int4),
+    get_address_or_alias_uid(t->>'recipient', null, (b->>'height')::int4),
     get_alias_uid(t->>'recipient'),
-    (t ->> 'amount')::bigint
+    (t->>'amount')::bigint
   from (
-         select jsonb_array_elements(b -> 'transactions') || jsonb_build_object('height', b -> 'height') as t
-       ) as txs
+      select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+      from (
+          select jsonb_array_elements(b -> 'transactions') as t
+      ) as txs
+  ) as txs
   where (t ->> 'type') = '1'
   on conflict do nothing;
 END
@@ -569,16 +557,19 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
-        t ->> 'id',
-		(t->>'height')::int4,
+		(t->>'uid')::bigint,
+        t->>'id',
+		(b->>'height')::int4,
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
 		-- type specific
 		t->>'alias'
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+        from (
+            select jsonb_array_elements(b->'transactions') as t
+        ) as txs
+    ) as txs
 	where (t->>'type') = '10'
 	on conflict do nothing;
 END
@@ -592,49 +583,55 @@ CREATE FUNCTION public.insert_txs_11(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  INSERT INTO txs_11 (tx_uid,
+  insert into txs_11 (tx_uid,
                       id,
   					  height,
                       sender_uid,
                       asset_uid,
                       attachment)
-  SELECT
+  select
     -- common
-    get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
-    t ->> 'id',
-    (t ->> 'height') :: INT4,
+    (t->>'uid')::bigint,
+    t->>'id',
+    (b->>'height')::int4,
     -- with sender
-	get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+	get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
     -- type specific
-    get_asset_uid(t ->> 'assetId'),
-    t ->> 'attachment'
-  FROM (
-         SELECT jsonb_array_elements(b -> 'transactions') || jsonb_build_object('height', b -> 'height') AS t
-       ) AS txs
-  WHERE (t ->> 'type') = '11'
-  ON CONFLICT DO NOTHING;
+    get_asset_uid(t->>'assetId'),
+    t->>'attachment'
+  from (
+      select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+      from (
+        select jsonb_array_elements(b -> 'transactions') as t
+      ) as txs
+  ) as t 
+  where (t ->> 'type') = '11'
+  on conflict do nothing;
  
   -- transfers
-  INSERT INTO txs_11_transfers (tx_uid,
+  insert into txs_11_transfers (tx_uid,
                                 recipient_address_uid,
                                 recipient_alias_uid,
                                 amount,
                                 position_in_tx,
                                 height)
-  SELECT 
-	(t ->> 'tx_uid')::bigint,
-    get_address_or_alias_uid(t ->> 'recipient', null, (t->>'height')::int4),
+  select 
+	(t->>'tx_uid')::bigint,
+    get_address_or_alias_uid(t ->> 'recipient', null, (b->>'height')::int4),
     get_alias_uid(t->>'recipient'),
-    (t ->> 'amount') :: BIGINT,
-    row_number() OVER (PARTITION BY t ->> 'tx_id' ) - 1,
-    (t ->> 'height')::int4
-  FROM (
-         SELECT jsonb_array_elements(tx -> 'transfers') || jsonb_build_object('tx_uid', get_tuid_by_tx_id_and_time_stamp(tx->>'id', to_timestamp((tx->>'timestamp') :: DOUBLE PRECISION / 1000))) || jsonb_build_object('height', b->'height') AS t
-         FROM (
-                SELECT jsonb_array_elements(b -> 'transactions') AS tx
-              ) AS txs
-       ) AS transfers
-  ON CONFLICT DO NOTHING;
+    (t->>'amount')::bigint,
+    row_number() over (partition by t->>'tx_id') - 1,
+    (b->>'height')::int4
+  from (
+      select jsonb_array_elements(tx->'transfers') || jsonb_build_object('tx_uid', tx->'uid') as t
+      from (
+          select tx || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as tx
+          from (
+            select jsonb_array_elements(b->'transactions') as tx
+          ) as txs
+      ) as txs
+  ) as transfers
+  on conflict do nothing;
 END
 $$;
 
@@ -654,14 +651,17 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
-        t ->> 'id',
-		(t->>'height')::int4,
+		(t->>'uid')::bigint,
+        t->>'id',
+		(b->>'height')::int4,
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000))
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint)
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+        from (
+          select jsonb_array_elements(b->'transactions') as t
+	    ) as txs
+    ) as txs
 	where (t->>'type') = '12'
 	on conflict do nothing;
 
@@ -697,12 +697,15 @@ begin
 			else null
 		end as data_value_string,
 		row_number() over (PARTITION BY d->>'tx_id') - 1 as position_in_tx,
-		(d->>'height')::int4
+		(b->>'height')::int4
 	from (
-		select jsonb_array_elements(tx->'data') || jsonb_build_object('tx_uid', get_tuid_by_tx_id_and_time_stamp(tx->>'id', to_timestamp((tx->>'timestamp') :: DOUBLE PRECISION / 1000))) || jsonb_build_object('height', b->'height') as d
+		select jsonb_array_elements(tx->'data') || jsonb_build_object('tx_uid', tx->'uid') as d
+        from (
+            select tx || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as tx
 			from (
 				select jsonb_array_elements(b->'transactions') as tx
 			) as txs
+        ) as txs
 	) as data
 	on conflict do nothing;
 END
@@ -725,16 +728,19 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+		(t->>'uid')::bigint,
         t ->> 'id',
-		(t->>'height')::int4,
+		(b->>'height')::int4,
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
 		-- type specific
     	t->>'script'
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+        from (
+		  select jsonb_array_elements(b->'transactions') as t
+	    ) as txs
+    ) as txs
 	where (t->>'type') = '13'
 	on conflict do nothing;
 END
@@ -758,17 +764,20 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
-        t ->> 'id',
-		(t->>'height')::int4,
+		(t->>'uid')::bigint,
+        t->>'id',
+		(b->>'height')::int4,
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
 		-- type specific
 	    get_asset_uid(t->>'assetId'),
 	    (t->>'minSponsoredAssetFee')::bigint
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+		from (
+            select jsonb_array_elements(b->'transactions') as t
+	    ) as txs
+    ) as txs
 	where (t->>'type') = '14'
 	on conflict do nothing;
 END
@@ -792,17 +801,20 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
-        t ->> 'id',
-		(t->>'height')::int4,
+		(t->>'uid')::bigint,
+        t->>'id',
+		(b->>'height')::int4,
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
 		-- type specific
 		get_asset_uid(t->>'assetId'),
 	    t->>'script'
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+		from (
+            select jsonb_array_elements(b->'transactions') as t
+	    ) as txs
+    ) as txs
 	where (t->>'type') = '15'
 	on conflict do nothing;
 END
@@ -826,17 +838,20 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
-        t ->> 'id',
-		(t->>'height')::int4,
+		(t->>'uid')::bigint,
+        t->>'id',
+		(b->>'height')::int4,
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
 		-- type specific
-		get_address_or_alias_uid(t->>'dApp', null, (t->>'height')::int4),
+		get_address_or_alias_uid(t->>'dApp', null, (b->>'height')::int4),
 	    t->'call'->>'function'
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+		from (
+            select jsonb_array_elements(b->'transactions') as t
+	    ) as txs
+    ) as txs
 	where (t->>'type') = '16'
 	on conflict do nothing;
 
@@ -851,7 +866,7 @@ begin
 		height
 	)
 	select
-		(arg->>'tx_uid')::int4,
+		(arg->>'tx_uid')::bigint,
 		arg->>'type' as arg_type,
 		case when arg->>'type' = 'integer'
 			then (arg->>'value')::bigint
@@ -870,13 +885,16 @@ begin
 			else null
 		end as arg_value_string,
 		row_number() over (PARTITION BY arg->>'tx_uid') - 1 as position_in_args,
-		(arg->>'height')::int4
+		(b->>'height')::int4
 	from (
-		select jsonb_array_elements(tx->'call'->'args') || jsonb_build_object('tx_uid', get_tuid_by_tx_id_and_time_stamp(tx->>'id', to_timestamp((tx->>'timestamp') :: DOUBLE PRECISION / 1000))) || jsonb_build_object('height', b->'height') as arg
-			from (
-				select jsonb_array_elements(b->'transactions') as tx
-			) as txs
-			where (tx->>'type') = '16'
+        select jsonb_array_elements(tx->'call'->'args') || jsonb_build_object('tx_uid', tx->'uid') as arg
+        from (
+            select tx || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as tx
+            from (
+                select jsonb_array_elements(b->'transactions') as tx
+            ) as txs
+        ) as txs
+        where (tx->>'type') = '16'
 	) as data
 	on conflict do nothing;
 
@@ -892,13 +910,16 @@ begin
 		(p->>'amount')::bigint as amount,
 		get_asset_uid(p->>'assetId') as asset_uid,
 		row_number() over (PARTITION BY p->'tx_uid') - 1 as position_in_payment,
-		(p->>'height')::int4
+		(b->>'height')::int4
 	from (
-		select jsonb_array_elements(tx->'payment') || jsonb_build_object('tx_uid', get_tuid_by_tx_id_and_time_stamp(tx->>'id', to_timestamp((tx->>'timestamp') :: DOUBLE PRECISION / 1000))) || jsonb_build_object('height', b->'height') as p
-			from (
-				select jsonb_array_elements(b->'transactions') as tx
-			) as txs
-			where (tx->>'type') = '16'
+        select jsonb_array_elements(tx->'payment') || jsonb_build_object('tx_uid', tx->'uid') as p
+        from (
+            select tx || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as tx
+            from (
+                select jsonb_array_elements(b->'transactions') as tx
+            ) as txs
+        ) as txs
+        where (tx->>'type') = '16'
 	) as data
 	on conflict do nothing;
 END
@@ -923,17 +944,20 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
-        t ->> 'id',
-		(t->>'height')::int4,
+		(t->>'uid')::bigint,
+        t->>'id',
+		(b->>'height')::int4,
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
 		-- type specific
-    	get_address_or_alias_uid(t ->> 'recipient', null, (t->>'height')::int4),
+    	get_address_or_alias_uid(t->>'recipient', null, (b->>'height')::int4),
     	get_alias_uid(t->>'recipient'),
 		(t->>'amount')::bigint
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+		from (
+            select jsonb_array_elements(b->'transactions') as t
+        ) as txs
 	) as txs
 	where (t->>'type') = '2'
 	on conflict do nothing;
@@ -963,9 +987,9 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
-        t ->> 'id',
-		(t->>'height')::int4,
+		(t->>'uid')::bigint,
+        t->>'id',
+		(b->>'height')::int4,
 		-- with sender
 		(t->>'sender_uid')::bigint,
 		-- type specific
@@ -974,7 +998,7 @@ begin
             (t->>'sender_uid')::bigint,
 			t->>'name', 
 			t->>'description',
-			(t->>'height')::int4, 
+			(b->>'height')::int4, 
 			to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000), 
 			(t->>'quantity')::bigint,
 			(t->>'decimals')::smallint, 
@@ -988,11 +1012,13 @@ begin
 		(t->>'reissuable')::bool,
 		t->>'script'
 	from (
-        select 
-            t || jsonb_build_object('sender_uid', get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000))) as t
+        select t || jsonb_build_object('sender_uid', get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint)) as t
         from (
-            select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-        ) as t
+            select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+            from (
+                select jsonb_array_elements(b->'transactions') as t
+            ) as txs
+        ) as txs
 	) as txs
 	where (t->>'type') = '3'
 	on conflict do nothing;
@@ -1020,21 +1046,24 @@ begin
 		asset_uid
 	)
 	select
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
-        t ->> 'id',
-		(t->>'height')::int4,
+		(t->>'uid')::bigint,
+        t->>'id',
+		(b->>'height')::int4,
 		get_asset_uid(coalesce(t->>'feeAsset', t->>'feeAssetId')),
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
 		-- type-specific
-		get_address_or_alias_uid(t->>'recipient', null, (t->>'height')::int4),
+		get_address_or_alias_uid(t->>'recipient', null, (b->>'height')::int4),
 		get_alias_uid(t->>'recipient'),
 		t->>'attachment',
 		(t->>'amount')::bigint,
 		get_asset_uid(t->>'assetId')
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+        from (
+            select jsonb_array_elements(b->'transactions') as t
+        ) as txs
+    ) as txs
 	where (t->>'type') = '4'
 	on conflict do nothing;
 END
@@ -1059,18 +1088,21 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+		(t->>'uid')::bigint,
         t ->> 'id',
-		(t->>'height')::int4,
+		(b->>'height')::int4,
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
 		-- type specific
 		get_asset_uid(t->>'assetId'),
 		(t->>'quantity')::bigint,
 		(t->>'reissuable')::bool
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+        from (
+            select jsonb_array_elements(b->'transactions') as t
+	    ) as txs
+    ) as txs
 	where (t->>'type') = '5'
 	on conflict do nothing;
 END
@@ -1094,17 +1126,20 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
+		(t->>'uid')::bigint,
         t ->> 'id',
-		(t->>'height')::int4,
+		(b->>'height')::int4,
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
 		-- type specific
 		get_asset_uid(t->>'assetId'),
 		(t->>'amount')::bigint
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
-	) as txs
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+        from (
+            select jsonb_array_elements(b->'transactions') as t
+	    ) as txs
+    ) as txs
 	where (t->>'type') = '6'
 	on conflict do nothing;
 END
@@ -1134,16 +1169,16 @@ begin
                      price_asset_uid)
   select
     -- common
-    (t->>'tuid')::bigint,
-    t ->> 'id',
-    (t ->> 'height')::int4,
+    (t->>'uid')::bigint,
+    t->>'id',
+    (b->>'height')::int4,
    	get_asset_uid(t->>'feeAssetId'),
     to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000),
     -- with sender
 	(t->>'sender_uid')::bigint,
     -- type specific
-    get_order_uid(t -> 'order1', (t->>'height')::int4, (t->>'tuid')::bigint, (t->>'sender_uid')::bigint),
-    get_order_uid(t -> 'order2', (t->>'height')::int4, (t->>'tuid')::bigint, (t->>'sender_uid')::bigint),
+    get_order_uid(t -> 'order1', (b->>'height')::int4, (t->>'uid')::bigint, (t->>'sender_uid')::bigint),
+    get_order_uid(t -> 'order2', (b->>'height')::int4, (t->>'uid')::bigint, (t->>'sender_uid')::bigint),
     (t ->> 'amount')::bigint,
     (t ->> 'price')::bigint,
     (t ->> 'buyMatcherFee')::bigint,
@@ -1151,14 +1186,14 @@ begin
     get_asset_uid(t->'order1'->'assetPair'->>'amountAsset'),
     get_asset_uid(t->'order1'->'assetPair'->>'priceAsset')
   from (
-  	select t 
-  		   || jsonb_build_object('tuid', get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000))) 
-  		   || jsonb_build_object('sender_uid', get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)))
-  		   as t
-  		   from (
-	         select jsonb_array_elements(b -> 'transactions') || jsonb_build_object('height', b -> 'height') as t
-	       ) as t
-       ) as txs
+    select t || jsonb_build_object('sender_uid', get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint)) as t
+    from (
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+  	    from (
+	        select jsonb_array_elements(b -> 'transactions') as t
+	    ) as txs
+    ) as txs
+  ) as txs
   where (t ->> 'type') = '7'
   on conflict do nothing;
 END
@@ -1183,17 +1218,20 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
-        t ->> 'id',
-		(t->>'height')::int4,
+		(t->>'uid')::bigint,
+        t->>'id',
+		(b->>'height')::int4,
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
 		-- type specific
-    	get_address_or_alias_uid(t ->> 'recipient', null, (t->>'height')::int4),
+    	get_address_or_alias_uid(t->>'recipient', null, (b->>'height')::int4),
 	    get_alias_uid(t->>'recipient'),
 		(t->>'amount')::bigint
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+        from (
+            select jsonb_array_elements(b->'transactions') as t
+        ) as txs
 	) as txs
 	where (t->>'type') = '8'
 	on conflict do nothing;
@@ -1217,15 +1255,18 @@ begin
 	)
 	select
 		-- common
-		get_tuid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t->>'timestamp') :: DOUBLE PRECISION / 1000)),
-        t ->> 'id',
-		(t->>'height')::int4,
+		(t->>'uid')::bigint,
+        t->>'id',
+		(b->>'height')::int4,
 		-- with sender
-		get_tx_sender_uid_by_tx_id_and_time_stamp(t->>'id', to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000)),
+		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
 		-- type specific
 		get_tuid_by_tx_id(t->>'leaseId')
 	from (
-		select jsonb_array_elements(b->'transactions') || jsonb_build_object('height', b->'height') as t
+        select t || jsonb_build_object('uid', get_tuid_by_tx_height_and_position_in_block((b->>'height')::int4, (row_number() over ())::int4 - 1)) as t
+        from (
+            select jsonb_array_elements(b->'transactions') as t
+        ) as txs
 	) as txs
 	where (t->>'type') = '9'
 	on conflict do nothing;
@@ -1422,7 +1463,7 @@ CREATE TABLE public.assets_data (
 
 
 CREATE TABLE public.assets_metadata (
-    asset_uid bigint GENERATED BY DEFAULT AS IDENTITY,
+    asset_uid bigint,
     asset_name character varying,
     ticker character varying,
     height integer
@@ -1508,7 +1549,7 @@ CREATE TABLE public.pairs (
 
 
 CREATE TABLE public.txs (
-    uid bigint GENERATED BY DEFAULT AS IDENTITY,
+    uid bigint NOT NULL,
     tx_type smallint NOT NULL,
     sender_uid bigint,
     time_stamp timestamp with time zone NOT NULL,
@@ -1517,17 +1558,16 @@ CREATE TABLE public.txs (
     signature character varying,
     proofs character varying[],
     tx_version smallint,
-    fee bigint,
-    constraint txs_uid_check check ( check_tx_uid_existance(uid, id, time_stamp) )
+    fee bigint
 )
 PARTITION BY RANGE (uid);
 
 
-SELECT create_range_partitions('txs', 20, 100000000, 0);
+SELECT create_range_partitions('txs', 10, 50000000000, 0);
 
 
 CREATE TABLE public.txs_1 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_1_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint,
@@ -1547,11 +1587,11 @@ CREATE TABLE public.txs_1_default (
     amount bigint NOT NULL,
     recipient_alias_uid bigint
 );
-ALTER TABLE ONLY public.txs_1 ATTACH PARTITION public.txs_1_default DEFAULT;
+ALTER TABLE public.txs_1 ATTACH PARTITION public.txs_1_default DEFAULT;
 
 
 CREATE TABLE public.txs_10 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_10_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
@@ -1567,11 +1607,11 @@ CREATE TABLE public.txs_10_default (
     sender_uid bigint NOT NULL,
     alias character varying NOT NULL
 );
-ALTER TABLE ONLY public.txs_10 ATTACH PARTITION public.txs_10_default DEFAULT;
+ALTER TABLE public.txs_10 ATTACH PARTITION public.txs_10_default DEFAULT;
 
 
 CREATE TABLE public.txs_11 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_11_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
@@ -1589,7 +1629,7 @@ CREATE TABLE public.txs_11_default (
     asset_uid bigint,
     attachment character varying NOT NULL
 );
-ALTER TABLE ONLY public.txs_11 ATTACH PARTITION public.txs_11_default DEFAULT;
+ALTER TABLE public.txs_11 ATTACH PARTITION public.txs_11_default DEFAULT;
 
 
 CREATE TABLE public.txs_11_transfers (
@@ -1603,7 +1643,7 @@ CREATE TABLE public.txs_11_transfers (
 PARTITION BY RANGE (tx_uid);
 
 
-SELECT create_range_partitions('txs_11_transfers', 20, 50000000, 0);
+SELECT create_range_partitions('txs_11_transfers', 10, 50000000000, 0);
 
 
 CREATE TABLE public.txs_11_transfers_default (
@@ -1614,11 +1654,11 @@ CREATE TABLE public.txs_11_transfers_default (
     height integer NOT NULL,
     recipient_alias_uid bigint
 );
-ALTER TABLE ONLY public.txs_11_transfers ATTACH PARTITION public.txs_11_transfers_default DEFAULT;
+ALTER TABLE public.txs_11_transfers ATTACH PARTITION public.txs_11_transfers_default DEFAULT;
 
 
 CREATE TABLE public.txs_12 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_12_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL
@@ -1632,7 +1672,7 @@ CREATE TABLE public.txs_12_default (
     height integer NOT NULL,
     sender_uid bigint NOT NULL
 );
-ALTER TABLE ONLY public.txs_12 ATTACH PARTITION public.txs_12_default DEFAULT;
+ALTER TABLE public.txs_12 ATTACH PARTITION public.txs_12_default DEFAULT;
 
 
 CREATE TABLE public.txs_12_data (
@@ -1649,7 +1689,7 @@ CREATE TABLE public.txs_12_data (
 PARTITION BY RANGE (tx_uid);
 
 
-SELECT create_range_partitions('txs_12_data', 20, 50000000, 0);
+SELECT create_range_partitions('txs_12_data', 10, 50000000000, 0);
 
 
 CREATE TABLE public.txs_12_data_default (
@@ -1663,11 +1703,11 @@ CREATE TABLE public.txs_12_data_default (
     position_in_tx smallint NOT NULL,
     height integer NOT NULL
 );
-ALTER TABLE ONLY public.txs_12_data ATTACH PARTITION public.txs_12_data_default DEFAULT;
+ALTER TABLE public.txs_12_data ATTACH PARTITION public.txs_12_data_default DEFAULT;
 
 
 CREATE TABLE public.txs_13 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_13_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
@@ -1683,15 +1723,15 @@ CREATE TABLE public.txs_13_default (
     sender_uid bigint NOT NULL,
     script character varying
 );
-ALTER TABLE ONLY public.txs_13 ATTACH PARTITION public.txs_13_default DEFAULT;
+ALTER TABLE public.txs_13 ATTACH PARTITION public.txs_13_default DEFAULT;
 
 
 CREATE TABLE public.txs_14 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_14_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
-    asset_uid bigint NOT NULL,
+    asset_uid bigint,
     min_sponsored_asset_fee bigint
 )
 PARTITION BY RANGE (tx_uid);
@@ -1702,18 +1742,18 @@ CREATE TABLE public.txs_14_default (
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
-    asset_uid bigint NOT NULL,
+    asset_uid bigint,
     min_sponsored_asset_fee bigint
 );
-ALTER TABLE ONLY public.txs_14 ATTACH PARTITION public.txs_14_default DEFAULT;
+ALTER TABLE public.txs_14 ATTACH PARTITION public.txs_14_default DEFAULT;
 
 
 CREATE TABLE public.txs_15 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_15_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
-    asset_uid bigint NOT NULL,
+    asset_uid bigint,
     script character varying
 )
 PARTITION BY RANGE (tx_uid);
@@ -1724,14 +1764,14 @@ CREATE TABLE public.txs_15_default (
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
-    asset_uid bigint NOT NULL,
+    asset_uid bigint,
     script character varying
 );
-ALTER TABLE ONLY public.txs_15 ATTACH PARTITION public.txs_15_default DEFAULT;
+ALTER TABLE public.txs_15 ATTACH PARTITION public.txs_15_default DEFAULT;
 
 
 CREATE TABLE public.txs_16 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_16_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
@@ -1742,7 +1782,7 @@ CREATE TABLE public.txs_16 (
 PARTITION BY RANGE (tx_uid);
 
 
-SELECT create_range_partitions('txs_16', 20, 50000000, 0);
+SELECT create_range_partitions('txs_16', 10, 50000000000, 0);
 
 
 CREATE TABLE public.txs_16_default (
@@ -1754,7 +1794,7 @@ CREATE TABLE public.txs_16_default (
     function_name character varying,
     dapp_alias_uid bigint
 );
-ALTER TABLE ONLY public.txs_16 ATTACH PARTITION public.txs_16_default DEFAULT;
+ALTER TABLE public.txs_16 ATTACH PARTITION public.txs_16_default DEFAULT;
 
 
 CREATE TABLE public.txs_16_args (
@@ -1770,7 +1810,7 @@ CREATE TABLE public.txs_16_args (
 PARTITION BY RANGE (tx_uid);
 
 
-SELECT create_range_partitions('txs_16_args', 20, 100000000, 0);
+SELECT create_range_partitions('txs_16_args', 10, 50000000000, 0);
 
 
 CREATE TABLE public.txs_16_args_default (
@@ -1796,7 +1836,7 @@ CREATE TABLE public.txs_16_payment (
 PARTITION BY RANGE (tx_uid);
 
 
-SELECT create_range_partitions('txs_16_payment', 20, 100000000, 0);
+SELECT create_range_partitions('txs_16_payment', 10, 50000000000, 0);
 
 
 CREATE TABLE public.txs_16_payment_default (
@@ -1806,11 +1846,11 @@ CREATE TABLE public.txs_16_payment_default (
     height integer,
     asset_uid bigint
 );
-ALTER TABLE ONLY public.txs_16_payment ATTACH PARTITION public.txs_16_payment_default DEFAULT;
+ALTER TABLE public.txs_16_payment ATTACH PARTITION public.txs_16_payment_default DEFAULT;
 
 
 CREATE TABLE public.txs_2 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_2_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
@@ -1830,11 +1870,11 @@ CREATE TABLE public.txs_2_default (
     amount bigint NOT NULL,
     recipient_alias_uid bigint
 );
-ALTER TABLE ONLY public.txs_2 ATTACH PARTITION public.txs_2_default DEFAULT;
+ALTER TABLE public.txs_2 ATTACH PARTITION public.txs_2_default DEFAULT;
 
 
 CREATE TABLE public.txs_3 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_3_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
@@ -1862,11 +1902,11 @@ CREATE TABLE public.txs_3_default (
     reissuable boolean NOT NULL,
     script character varying
 );
-ALTER TABLE ONLY public.txs_3 ATTACH PARTITION public.txs_3_default DEFAULT;
+ALTER TABLE public.txs_3 ATTACH PARTITION public.txs_3_default DEFAULT;
 
 
 CREATE TABLE public.txs_4 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_4_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
@@ -1895,11 +1935,11 @@ CREATE TABLE public.txs_4_default (
     attachment character varying NOT NULL,
     recipient_alias_uid bigint
 );
-ALTER TABLE ONLY public.txs_4 ATTACH PARTITION public.txs_4_default DEFAULT;
+ALTER TABLE public.txs_4 ATTACH PARTITION public.txs_4_default DEFAULT;
 
 
 CREATE TABLE public.txs_5 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_5_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
@@ -1919,11 +1959,11 @@ CREATE TABLE public.txs_5_default (
     quantity bigint NOT NULL,
     reissuable boolean NOT NULL
 );
-ALTER TABLE ONLY public.txs_5 ATTACH PARTITION public.txs_5_default DEFAULT;
+ALTER TABLE public.txs_5 ATTACH PARTITION public.txs_5_default DEFAULT;
 
 
 CREATE TABLE public.txs_6 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_6_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
@@ -1941,11 +1981,11 @@ CREATE TABLE public.txs_6_default (
     asset_uid bigint NOT NULL,
     amount bigint NOT NULL
 );
-ALTER TABLE ONLY public.txs_6 ATTACH PARTITION public.txs_6_default DEFAULT;
+ALTER TABLE public.txs_6 ATTACH PARTITION public.txs_6_default DEFAULT;
 
 
 CREATE TABLE public.txs_7 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_7_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     time_stamp timestamp with time zone NOT NULL,
@@ -1963,7 +2003,7 @@ CREATE TABLE public.txs_7 (
 PARTITION BY RANGE (tx_uid);
 
 
-SELECT create_range_partitions('txs_7', 20, 50000000, 0);
+SELECT create_range_partitions('txs_7', 10, 50000000000, 0);
 
 
 CREATE TABLE public.txs_7_default (
@@ -1982,38 +2022,11 @@ CREATE TABLE public.txs_7_default (
     sell_matcher_fee bigint NOT NULL,
     fee_asset_uid bigint
 );
-ALTER TABLE ONLY public.txs_7 ATTACH PARTITION public.txs_7_default DEFAULT;
-
-
-CREATE TABLE public.txs_7_orders (
-    tx_uid bigint NOT NULL,
-    height integer,
-    order_uid bigint NOT NULL,
-    sender_uid bigint NOT NULL,
-    order_sender_uid bigint NOT NULL,
-    amount_asset_uid bigint,
-    price_asset_uid bigint
-)
-PARTITION BY RANGE (tx_uid);
-
-
-SELECT create_range_partitions('txs_7_orders', 20, 50000000, 0);
-
-
-CREATE TABLE public.txs_7_orders_default (
-    tx_uid bigint NOT NULL,
-    height integer,
-    order_uid bigint NOT NULL,
-    sender_uid bigint NOT NULL,
-    order_sender_uid bigint NOT NULL,
-    amount_asset_uid bigint,
-    price_asset_uid bigint
-);
-ALTER TABLE ONLY public.txs_7_orders ATTACH PARTITION public.txs_7_orders_default DEFAULT;
+ALTER TABLE public.txs_7 ATTACH PARTITION public.txs_7_default DEFAULT;
 
 
 CREATE TABLE public.txs_8 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_8_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
@@ -2033,11 +2046,11 @@ CREATE TABLE public.txs_8_default (
     amount bigint NOT NULL,
     recipient_alias_uid bigint
 );
-ALTER TABLE ONLY public.txs_8 ATTACH PARTITION public.txs_8_default DEFAULT;
+ALTER TABLE public.txs_8 ATTACH PARTITION public.txs_8_default DEFAULT;
 
 
 CREATE TABLE public.txs_9 (
-    tx_uid bigint NOT NULL,
+    tx_uid bigint CONSTRAINT txs_9_pk PRIMARY KEY,
     id character varying NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
@@ -2053,7 +2066,7 @@ CREATE TABLE public.txs_9_default (
     sender_uid bigint NOT NULL,
     lease_tx_uid bigint
 );
-ALTER TABLE ONLY public.txs_9 ATTACH PARTITION public.txs_9_default DEFAULT;
+ALTER TABLE public.txs_9 ATTACH PARTITION public.txs_9_default DEFAULT;
 
 
 CREATE TABLE public.waves_data (
@@ -2148,67 +2161,16 @@ ALTER TABLE public.pairs ADD CONSTRAINT pairs_pk PRIMARY KEY (amount_asset_uid, 
 ALTER TABLE public.txs ADD CONSTRAINT txs_pk PRIMARY KEY (id, time_stamp, uid);
 
 
-ALTER TABLE public.txs_10 ADD CONSTRAINT txs_10_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_11 ADD CONSTRAINT txs_11_tx_uid_key UNIQUE (tx_uid);
-
-
 ALTER TABLE public.txs_11_transfers ADD CONSTRAINT txs_11_transfers_pkey PRIMARY KEY (tx_uid, position_in_tx);
 
 
 ALTER TABLE public.txs_12_data ADD CONSTRAINT txs_12_data_pkey PRIMARY KEY (tx_uid, position_in_tx);
 
 
-ALTER TABLE public.txs_12 ADD CONSTRAINT txs_12_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_13 ADD CONSTRAINT txs_13_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_14 ADD CONSTRAINT txs_14_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_15 ADD CONSTRAINT txs_15_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_16 ADD CONSTRAINT txs_16_un UNIQUE (tx_uid);
-
-
 ALTER TABLE public.txs_16_args ADD CONSTRAINT txs_16_args_pk PRIMARY KEY (tx_uid, position_in_args);
 
 
 ALTER TABLE public.txs_16_payment ADD CONSTRAINT txs_16_payment_pk PRIMARY KEY (tx_uid, position_in_payment);
-
-
-ALTER TABLE public.txs_1 ADD CONSTRAINT txs_1_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_2 ADD CONSTRAINT txs_2_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_3 ADD CONSTRAINT txs_3_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_4 ADD CONSTRAINT txs_4_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_5 ADD CONSTRAINT txs_5_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_6 ADD CONSTRAINT txs_6_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_7 ADD CONSTRAINT txs_7_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_7_orders ADD CONSTRAINT txs_7_orders_pk PRIMARY KEY (tx_uid, order_uid);
-
-
-ALTER TABLE public.txs_8 ADD CONSTRAINT txs_8_tx_uid_key UNIQUE (tx_uid);
-
-
-ALTER TABLE public.txs_9 ADD CONSTRAINT txs_9_tx_uid_key UNIQUE (tx_uid);
 
 
 ALTER TABLE public.txs_9 ADD CONSTRAINT txs_9_un UNIQUE (tx_uid, lease_tx_uid);
@@ -2259,7 +2221,7 @@ CREATE INDEX candles_max_height_index ON public.candles USING btree (max_height)
 CREATE INDEX orders_height_idx ON public.orders USING btree (height);
 
 
-CREATE INDEX orders_id_uid_idx ON public.orders USING btree (id, uid);
+create index orders_id_tx_uid_uid_idx on orders (id, tx_uid, uid);
 
 
 CREATE INDEX assets_data_to_tsvector_asset_name_idx ON public.assets_data USING gin (to_tsvector('simple'::regconfig, (asset_name)::text));
@@ -2409,9 +2371,6 @@ CREATE INDEX txs_15_id_tx_uid_idx ON public.txs_15 (id, tx_uid);
 CREATE INDEX txs_16_dapp_address_uid_tx_uid_idx ON public.txs_16 USING btree (dapp_address_uid, tx_uid);
 
 
-CREATE INDEX txs_16_function_name_idx ON public.txs_16 USING btree (function_name);
-
-
 CREATE INDEX txs_16_height_idx ON public.txs_16 USING btree (height);
 
 
@@ -2421,6 +2380,12 @@ CREATE INDEX txs_16_sender_uid_idx ON public.txs_16 USING btree (sender_uid);
 CREATE INDEX txs_16_id_tx_uid_idx ON public.txs_16 (id, tx_uid);
 
 
+CREATE INDEX txs_16_sender_uid_tx_uid_idx ON public.txs_16 USING btree (sender_uid, tx_uid);
+
+
+CREATE INDEX txs_16_function_name_tx_uid_idx ON txs_16 (function_name, tx_uid);
+
+
 CREATE INDEX txs_16_args_height_idx ON public.txs_16_args USING btree (height);
 
 
@@ -2428,12 +2393,6 @@ CREATE INDEX txs_16_payment_asset_uid_idx ON public.txs_16_payment USING btree (
 
 
 CREATE INDEX txs_16_payment_height_idx ON public.txs_16_payment USING btree (height);
-
-
-CREATE INDEX txs_16_sender_uid_tx_uid_idx ON public.txs_16 USING btree (sender_uid, tx_uid);
-
-
-CREATE INDEX txs_16_function_name_tx_uid_idx ON txs_16 (function_name, tx_uid);
 
 
 CREATE INDEX txs_1_height_idx ON public.txs_1 USING btree (height);
@@ -2533,27 +2492,6 @@ CREATE INDEX txs_7_tx_uid_order1_uid_order2_uid_idx ON public.txs_7 USING btree 
 
 
 CREATE INDEX txs_7_id_tx_uid_idx ON public.txs_7 (id, tx_uid);
-
-
-CREATE INDEX txs_7_orders_amount_asset_uid_price_asset_uid_tuid_idx ON public.txs_7_orders USING btree (amount_asset_uid, price_asset_uid, tx_uid);
-
-
-CREATE INDEX txs_7_orders_amount_asset_uid_tx_uid_idx ON public.txs_7_orders USING btree (amount_asset_uid, tx_uid);
-
-
-CREATE INDEX txs_7_orders_height_idx ON public.txs_7_orders USING btree (height);
-
-
-CREATE INDEX txs_7_orders_order_sender_uid_tuid_idx ON public.txs_7_orders USING btree (order_sender_uid, tx_uid);
-
-
-CREATE INDEX txs_7_orders_order_uid_tx_uid_idx ON public.txs_7_orders USING btree (order_uid, tx_uid);
-
-
-CREATE INDEX txs_7_orders_price_asset_uid_tx_uid_idx ON public.txs_7_orders USING btree (price_asset_uid, tx_uid);
-
-
-CREATE INDEX txs_7_orders_sender_uid_tuid_idx ON public.txs_7_orders USING btree (sender_uid, tx_uid);
 
 
 CREATE INDEX txs_8_height_idx ON public.txs_8 USING btree (height);
@@ -2675,10 +2613,6 @@ ALTER TABLE public.txs_15
 
 
 ALTER TABLE public.txs_16
-    ADD CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES public.blocks(height) ON DELETE CASCADE;
-
-
-ALTER TABLE public.txs_7_orders
     ADD CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES public.blocks(height) ON DELETE CASCADE;
 
 

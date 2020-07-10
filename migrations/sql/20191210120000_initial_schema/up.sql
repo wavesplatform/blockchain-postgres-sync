@@ -1161,6 +1161,8 @@ begin
                      sender_uid,
                      order1_uid,
                      order2_uid,
+                     order1_sender_uid,
+                     order2_sender_uid,
                      amount,
                      price,
                      buy_matcher_fee,
@@ -1179,6 +1181,8 @@ begin
     -- type specific
     get_order_uid(t -> 'order1', (b->>'height')::int4, (t->>'uid')::bigint, (t->>'sender_uid')::bigint),
     get_order_uid(t -> 'order2', (b->>'height')::int4, (t->>'uid')::bigint, (t->>'sender_uid')::bigint),
+    get_address_uid(t->'order1'->>'sender', t->'order1'->>'senderPublicKey', (b->'height')::int4),
+    get_address_uid(t->'order2'->>'sender', t->'order2'->>'senderPublicKey', (b->'height')::int4),
     (t ->> 'amount')::bigint,
     (t ->> 'price')::bigint,
     (t ->> 'buyMatcherFee')::bigint,
@@ -1992,6 +1996,8 @@ CREATE TABLE public.txs_7 (
     sender_uid bigint NOT NULL,
     order1_uid bigint NOT NULL,
     order2_uid bigint NOT NULL,
+    order1_sender_uid bigint NOT NULL,
+    order2_sender_uid bigint NOT NULL,
     amount bigint NOT NULL,
     price bigint NOT NULL,
     amount_asset_uid bigint,
@@ -2492,6 +2498,9 @@ CREATE INDEX txs_7_tx_uid_order1_uid_order2_uid_idx ON public.txs_7 USING btree 
 
 
 CREATE INDEX txs_7_id_tx_uid_idx ON public.txs_7 (id, tx_uid);
+
+
+create index txs_7_order_senders_uid_idx on txs_7 ((ARRAY[order1_sender_uid, order2_sender_uid]));
 
 
 CREATE INDEX txs_8_height_idx ON public.txs_8 USING btree (height);

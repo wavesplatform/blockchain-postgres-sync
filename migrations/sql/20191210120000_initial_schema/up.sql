@@ -513,6 +513,7 @@ CREATE FUNCTION public.insert_txs_1(b jsonb) RETURNS void
 begin
   insert into txs_1 (tx_uid,
                      id,
+                     time_stamp,
   					 height,
                      sender_uid,
                      recipient_address_uid,
@@ -522,6 +523,7 @@ begin
     -- common
     (t->>'uid')::bigint,
     t->>'id',
+    to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
     (b->>'height')::int4,
     -- with sender
 	get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -551,6 +553,7 @@ begin
 	insert into txs_10 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid,
 		alias
@@ -559,6 +562,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t->>'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -585,6 +589,7 @@ CREATE FUNCTION public.insert_txs_11(b jsonb) RETURNS void
 BEGIN
   insert into txs_11 (tx_uid,
                       id,
+                      time_stamp,
   					  height,
                       sender_uid,
                       asset_uid,
@@ -593,6 +598,7 @@ BEGIN
     -- common
     (t->>'uid')::bigint,
     t->>'id',
+    to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
     (b->>'height')::int4,
     -- with sender
 	get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -646,6 +652,7 @@ begin
 	insert into txs_12 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid
 	)
@@ -653,6 +660,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t->>'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint)
@@ -722,6 +730,7 @@ begin
 	insert into txs_13 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid,
 	    script
@@ -730,6 +739,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t ->> 'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -757,6 +767,7 @@ begin
 	insert into txs_14 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid,
 	    asset_uid,
@@ -766,6 +777,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t->>'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -794,6 +806,7 @@ begin
 	insert into txs_15 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid,
 		asset_uid,
@@ -803,6 +816,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t->>'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -831,6 +845,7 @@ begin
 	insert into txs_16 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid,
 		dapp_address_uid,
@@ -840,6 +855,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t->>'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -936,6 +952,7 @@ begin
 	insert into txs_2 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid,
 		recipient_address_uid,
@@ -946,6 +963,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t->>'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -975,6 +993,7 @@ begin
 	insert into txs_3 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid,
 		asset_uid,
@@ -989,6 +1008,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t->>'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		(t->>'sender_uid')::bigint,
@@ -1036,6 +1056,7 @@ begin
 	insert into txs_4 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		fee_asset_uid, 
 		sender_uid, 
@@ -1048,6 +1069,7 @@ begin
 	select
 		(t->>'uid')::bigint,
         t->>'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		get_asset_uid(coalesce(t->>'feeAsset', t->>'feeAssetId')),
 		-- with sender
@@ -1080,6 +1102,7 @@ begin
 	insert into txs_5 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid,
 		asset_uid,
@@ -1090,6 +1113,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t ->> 'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -1119,6 +1143,7 @@ begin
 	insert into txs_6 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid,
 		asset_uid,
@@ -1128,6 +1153,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t ->> 'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -1214,6 +1240,7 @@ begin
 	insert into txs_8 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid,
 		recipient_address_uid,
@@ -1224,6 +1251,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t->>'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -1253,6 +1281,7 @@ begin
 	insert into txs_9 (
 		tx_uid,
         id,
+        time_stamp,
 		height,
 		sender_uid,
 		lease_tx_uid
@@ -1261,6 +1290,7 @@ begin
 		-- common
 		(t->>'uid')::bigint,
         t->>'id',
+        to_timestamp((t->>'timestamp')::DOUBLE PRECISION / 1000),
 		(b->>'height')::int4,
 		-- with sender
 		get_tx_sender_uid_by_tx_uid((t->>'uid')::bigint),
@@ -1573,6 +1603,7 @@ SELECT create_range_partitions('txs', 10, 50000000000, 0);
 CREATE TABLE public.txs_1 (
     tx_uid bigint CONSTRAINT txs_1_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint,
     recipient_address_uid bigint NOT NULL,
@@ -1585,6 +1616,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_1_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint,
     recipient_address_uid bigint NOT NULL,
@@ -1597,6 +1629,7 @@ ALTER TABLE public.txs_1 ATTACH PARTITION public.txs_1_default DEFAULT;
 CREATE TABLE public.txs_10 (
     tx_uid bigint CONSTRAINT txs_10_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     alias character varying NOT NULL
@@ -1607,6 +1640,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_10_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     alias character varying NOT NULL
@@ -1617,6 +1651,7 @@ ALTER TABLE public.txs_10 ATTACH PARTITION public.txs_10_default DEFAULT;
 CREATE TABLE public.txs_11 (
     tx_uid bigint CONSTRAINT txs_11_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -1628,6 +1663,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_11_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -1664,6 +1700,7 @@ ALTER TABLE public.txs_11_transfers ATTACH PARTITION public.txs_11_transfers_def
 CREATE TABLE public.txs_12 (
     tx_uid bigint CONSTRAINT txs_12_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL
 )
@@ -1673,6 +1710,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_12_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL
 );
@@ -1713,6 +1751,7 @@ ALTER TABLE public.txs_12_data ATTACH PARTITION public.txs_12_data_default DEFAU
 CREATE TABLE public.txs_13 (
     tx_uid bigint CONSTRAINT txs_13_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     script character varying
@@ -1723,6 +1762,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_13_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     script character varying
@@ -1733,6 +1773,7 @@ ALTER TABLE public.txs_13 ATTACH PARTITION public.txs_13_default DEFAULT;
 CREATE TABLE public.txs_14 (
     tx_uid bigint CONSTRAINT txs_14_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -1744,6 +1785,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_14_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -1755,6 +1797,7 @@ ALTER TABLE public.txs_14 ATTACH PARTITION public.txs_14_default DEFAULT;
 CREATE TABLE public.txs_15 (
     tx_uid bigint CONSTRAINT txs_15_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -1766,6 +1809,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_15_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -1777,6 +1821,7 @@ ALTER TABLE public.txs_15 ATTACH PARTITION public.txs_15_default DEFAULT;
 CREATE TABLE public.txs_16 (
     tx_uid bigint CONSTRAINT txs_16_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     dapp_address_uid bigint NOT NULL,
@@ -1792,6 +1837,7 @@ SELECT create_range_partitions('txs_16', 10, 50000000000, 0);
 CREATE TABLE public.txs_16_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     dapp_address_uid bigint NOT NULL,
@@ -1856,6 +1902,7 @@ ALTER TABLE public.txs_16_payment ATTACH PARTITION public.txs_16_payment_default
 CREATE TABLE public.txs_2 (
     tx_uid bigint CONSTRAINT txs_2_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     recipient_address_uid bigint NOT NULL,
@@ -1868,6 +1915,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_2_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     recipient_address_uid bigint NOT NULL,
@@ -1880,6 +1928,7 @@ ALTER TABLE public.txs_2 ATTACH PARTITION public.txs_2_default DEFAULT;
 CREATE TABLE public.txs_3 (
     tx_uid bigint CONSTRAINT txs_3_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -1896,6 +1945,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_3_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -1912,6 +1962,7 @@ ALTER TABLE public.txs_3 ATTACH PARTITION public.txs_3_default DEFAULT;
 CREATE TABLE public.txs_4 (
     tx_uid bigint CONSTRAINT txs_4_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -1930,6 +1981,7 @@ SELECT create_range_partitions('txs_4', 20, 50000000, 0);
 CREATE TABLE public.txs_4_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint,
@@ -1945,6 +1997,7 @@ ALTER TABLE public.txs_4 ATTACH PARTITION public.txs_4_default DEFAULT;
 CREATE TABLE public.txs_5 (
     tx_uid bigint CONSTRAINT txs_5_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -1957,6 +2010,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_5_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -1969,6 +2023,7 @@ ALTER TABLE public.txs_5 ATTACH PARTITION public.txs_5_default DEFAULT;
 CREATE TABLE public.txs_6 (
     tx_uid bigint CONSTRAINT txs_6_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -1980,6 +2035,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_6_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     asset_uid bigint NOT NULL,
@@ -1991,8 +2047,8 @@ ALTER TABLE public.txs_6 ATTACH PARTITION public.txs_6_default DEFAULT;
 CREATE TABLE public.txs_7 (
     tx_uid bigint CONSTRAINT txs_7_pk PRIMARY KEY,
     id character varying NOT NULL,
-    height integer NOT NULL,
     time_stamp timestamp with time zone NOT NULL,
+    height integer NOT NULL,
     sender_uid bigint NOT NULL,
     order1_uid bigint NOT NULL,
     order2_uid bigint NOT NULL,
@@ -2015,8 +2071,8 @@ SELECT create_range_partitions('txs_7', 10, 50000000000, 0);
 CREATE TABLE public.txs_7_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
-    height integer NOT NULL,
     time_stamp timestamp with time zone NOT NULL,
+    height integer NOT NULL,
     sender_uid bigint NOT NULL,
     order1_uid bigint NOT NULL,
     order2_uid bigint NOT NULL,
@@ -2034,6 +2090,7 @@ ALTER TABLE public.txs_7 ATTACH PARTITION public.txs_7_default DEFAULT;
 CREATE TABLE public.txs_8 (
     tx_uid bigint CONSTRAINT txs_8_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     recipient_address_uid bigint NOT NULL,
@@ -2046,6 +2103,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_8_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     recipient_address_uid bigint NOT NULL,
@@ -2058,6 +2116,7 @@ ALTER TABLE public.txs_8 ATTACH PARTITION public.txs_8_default DEFAULT;
 CREATE TABLE public.txs_9 (
     tx_uid bigint CONSTRAINT txs_9_pk PRIMARY KEY,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     lease_tx_uid bigint
@@ -2068,6 +2127,7 @@ PARTITION BY RANGE (tx_uid);
 CREATE TABLE public.txs_9_default (
     tx_uid bigint NOT NULL,
     id character varying NOT NULL,
+    time_stamp timestamp with time zone NOT NULL,
     height integer NOT NULL,
     sender_uid bigint NOT NULL,
     lease_tx_uid bigint
@@ -2269,6 +2329,9 @@ CREATE INDEX txs_10_alias_sender_uid_idx ON public.txs_10 USING btree (alias, se
 CREATE INDEX txs_10_alias_tuid_idx ON public.txs_10 USING btree (alias, tx_uid);
 
 
+CREATE INDEX txs_10_tx_uid_time_stamp_idx ON public.txs_10 USING btree (tx_uid, time_stamp);
+
+
 CREATE INDEX txs_10_height_idx ON public.txs_10 USING btree (height);
 
 
@@ -2282,6 +2345,9 @@ CREATE INDEX txs_10_id_tx_uid_idx ON public.txs_10 (id, tx_uid);
 
 
 CREATE INDEX txs_11_asset_uid_idx ON public.txs_11 USING hash (asset_uid);
+
+
+CREATE INDEX txs_11_tx_uid_time_stamp_idx ON public.txs_11 USING btree (tx_uid, time_stamp);
 
 
 CREATE INDEX txs_11_height_idx ON public.txs_11 USING btree (height);
@@ -2326,6 +2392,9 @@ CREATE INDEX txs_12_data_height_idx ON public.txs_12_data USING btree (height);
 CREATE INDEX txs_12_data_tx_uid_idx ON public.txs_12_data USING btree (tx_uid);
 
 
+CREATE INDEX txs_12_tx_uid_time_stamp_idx ON public.txs_12 USING btree (tx_uid, time_stamp);
+
+
 CREATE INDEX txs_12_height_idx ON public.txs_12 USING btree (height);
 
 
@@ -2341,6 +2410,9 @@ CREATE INDEX txs_12_data_tx_uid_data_key_idx ON txs_12_data (tx_uid, data_key);
 CREATE INDEX txs_12_data_tx_uid_data_type_idx ON txs_12_data (tx_uid, data_type);
 
 
+CREATE INDEX txs_13_tx_uid_time_stamp_idx ON public.txs_13 USING btree (tx_uid, time_stamp);
+
+
 CREATE INDEX txs_13_height_idx ON public.txs_13 USING btree (height);
 
 
@@ -2353,6 +2425,9 @@ CREATE INDEX txs_13_sender_uid_idx ON public.txs_13 USING hash (sender_uid);
 CREATE INDEX txs_13_id_tx_uid_idx ON public.txs_13 (id, tx_uid);
 
 
+CREATE INDEX txs_14_tx_uid_time_stamp_idx ON public.txs_14 USING btree (tx_uid, time_stamp);
+
+
 CREATE INDEX txs_14_height_idx ON public.txs_14 USING btree (height);
 
 
@@ -2360,6 +2435,9 @@ CREATE INDEX txs_14_sender_uid_idx ON public.txs_14 USING hash (sender_uid);
 
 
 CREATE INDEX txs_14_id_tx_uid_idx ON public.txs_14 (id, tx_uid);
+
+
+CREATE INDEX txs_15_tx_uid_time_stamp_idx ON public.txs_15 USING btree (tx_uid, time_stamp);
 
 
 CREATE INDEX txs_15_height_idx ON public.txs_15 USING btree (height);
@@ -2375,6 +2453,9 @@ CREATE INDEX txs_15_id_tx_uid_idx ON public.txs_15 (id, tx_uid);
 
 
 CREATE INDEX txs_16_dapp_address_uid_tx_uid_idx ON public.txs_16 USING btree (dapp_address_uid, tx_uid);
+
+
+CREATE INDEX txs_16_tx_uid_time_stamp_idx ON public.txs_16 USING btree (tx_uid, time_stamp);
 
 
 CREATE INDEX txs_16_height_idx ON public.txs_16 USING btree (height);
@@ -2401,6 +2482,9 @@ CREATE INDEX txs_16_payment_asset_uid_idx ON public.txs_16_payment USING btree (
 CREATE INDEX txs_16_payment_height_idx ON public.txs_16_payment USING btree (height);
 
 
+CREATE INDEX txs_1_tx_uid_time_stamp_idx ON public.txs_1 USING btree (tx_uid, time_stamp);
+
+
 CREATE INDEX txs_1_height_idx ON public.txs_1 USING btree (height);
 
 
@@ -2408,6 +2492,9 @@ CREATE INDEX txs_1_sender_uid_idx ON public.txs_1 USING btree (sender_uid);
 
 
 CREATE INDEX txs_1_id_tx_uid_idx ON public.txs_1 (id, tx_uid);
+
+
+CREATE INDEX txs_2_tx_uid_time_stamp_idx ON public.txs_2 USING btree (tx_uid, time_stamp);
 
 
 CREATE INDEX txs_2_height_idx ON public.txs_2 USING btree (height);
@@ -2420,6 +2507,9 @@ CREATE INDEX txs_2_id_tx_uid_idx ON public.txs_2 (id, tx_uid);
 
 
 CREATE INDEX txs_3_asset_uid_idx ON public.txs_3 USING hash (asset_uid);
+
+
+CREATE INDEX txs_3_tx_uid_time_stamp_idx ON public.txs_3 USING btree (tx_uid, time_stamp);
 
 
 CREATE INDEX txs_3_height_idx ON public.txs_3 USING btree (height);
@@ -2438,6 +2528,9 @@ CREATE INDEX txs_4_asset_uid_idx ON public.txs_4 USING btree (asset_uid);
 
 
 CREATE INDEX txs_4_asset_uid_tx_uid_idx ON public.txs_4 USING btree (asset_uid, tx_uid);
+
+
+CREATE INDEX txs_4_tx_uid_time_stamp_idx ON public.txs_4 USING btree (tx_uid, time_stamp);
 
 
 CREATE INDEX txs_4_height_idx ON public.txs_4 USING btree (height);
@@ -2464,6 +2557,9 @@ CREATE INDEX txs_4_asset_uid_tx_uid ON txs_4 (asset_uid, tx_uid);
 CREATE INDEX txs_5_asset_uid_idx ON public.txs_5 USING hash (asset_uid);
 
 
+CREATE INDEX txs_5_tx_uid_time_stamp_idx ON public.txs_5 USING btree (tx_uid, time_stamp);
+
+
 CREATE INDEX txs_5_height_idx ON public.txs_5 USING btree (height);
 
 
@@ -2476,6 +2572,9 @@ CREATE INDEX txs_5_id_tx_uid_idx ON public.txs_5 (id, tx_uid);
 CREATE INDEX txs_6_asset_uid_idx ON public.txs_6 USING hash (asset_uid);
 
 
+CREATE INDEX txs_6_tx_uid_time_stamp_idx ON public.txs_6 USING btree (tx_uid, time_stamp);
+
+
 CREATE INDEX txs_6_height_idx ON public.txs_6 USING btree (height);
 
 
@@ -2483,6 +2582,9 @@ CREATE INDEX txs_6_sender_uid_idx ON public.txs_6 USING hash (sender_uid);
 
 
 CREATE INDEX txs_6_id_tx_uid_idx ON public.txs_6 (id, tx_uid);
+
+
+CREATE INDEX txs_7_tx_uid_time_stamp_idx ON public.txs_7 USING btree (tx_uid, time_stamp);
 
 
 CREATE INDEX txs_7_height_idx ON public.txs_7 USING btree (height);
@@ -2503,6 +2605,9 @@ CREATE INDEX txs_7_id_tx_uid_idx ON public.txs_7 (id, tx_uid);
 create index txs_7_order_senders_uid_idx on txs_7 ((ARRAY[order1_sender_uid, order2_sender_uid]));
 
 
+CREATE INDEX txs_8_tx_uid_time_stamp_idx ON public.txs_8 USING btree (tx_uid, time_stamp);
+
+
 CREATE INDEX txs_8_height_idx ON public.txs_8 USING btree (height);
 
 
@@ -2516,6 +2621,9 @@ CREATE INDEX txs_8_sender_uid_idx ON public.txs_8 USING btree (sender_uid);
 
 
 CREATE INDEX txs_8_id_tx_uid_idx ON public.txs_8 (id, tx_uid);
+
+
+CREATE INDEX txs_9_tx_uid_time_stamp_idx ON public.txs_9 USING btree (tx_uid, time_stamp);
 
 
 CREATE INDEX txs_9_height_idx ON public.txs_9 USING btree (height);

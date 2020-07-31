@@ -1,0 +1,1 @@
+ALTER TABLE txs_12_data ALTER COLUMN data_type SET NOT NULL;

@@ -1,4 +1,4 @@
-ALTER TABLE txs ADD COLUMN status varchar DEFAULT 'succeeded';
+ALTER TABLE txs ADD COLUMN status varchar DEFAULT 'succeeded' NOT NULL;
 
 create or replace function insert_txs_1(b jsonb) returns void
     language plpgsql
@@ -26,7 +26,7 @@ begin
     jsonb_array_cast_text(t -> 'proofs'),
     (t ->> 'version')::smallint,
     (t ->> 'fee')::bigint,
-    t->>'applicationStatus',
+    coalesce(t->>'applicationStatus', 'succeeded'),
     -- type specific
     t ->> 'recipient',
     (t ->> 'amount')::bigint
@@ -70,7 +70,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',
@@ -115,7 +115,7 @@ BEGIN
     jsonb_array_cast_text(t -> 'proofs'),
     (t ->> 'version') :: SMALLINT,
     (t ->> 'fee') :: BIGINT,
-    t->>'applicationStatus',
+    coalesce(t->>'applicationStatus', 'succeeded'),
     -- with sender
     t ->> 'sender',
     t ->> 'senderPublicKey',
@@ -179,7 +179,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey'
@@ -262,7 +262,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',
@@ -309,7 +309,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',
@@ -357,7 +357,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',
@@ -405,7 +405,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',
@@ -517,7 +517,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',
@@ -592,7 +592,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',
@@ -645,7 +645,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',
@@ -713,7 +713,7 @@ begin
 		t->>'id',
 		to_timestamp((t ->> 'timestamp') :: DOUBLE PRECISION / 1000),
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		(t->>'amount')::bigint,
 		coalesce(t->>'assetId', 'WAVES'),
 		coalesce(t->>'feeAsset', 'WAVES'),
@@ -768,7 +768,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',
@@ -817,7 +817,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',
@@ -869,7 +869,7 @@ begin
     jsonb_array_cast_text(t -> 'proofs'),
     (t ->> 'version')::smallint,
     (t ->> 'fee')::bigint,
-    t->>'applicationStatus',
+    coalesce(t->>'applicationStatus', 'succeeded'),
     -- with sender
     t ->> 'sender',
     t ->> 'senderPublicKey',
@@ -923,7 +923,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',
@@ -970,7 +970,7 @@ begin
 		jsonb_array_cast_text(t->'proofs'),
 		(t->>'version')::smallint,
 		(t->>'fee')::bigint,
-        t->>'applicationStatus',
+        coalesce(t->>'applicationStatus', 'succeeded'),
 		-- with sender
 		t->>'sender',
 		t->>'senderPublicKey',

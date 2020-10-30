@@ -2373,13 +2373,13 @@ CREATE INDEX txs_7_sender_idx ON public.txs_7 USING btree (sender);
 CREATE INDEX txs_7_tx_uid_height_idx ON public.txs_7 USING btree (tx_uid, height);
 
 
-CREATE INDEX txs_7_tx_uid_order1_id_order2_id_idx ON public.txs_7 USING btree (tx_uid, (order1->>'id'), (order2->>'id'));
+CREATE INDEX txs_7_order_ids_tx_uid_idx ON public.txs_7 USING gin ((ARRAY[order1->>'id', order2->>'id']), tx_uid);
 
 
 CREATE INDEX txs_7_id_tx_uid_idx ON public.txs_7 (id, tx_uid);
 
 
-create index txs_7_order_senders_idx on txs_7 ((ARRAY[order1->>'sender', order2->>'sender']));
+create index txs_7_order_senders_tx_uid_idx on txs_7 USING gin ((ARRAY[order1->>'sender', order2->>'sender']), tx_uid);
 
 
 CREATE INDEX txs_8_tx_uid_time_stamp_idx ON public.txs_8 USING btree (tx_uid, time_stamp);

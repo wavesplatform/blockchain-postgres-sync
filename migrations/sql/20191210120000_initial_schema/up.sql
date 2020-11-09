@@ -26,9 +26,6 @@ END;
 $$;
 
 
-ALTER FUNCTION public.count_affected_rows() OWNER TO dba;
-
-
 CREATE FUNCTION public.find_missing_blocks() RETURNS TABLE(missing_height integer)
     LANGUAGE plpgsql
     AS $$
@@ -63,9 +60,6 @@ BEGIN
 END; $$;
 
 
-ALTER FUNCTION public.find_missing_blocks() OWNER TO dba;
-
-
 CREATE FUNCTION public.get_address(_address_or_alias varchar) RETURNS varchar
     LANGUAGE plpgsql
     AS $$
@@ -90,9 +84,6 @@ CREATE FUNCTION public.get_address(_address_or_alias varchar) RETURNS varchar
 $$;
 
 
-ALTER FUNCTION public.get_address(_address_or_alias varchar) OWNER TO dba;
-
-
 CREATE FUNCTION public.get_alias(_raw_alias varchar) RETURNS varchar
     LANGUAGE plpgsql
     AS $$
@@ -106,9 +97,6 @@ CREATE FUNCTION public.get_alias(_raw_alias varchar) RETURNS varchar
 		return _alias;
 	END;
 $$;
-
-
-ALTER FUNCTION public.get_alias(_raw_alias varchar) OWNER TO dba;
 
 
 CREATE FUNCTION public.get_asset_id(text) RETURNS text
@@ -129,9 +117,6 @@ CREATE FUNCTION public.get_tuid_by_tx_id(_tx_id varchar) RETURNS bigint
 $$;
 
 
-ALTER FUNCTION public.get_tuid_by_tx_id(_tx_id varchar) OWNER TO dba;
-
-
 CREATE FUNCTION public.get_tuid_by_tx_height_and_position_in_block(_height int4, _position_in_block int4) RETURNS bigint
     LANGUAGE plpgsql
     AS $$
@@ -139,9 +124,6 @@ CREATE FUNCTION public.get_tuid_by_tx_height_and_position_in_block(_height int4,
 		return _height::bigint * 100000::bigint + _position_in_block::bigint;
 	end;
 $$;
-
-
-ALTER FUNCTION public.get_tuid_by_tx_height_and_position_in_block(_height int4, _position_in_block int4) OWNER TO dba;
 
 
 CREATE FUNCTION public.insert_all(b jsonb) RETURNS void
@@ -173,9 +155,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.insert_all(b jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.insert_block(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -205,9 +184,6 @@ begin
 	end if;
 END
 $$;
-
-
-ALTER FUNCTION public.insert_block(b jsonb) OWNER TO dba;
 
 
 CREATE FUNCTION public.insert_txs_1(b jsonb) RETURNS void
@@ -262,9 +238,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.insert_txs_1(b jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.insert_txs_10(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -311,9 +284,6 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-
-ALTER FUNCTION public.insert_txs_10(b jsonb) OWNER TO dba;
 
 
 CREATE FUNCTION public.insert_txs_11(b jsonb) RETURNS void
@@ -389,9 +359,6 @@ BEGIN
   on conflict do nothing;
 END
 $$;
-
-
-ALTER FUNCTION public.insert_txs_11(b jsonb) OWNER TO dba;
 
 
 CREATE FUNCTION public.insert_txs_12(b jsonb) RETURNS void
@@ -483,9 +450,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.insert_txs_12(b jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.insert_txs_13(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -532,9 +496,6 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-
-ALTER FUNCTION public.insert_txs_13(b jsonb) OWNER TO dba;
 
 
 CREATE FUNCTION public.insert_txs_14(b jsonb) RETURNS void
@@ -587,9 +548,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.insert_txs_14(b jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.insert_txs_15(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -638,9 +596,6 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-
-ALTER FUNCTION public.insert_txs_15(b jsonb) OWNER TO dba;
 
 
 CREATE FUNCTION public.insert_txs_16(b jsonb) RETURNS void
@@ -768,8 +723,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.insert_txs_16(b jsonb) OWNER TO dba;
-
 CREATE FUNCTION insert_txs_17(b jsonb) RETURNS void
 	language plpgsql
 AS $$
@@ -822,9 +775,6 @@ END
 $$;
 
 
-ALTER FUNCTION insert_txs_17(jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.insert_txs_2(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -875,9 +825,6 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-
-ALTER FUNCTION public.insert_txs_2(b jsonb) OWNER TO dba;
 
 
 CREATE FUNCTION public.insert_txs_3(b jsonb) RETURNS void
@@ -940,9 +887,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.insert_txs_3(b jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.insert_txs_4(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -1000,9 +944,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.insert_txs_4(b jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.insert_txs_5(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -1055,9 +996,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.insert_txs_5(b jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.insert_txs_6(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -1106,9 +1044,6 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-
-ALTER FUNCTION public.insert_txs_6(b jsonb) OWNER TO dba;
 
 
 CREATE FUNCTION public.insert_txs_7(b jsonb) RETURNS void
@@ -1175,9 +1110,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.insert_txs_7(b jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.insert_txs_8(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -1230,9 +1162,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.insert_txs_8(b jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.insert_txs_9(b jsonb) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -1281,9 +1210,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.insert_txs_9(b jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.jsonb_array_cast_int(jsonb) RETURNS integer[]
     LANGUAGE sql IMMUTABLE
     AS $_$
@@ -1291,17 +1217,11 @@ CREATE FUNCTION public.jsonb_array_cast_int(jsonb) RETURNS integer[]
 $_$;
 
 
-ALTER FUNCTION public.jsonb_array_cast_int(jsonb) OWNER TO dba;
-
-
 CREATE FUNCTION public.jsonb_array_cast_text(jsonb) RETURNS text[]
     LANGUAGE sql IMMUTABLE
     AS $_$
     SELECT array_agg(x) || ARRAY[]::text[] FROM jsonb_array_elements_text($1) t(x);
 $_$;
-
-
-ALTER FUNCTION public.jsonb_array_cast_text(jsonb) OWNER TO dba;
 
 
 CREATE FUNCTION public.on_block_insert() RETURNS trigger
@@ -1314,9 +1234,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.on_block_insert() OWNER TO dba;
-
-
 CREATE FUNCTION public.on_block_update() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -1326,9 +1243,6 @@ BEGIN
 	return new;
 END
 $$;
-
-
-ALTER FUNCTION public.on_block_update() OWNER TO dba;
 
 
 CREATE FUNCTION public.reinsert_range(range_start integer, range_end integer) RETURNS void
@@ -1349,9 +1263,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.reinsert_range(range_start integer, range_end integer) OWNER TO dba;
-
-
 CREATE FUNCTION public.reinsert_range(range_start integer, range_end integer, step integer) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -1370,9 +1281,6 @@ END
 $$;
 
 
-ALTER FUNCTION public.reinsert_range(range_start integer, range_end integer, step integer) OWNER TO dba;
-
-
 CREATE FUNCTION public.text_timestamp_cast(text) RETURNS timestamp without time zone
     LANGUAGE plpgsql
     AS $_$
@@ -1381,9 +1289,6 @@ begin
   return to_timestamp($1 :: DOUBLE PRECISION / 1000);
 END
 $_$;
-
-
-ALTER FUNCTION public.text_timestamp_cast(text) OWNER TO dba;
 
 SET default_tablespace = '';
 
@@ -1815,7 +1720,7 @@ CREATE UNIQUE INDEX tickers_ticker_idx ON tickers (ticker);
 CREATE INDEX txs_height_idx ON public.txs USING btree (height);
 
 
-CREATE INDEX txs_id_idx ON public.txs USING btree (id);
+CREATE INDEX txs_id_idx ON public.txs USING hash (id);
 
 
 CREATE INDEX txs_sender_uid_idx ON public.txs USING btree (sender, uid);
@@ -1839,13 +1744,13 @@ CREATE INDEX txs_10_time_stamp_uid_idx ON public.txs_10 USING btree (time_stamp,
 CREATE INDEX txs_10_height_idx ON public.txs_10 USING btree (height);
 
 
-CREATE INDEX txs_10_sender_idx ON public.txs_10 USING hash (sender);
+CREATE INDEX txs_10_sender_uid_idx ON public.txs_10 USING btree (sender, uid);
 
 
-CREATE INDEX txs_10_id_idx ON public.txs_10 (id);
+CREATE INDEX txs_10_id_idx ON public.txs_10 USING hash (id);
 
 
-CREATE INDEX txs_11_asset_id_idx ON public.txs_11 USING hash (asset_id);
+CREATE INDEX txs_11_asset_id_uid_idx ON public.txs_11 USING btree (asset_id, uid);
 
 
 CREATE INDEX txs_11_time_stamp_uid_idx ON public.txs_11 USING btree (time_stamp, uid);
@@ -1857,7 +1762,7 @@ CREATE INDEX txs_11_height_idx ON public.txs_11 USING btree (height);
 CREATE INDEX txs_11_sender_uid_idx ON public.txs_11 USING btree (sender, uid);
 
 
-CREATE INDEX txs_11_id_idx ON public.txs_11 (id);
+CREATE INDEX txs_11_id_idx ON public.txs_11 USING hash (id);
 
 
 CREATE INDEX txs_11_transfers_height_idx ON public.txs_11_transfers USING btree (height);
@@ -1866,16 +1771,16 @@ CREATE INDEX txs_11_transfers_height_idx ON public.txs_11_transfers USING btree 
 CREATE INDEX txs_11_transfers_recipient_address_idx ON public.txs_11_transfers USING btree (recipient_address);
 
 
-CREATE INDEX txs_12_data_data_value_binary_partial_idx ON public.txs_12_data USING hash (data_value_binary) WHERE (data_type = 'binary'::text);
+CREATE INDEX txs_12_data_data_value_binary_tx_uid_partial_idx ON public.txs_12_data USING hash (data_value_binary) WHERE (data_type = 'binary'::text);
 
 
-CREATE INDEX txs_12_data_data_value_boolean_partial_idx ON public.txs_12_data USING btree (data_value_boolean) WHERE (data_type = 'boolean'::text);
+CREATE INDEX txs_12_data_data_value_boolean_tx_uid_partial_idx ON public.txs_12_data USING btree (data_value_boolean, tx_uid) WHERE (data_type = 'boolean'::text);
 
 
-CREATE INDEX txs_12_data_data_value_integer_partial_idx ON public.txs_12_data USING btree (data_value_integer) WHERE (data_type = 'integer'::text);
+CREATE INDEX txs_12_data_data_value_integer_tx_uid_partial_idx ON public.txs_12_data USING btree (data_value_integer, tx_uid) WHERE (data_type = 'integer'::text);
 
 
-CREATE INDEX txs_12_data_data_value_string_partial_idx ON public.txs_12_data USING hash (data_value_string) WHERE (data_type = 'string'::text);
+CREATE INDEX txs_12_data_data_value_string_tx_uid_partial_idx ON public.txs_12_data USING hash (data_value_string) WHERE (data_type = 'string'::text);
 
 
 CREATE INDEX txs_12_data_height_idx ON public.txs_12_data USING btree (height);
@@ -1890,16 +1795,16 @@ CREATE INDEX txs_12_time_stamp_uid_idx ON public.txs_12 USING btree (time_stamp,
 CREATE INDEX txs_12_height_idx ON public.txs_12 USING btree (height);
 
 
-CREATE INDEX txs_12_sender_idx ON public.txs_12 USING hash (sender);
+CREATE INDEX txs_12_sender_uid_idx ON public.txs_12 USING btree (sender, uid);
 
 
-CREATE INDEX txs_12_id_idx ON public.txs_12 (id);
+CREATE INDEX txs_12_id_idx ON public.txs_12 USING hash (id);
 
 
-CREATE INDEX txs_12_data_data_key_tx_uid_idx ON txs_12_data (data_key, tx_uid);
+CREATE INDEX txs_12_data_data_key_tx_uid_idx ON txs_12_data USING btree (data_key, tx_uid);
 
 
-CREATE INDEX txs_12_data_data_type_tx_uid_idx ON txs_12_data (data_type, tx_uid);
+CREATE INDEX txs_12_data_data_type_tx_uid_idx ON txs_12_data USING btree (data_type, tx_uid);
 
 
 CREATE INDEX txs_13_time_stamp_uid_idx ON public.txs_13 USING btree (time_stamp, uid);
@@ -1911,10 +1816,10 @@ CREATE INDEX txs_13_height_idx ON public.txs_13 USING btree (height);
 CREATE INDEX txs_13_md5_script_idx ON public.txs_13 USING btree (md5((script)::text));
 
 
-CREATE INDEX txs_13_sender_idx ON public.txs_13 USING hash (sender);
+CREATE INDEX txs_13_sender_uid_idx ON public.txs_13 USING btree (sender, uid);
 
 
-CREATE INDEX txs_13_id_idx ON public.txs_13 (id);
+CREATE INDEX txs_13_id_idx ON public.txs_13 USING hash (id);
 
 
 CREATE INDEX txs_14_time_stamp_uid_idx ON public.txs_14 USING btree (time_stamp, uid);
@@ -1923,10 +1828,10 @@ CREATE INDEX txs_14_time_stamp_uid_idx ON public.txs_14 USING btree (time_stamp,
 CREATE INDEX txs_14_height_idx ON public.txs_14 USING btree (height);
 
 
-CREATE INDEX txs_14_sender_idx ON public.txs_14 USING hash (sender);
+CREATE INDEX txs_14_sender_uid_idx ON public.txs_14 USING btree (sender, uid);
 
 
-CREATE INDEX txs_14_id_idx ON public.txs_14 (id);
+CREATE INDEX txs_14_id_idx ON public.txs_14 USING hash (id);
 
 
 CREATE INDEX txs_15_time_stamp_uid_idx ON public.txs_15 USING btree (time_stamp, uid);
@@ -1938,10 +1843,10 @@ CREATE INDEX txs_15_height_idx ON public.txs_15 USING btree (height);
 CREATE INDEX txs_15_md5_script_idx ON public.txs_15 USING btree (md5((script)::text));
 
 
-CREATE INDEX txs_15_sender_idx ON public.txs_15 USING btree (sender);
+CREATE INDEX txs_15_sender_uid_idx ON public.txs_15 USING btree (sender, uid);
 
 
-CREATE INDEX txs_15_id_idx ON public.txs_15 (id);
+CREATE INDEX txs_15_id_idx ON public.txs_15 USING hash (id);
 
 
 CREATE INDEX txs_16_dapp_address_uid_idx ON public.txs_16 USING btree (dapp_address, uid);
@@ -1953,13 +1858,10 @@ CREATE INDEX txs_16_time_stamp_uid_idx ON public.txs_16 USING btree (time_stamp,
 CREATE INDEX txs_16_height_idx ON public.txs_16 USING btree (height);
 
 
-CREATE INDEX txs_16_sender_idx ON public.txs_16 USING btree (sender);
-
-
-CREATE INDEX txs_16_id_idx ON public.txs_16 (id);
-
-
 CREATE INDEX txs_16_sender_uid_idx ON public.txs_16 USING btree (sender, uid);
+
+
+CREATE INDEX txs_16_id_idx ON public.txs_16 USING hash (id);
 
 
 CREATE INDEX txs_16_function_name_uid_idx ON txs_16 (function_name, uid);
@@ -1974,7 +1876,7 @@ CREATE INDEX txs_16_payment_asset_id_idx ON public.txs_16_payment USING btree (a
 CREATE INDEX txs_16_payment_height_idx ON public.txs_16_payment USING btree (height);
 
 
-CREATE INDEX txs_17_height_idx on txs_17 (height);
+CREATE INDEX txs_17_height_idx on txs_17 USING btree (height);
 
 
 CREATE INDEX txs_17_sender_time_stamp_id_idx on txs_17 (sender, time_stamp, uid);
@@ -1989,10 +1891,10 @@ CREATE INDEX txs_1_time_stamp_uid_idx ON public.txs_1 USING btree (time_stamp, u
 CREATE INDEX txs_1_height_idx ON public.txs_1 USING btree (height);
 
 
-CREATE INDEX txs_1_sender_idx ON public.txs_1 USING btree (sender);
+CREATE INDEX txs_1_sender_uid_idx ON public.txs_1 USING btree (sender, uid);
 
 
-CREATE INDEX txs_1_id_idx ON public.txs_1 (id);
+CREATE INDEX txs_1_id_idx ON public.txs_1 USING hash (id);
 
 
 CREATE INDEX txs_2_time_stamp_uid_idx ON public.txs_2 USING btree (time_stamp, uid);
@@ -2001,13 +1903,13 @@ CREATE INDEX txs_2_time_stamp_uid_idx ON public.txs_2 USING btree (time_stamp, u
 CREATE INDEX txs_2_height_idx ON public.txs_2 USING btree (height);
 
 
-CREATE INDEX txs_2_sender_idx ON public.txs_2 USING hash (sender);
+CREATE INDEX txs_2_sender_uid_idx ON public.txs_2 USING btree (sender, uid);
 
 
-CREATE INDEX txs_2_id_idx ON public.txs_2 (id);
+CREATE INDEX txs_2_id_idx ON public.txs_2 USING hash (id);
 
 
-CREATE INDEX txs_3_asset_id_idx ON public.txs_3 USING hash (asset_id);
+CREATE INDEX txs_3_asset_id_uid_idx ON public.txs_3 USING btree (asset_id, uid);
 
 
 CREATE INDEX txs_3_time_stamp_uid_idx ON public.txs_3 USING btree (time_stamp, uid);
@@ -2019,10 +1921,10 @@ CREATE INDEX txs_3_height_idx ON public.txs_3 USING btree (height);
 CREATE INDEX txs_3_md5_script_idx ON public.txs_3 USING btree (md5((script)::text));
 
 
-CREATE INDEX txs_3_sender_idx ON public.txs_3 USING hash (sender);
+CREATE INDEX txs_3_sender_uid_idx ON public.txs_3 USING btree (sender, uid);
 
 
-CREATE INDEX txs_3_id_idx ON public.txs_3 (id);
+CREATE INDEX txs_3_id_idx ON public.txs_3 USING hash (id);
 
 
 CREATE INDEX txs_4_asset_id_uid_idx ON public.txs_4 USING btree (asset_id, uid);
@@ -2034,7 +1936,7 @@ CREATE INDEX txs_4_time_stamp_uid_idx ON public.txs_4 USING btree (time_stamp, u
 CREATE INDEX txs_4_height_uid_idx ON public.txs_4 USING btree (height, uid);
 
 
-CREATE INDEX txs_4_id_idx ON public.txs_4 (id);
+CREATE INDEX txs_4_id_idx ON public.txs_4 USING hash (id);
 
 
 CREATE INDEX txs_4_recipient_address_uid_idx ON txs_4 (recipient_address, uid);
@@ -2043,7 +1945,7 @@ CREATE INDEX txs_4_recipient_address_uid_idx ON txs_4 (recipient_address, uid);
 CREATE INDEX txs_4_sender_uid_idx ON txs_4 (sender, uid);
 
 
-CREATE INDEX txs_5_asset_id_idx ON public.txs_5 USING hash (asset_id);
+CREATE INDEX txs_5_asset_id_uid_idx ON public.txs_5 USING btree (asset_id, uid);
 
 
 CREATE INDEX txs_5_time_stamp_uid_idx ON public.txs_5 USING btree (time_stamp, uid);
@@ -2052,13 +1954,13 @@ CREATE INDEX txs_5_time_stamp_uid_idx ON public.txs_5 USING btree (time_stamp, u
 CREATE INDEX txs_5_height_idx ON public.txs_5 USING btree (height);
 
 
-CREATE INDEX txs_5_sender_idx ON public.txs_5 USING hash (sender);
+CREATE INDEX txs_5_sender_uid_idx ON public.txs_5 USING btree (sender, uid);
 
 
-CREATE INDEX txs_5_id_idx ON public.txs_5 (id);
+CREATE INDEX txs_5_id_idx ON public.txs_5 USING hash (id);
 
 
-CREATE INDEX txs_6_asset_id_idx ON public.txs_6 USING hash (asset_id);
+CREATE INDEX txs_6_asset_id_uid_idx ON public.txs_6 USING btree (asset_id, uid);
 
 
 CREATE INDEX txs_6_uid_time_stamp_idx ON public.txs_6 USING btree (time_stamp, uid);
@@ -2067,10 +1969,10 @@ CREATE INDEX txs_6_uid_time_stamp_idx ON public.txs_6 USING btree (time_stamp, u
 CREATE INDEX txs_6_height_idx ON public.txs_6 USING btree (height);
 
 
-CREATE INDEX txs_6_sender_idx ON public.txs_6 USING hash (sender);
+CREATE INDEX txs_6_sender_uid_idx ON public.txs_6 USING btree (sender, uid);
 
 
-CREATE INDEX txs_6_id_idx ON public.txs_6 (id);
+CREATE INDEX txs_6_id_idx ON public.txs_6 USING hash (id);
 
 
 CREATE INDEX txs_7_uid_time_stamp_idx ON public.txs_7 USING btree (time_stamp, uid);
@@ -2079,13 +1981,13 @@ CREATE INDEX txs_7_uid_time_stamp_idx ON public.txs_7 USING btree (time_stamp, u
 CREATE INDEX txs_7_height_idx ON public.txs_7 USING btree (height);
 
 
-CREATE INDEX txs_7_sender_idx ON public.txs_7 USING btree (sender);
+CREATE INDEX txs_7_sender_uid_idx ON public.txs_7 USING btree (sender, uid);
 
 
 CREATE INDEX txs_7_order_ids_uid_idx ON public.txs_7 USING gin ((ARRAY[order1->>'id', order2->>'id']), uid);
 
 
-CREATE INDEX txs_7_id_idx ON public.txs_7 (id);
+CREATE INDEX txs_7_id_idx ON public.txs_7 USING hash (id);
 
 
 create index txs_7_order_senders_uid_idx on txs_7 USING gin ((ARRAY[order1->>'sender', order2->>'sender']), uid);
@@ -2103,10 +2005,10 @@ CREATE INDEX txs_8_recipient_idx ON public.txs_8 USING btree (recipient_address)
 CREATE INDEX txs_8_recipient_address_uid_idx ON public.txs_8 USING btree (recipient_address, uid);
 
 
-CREATE INDEX txs_8_sender_idx ON public.txs_8 USING btree (sender);
+CREATE INDEX txs_8_sender_uid_idx ON public.txs_8 USING btree (sender, uid);
 
 
-CREATE INDEX txs_8_id_idx ON public.txs_8 (id);
+CREATE INDEX txs_8_id_idx ON public.txs_8 USING hash (id);
 
 
 CREATE INDEX txs_9_uid_time_stamp_idx ON public.txs_9 USING btree (time_stamp, uid);
@@ -2115,10 +2017,10 @@ CREATE INDEX txs_9_uid_time_stamp_idx ON public.txs_9 USING btree (time_stamp, u
 CREATE INDEX txs_9_height_idx ON public.txs_9 USING btree (height);
 
 
-CREATE INDEX txs_9_sender_idx ON public.txs_9 USING hash (sender);
+CREATE INDEX txs_9_sender_uid_idx ON public.txs_9 USING btree (sender, uid);
 
 
-CREATE index txs_9_id_idx ON public.txs_9 (id);
+CREATE index txs_9_id_idx ON public.txs_9 USING hash (id);
 
 
 CREATE INDEX waves_data_height_desc_quantity_idx ON public.waves_data (height DESC NULLS LAST, quantity);

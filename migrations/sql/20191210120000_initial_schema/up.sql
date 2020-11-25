@@ -1714,6 +1714,9 @@ ALTER TABLE public.waves_data ADD CONSTRAINT waves_data_un UNIQUE (height);
 CREATE INDEX candles_max_height_index ON public.candles USING btree (max_height);
 
 
+CREATE INDEX candles_amount_price_ids_matcher_time_start_partial_1m_idx ON candles (amount_asset_id, price_asset_id, matcher_address, time_start) WHERE (("interval")::text = '1m'::text);
+
+
 CREATE UNIQUE INDEX tickers_ticker_idx ON tickers (ticker);
 
 
@@ -1876,6 +1879,12 @@ CREATE INDEX txs_16_payment_asset_id_idx ON public.txs_16_payment USING btree (a
 CREATE INDEX txs_16_payment_height_idx ON public.txs_16_payment USING btree (height);
 
 
+CREATE INDEX txs_16_dapp_address_function_name_uid_idx ON public.txs_16 (dapp_address, function_name, uid);
+
+
+CREATE INDEX txs_16_sender_time_stamp_uid_idx ON public.txs_16 (sender, time_stamp, uid);
+
+
 CREATE INDEX txs_17_height_idx on txs_17 USING btree (height);
 
 
@@ -1990,7 +1999,10 @@ CREATE INDEX txs_7_order_ids_uid_idx ON public.txs_7 USING gin ((ARRAY[order1->>
 CREATE INDEX txs_7_id_idx ON public.txs_7 USING hash (id);
 
 
-create index txs_7_order_senders_uid_idx on txs_7 USING gin ((ARRAY[order1->>'sender', order2->>'sender']), uid);
+CREATE INDEX txs_7_order_senders_uid_idx ON txs_7 USING gin ((ARRAY[order1->>'sender', order2->>'sender']), uid);
+
+
+CREATE INDEX txs_7_amount_asset_id_price_asset_id_uid_idx ON txs_7 (amount_asset_id, price_asset_id, uid);
 
 
 CREATE INDEX txs_8_uid_time_stamp_idx ON public.txs_8 USING btree (time_stamp, uid);

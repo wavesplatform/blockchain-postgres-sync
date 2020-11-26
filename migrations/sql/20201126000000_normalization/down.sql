@@ -6,6 +6,7 @@ DROP RULE IF EXISTS block_delete on public.blocks_raw;
 DROP FUNCTION IF EXISTS public.count_affected_rows;
 DROP FUNCTION IF EXISTS public.get_asset_id;
 DROP FUNCTION IF EXISTS public.get_tuid_by_tx_id;
+DROP FUNCTION IF EXISTS public.get_tuid_by_tx_height_and_position_in_block;
 DROP FUNCTION IF EXISTS public.find_missing_blocks;
 DROP FUNCTION IF EXISTS public.insert_all;
 DROP FUNCTION IF EXISTS public.insert_block;

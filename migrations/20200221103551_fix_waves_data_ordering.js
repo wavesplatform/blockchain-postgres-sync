@@ -1,0 +1,9 @@
+const fs = require("fs");
+
+const upSqlFilePath = "./migrations/sql/20200221103551_fix_waves_data_ordering/up.sql";
+const downSqlFilePath = "./migrations/sql/20200221103551_fix_waves_data_ordering/down.sql";
+
+exports.up = knex => knex.schema.raw(fs.readFileSync(upSqlFilePath, "utf8"));
+
+exports.down = knex =>
+  knex.schema.raw(fs.readFileSync(downSqlFilePath, "utf8"));

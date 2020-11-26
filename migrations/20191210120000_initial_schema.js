@@ -1,7 +1,7 @@
 const fs = require('fs');
 
-const upSqlFilePath = './migrations/sql/20190927171802_txs_scripts_indexing/up.sql';
-const downSqlFilePath = './migrations/sql/20190927171802_txs_scripts_indexing/down.sql';
+const upSqlFilePath = './migrations/sql/20191210120000_initial_schema/up.sql';
+const downSqlFilePath = './migrations/sql/20191210120000_initial_schema/down.sql';
 
 exports.up = knex => knex.schema.raw(fs.readFileSync(upSqlFilePath, 'utf8'));
 

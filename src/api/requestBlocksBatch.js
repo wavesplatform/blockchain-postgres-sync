@@ -19,10 +19,21 @@ const splitBlocks = s =>
     let end = -1;
     let c = 1;
     let i = 0;
+    let q = 0;
     let found = false;
     while (i < cur.length && !found) {
-      if (cur[i] === "{") c++;
-      else if (cur[i] === "}") c--;
+      if (cur[i] === "{" && q === 0) c++;
+      else if (cur[i] === "}" && q === 0) c--;
+      // quotes cannot be the 1st, so i - 1 is ok
+      // handle only not-escaped quotes
+      else if (cur[i] === '"' && cur[i - 1] !== "\\") {
+        // quotes were opened
+        if (q === 1) {
+          q--;
+        } else {
+          q++;
+        }
+      }
       if (c === 1) {
         end = i;
         found = true;

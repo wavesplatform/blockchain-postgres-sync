@@ -38,8 +38,6 @@ begin
 END
 $$;
 
-alter function insert_txs_1(jsonb) owner to dba;
-
 
 create or replace function insert_txs_10(b jsonb) returns void
     language plpgsql
@@ -83,8 +81,6 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-alter function insert_txs_10(jsonb) owner to dba;
 
 
 create or replace function insert_txs_11(b jsonb) returns void
@@ -147,8 +143,6 @@ BEGIN
   ON CONFLICT DO NOTHING;
 END
 $$;
-
-alter function insert_txs_11(jsonb) owner to dba;
 
 
 create or replace function insert_txs_12(b jsonb) returns void
@@ -230,8 +224,6 @@ begin
 END
 $$;
 
-alter function insert_txs_12(jsonb) owner to dba;
-
 
 create or replace function insert_txs_13(b jsonb) returns void
     language plpgsql
@@ -275,8 +267,6 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-alter function insert_txs_13(jsonb) owner to dba;
 
 
 create or replace function insert_txs_14(b jsonb) returns void
@@ -324,8 +314,6 @@ begin
 END
 $$;
 
-alter function insert_txs_14(jsonb) owner to dba;
-
 
 create or replace function insert_txs_15(b jsonb) returns void
     language plpgsql
@@ -371,8 +359,6 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-alter function insert_txs_15(jsonb) owner to dba;
 
 
 create or replace function insert_txs_16(b jsonb) returns void
@@ -483,8 +469,6 @@ begin
 END
 $$;
 
-alter function insert_txs_16(jsonb) owner to dba;
-
 
 create or replace function insert_txs_17(b jsonb) returns void
     language plpgsql
@@ -559,8 +543,6 @@ begin
 END
 $$;
 
-alter function insert_txs_17(jsonb) owner to dba;
-
 
 create or replace function insert_txs_2(b jsonb) returns void
     language plpgsql
@@ -606,8 +588,6 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-alter function insert_txs_2(jsonb) owner to dba;
 
 
 create or replace function insert_txs_3(b jsonb) returns void
@@ -680,8 +660,6 @@ begin
 END
 $$;
 
-alter function insert_txs_3(jsonb) owner to dba;
-
 
 create or replace function insert_txs_4(b jsonb) returns void
     language plpgsql
@@ -734,8 +712,6 @@ begin
 END
 $$;
 
-alter function insert_txs_4(jsonb) owner to dba;
-
 
 create or replace function insert_txs_5(b jsonb) returns void
     language plpgsql
@@ -784,8 +760,6 @@ begin
 END
 $$;
 
-alter function insert_txs_5(jsonb) owner to dba;
-
 
 create or replace function insert_txs_6(b jsonb) returns void
     language plpgsql
@@ -831,8 +805,6 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-alter function insert_txs_6(jsonb) owner to dba;
 
 
 create or replace function insert_txs_7(b jsonb) returns void
@@ -890,8 +862,6 @@ begin
 END
 $$;
 
-alter function insert_txs_7(jsonb) owner to dba;
-
 
 create or replace function insert_txs_8(b jsonb) returns void
     language plpgsql
@@ -938,8 +908,6 @@ begin
 END
 $$;
 
-alter function insert_txs_8(jsonb) owner to dba;
-
 
 create or replace function insert_txs_9(b jsonb) returns void
     language plpgsql
@@ -983,5 +951,3 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-alter function insert_txs_9(jsonb) owner to dba;

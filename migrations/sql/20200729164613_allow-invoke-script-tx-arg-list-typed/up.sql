@@ -105,6 +105,3 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-alter function insert_txs_16(jsonb) owner to dba;
-

@@ -11,9 +11,6 @@ create table if not exists txs_17
 ) inherits (txs);
 
 
-alter table txs_17 owner to dba;
-
-
 create index if not exists txs_17_height_idx on txs_17 (height);
 
 
@@ -47,9 +44,6 @@ begin
 	PERFORM insert_txs_17 (b);
 END
 $$;
-
-
-alter function insert_all(jsonb) owner to dba;
 
 
 create or replace function insert_txs_17(b jsonb) returns void
@@ -121,6 +115,3 @@ begin
 	on conflict do nothing;
 END
 $$;
-
-
-alter function insert_txs_17(jsonb) owner to dba;

@@ -109,5 +109,3 @@ BEGIN
 	ON CONFLICT DO NOTHING;
 END
 $$;
-
-ALTER FUNCTION insert_txs_16(jsonb) OWNER TO dba;

@@ -35,7 +35,4 @@ END
 $$;
 
 
-alter function insert_all(jsonb) owner to dba;
-
-
 drop function insert_txs_17;

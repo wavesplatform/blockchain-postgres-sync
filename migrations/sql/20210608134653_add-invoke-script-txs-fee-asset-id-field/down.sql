@@ -106,6 +106,4 @@ BEGIN
 END
 $$;
 
-ALTER FUNCTION insert_txs_16(jsonb) OWNER TO dba;
-
 ALTER TABLE txs_16 DROP COLUMN fee_asset_id;

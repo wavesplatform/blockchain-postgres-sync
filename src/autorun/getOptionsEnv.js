@@ -12,6 +12,7 @@ const loadConfig = () => {
     postgresDatabase: process.env.PGDATABASE,
     postgresUser: process.env.PGUSER,
     postgresPassword: process.env.PGPASSWORD,
+    postgresStatementTimeout: parseInt(process.env.PGSTATEMENTTIMEOUT) || false,
 
     onConflict: process.env.ON_CONFLICT || 'update',
     blocksPerRequest: parseInt(process.env.BLOCKS_PER_REQUEST) || 100,

@@ -1,6 +1,7 @@
 use crate::schema::*;
 use chrono::NaiveDateTime;
 use diesel::{Insertable, Queryable};
+use diesel_full_text_search::TsVector;
 use std::hash::{Hash, Hasher};
 
 pub type BlockUid = i64;
@@ -70,4 +71,21 @@ pub struct AssetOrigin {
     pub issuer: String,
     pub issue_height: i32,
     pub issue_time_stamp: NaiveDateTime,
+}
+
+#[derive(Clone, Debug, Insertable)]
+#[table_name = "assets_metadata"]
+struct AssetsMetadata {
+    asset_id: String,
+    asset_name: Option<String>,
+    ticker: Option<String>,
+    height: Option<i32>,
+}
+
+#[derive(Clone, Debug, Insertable)]
+#[table_name = "assets_names_map"]
+struct AssetsNames {
+    asset_id: String,
+    asset_name: Option<String>,
+    searchable_asset_name: TsVector,
 }

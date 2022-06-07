@@ -14,7 +14,7 @@ pub struct MigrationConfig {
     pub postgres: postgres::Config,
 }
 
-pub async fn load_consumer_config() -> Result<ConsumerConfig, Error> {
+pub fn load_consumer_config() -> Result<ConsumerConfig, Error> {
     let node_config = node::load()?;
     let postgres_config = postgres::load()?;
 

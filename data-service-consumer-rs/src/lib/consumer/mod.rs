@@ -3,7 +3,6 @@ pub mod repo;
 pub mod updates;
 
 use anyhow::{Error, Result};
-use bigdecimal::ToPrimitive;
 use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -17,7 +16,7 @@ use waves_protobuf_schemas::waves::{
 };
 use wavesexchange_log::{debug, info, timer};
 
-use self::models::asset::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
+use self::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use self::models::block_microblock::BlockMicroblock;
 use crate::error::Error as AppError;
 use crate::models::BaseAssetInfoUpdate;
@@ -78,10 +77,11 @@ pub trait UpdatesSource {
 
 // TODO: handle shutdown signals -> rollback current transaction
 pub async fn start<T, R>(
+    starting_height: u32,
     updates_src: T,
     repo: Arc<R>,
     updates_per_request: usize,
-    max_wait_time_in_secs: u64,
+    max_duration: Duration,
     chain_id: u8,
 ) -> Result<()>
 where
@@ -100,7 +100,6 @@ where
         "Start fetching updates from height {}",
         starting_from_height
     );
-    let max_duration = Duration::seconds(max_wait_time_in_secs.to_i64().unwrap());
 
     let mut rx = updates_src
         .stream(starting_from_height, updates_per_request, max_duration)

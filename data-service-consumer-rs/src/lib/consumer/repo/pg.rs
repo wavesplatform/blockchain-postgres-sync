@@ -4,7 +4,7 @@ use diesel::prelude::*;
 use diesel::sql_types::{Array, BigInt, VarChar};
 
 use super::super::models::{
-    asset::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
+    assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
     block_microblock::BlockMicroblock,
 };
 use super::super::PrevHandledHeight;

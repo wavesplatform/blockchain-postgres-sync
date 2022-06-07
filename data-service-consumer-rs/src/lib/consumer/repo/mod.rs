@@ -2,7 +2,7 @@ pub mod pg;
 
 use anyhow::Result;
 
-use super::models::asset::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
+use super::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use super::models::block_microblock::BlockMicroblock;
 use super::PrevHandledHeight;
 

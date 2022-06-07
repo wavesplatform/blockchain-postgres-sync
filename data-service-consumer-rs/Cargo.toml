@@ -40,7 +40,7 @@ validator = { version = "0.14", features = ["derive"] }
 warp = { version = "0.3.2", default-features = false }
 wavesexchange_log = { git = "https://github.com/waves-exchange/wavesexchange-rs", tag = "wavesexchange_log/0.5.0" }
 wavesexchange_warp = { git = "https://github.com/waves-exchange/wavesexchange-rs", tag = "wavesexchange_warp/0.12.3" }
-waves-protobuf-schemas = { git = "https://github.com/wavesplatform/protobuf-schemas", rev = "44b306885be296bbfebcd37bef64b4dbbec8502a" }
+waves-protobuf-schemas = { git = "https://github.com/wavesplatform/protobuf-schemas", rev = "50827749d9422b47a79c4e858f2a560d785d7fb8" }
 
 [lib]
 name = "app_lib"

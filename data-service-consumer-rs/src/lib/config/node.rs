@@ -14,29 +14,32 @@ fn default_max_wait_time_in_msecs() -> u64 {
 
 #[derive(Deserialize)]
 struct ConfigFlat {
-    host: String,
-    port: u32,
+    blockchain_updates_url: String,
+    starting_height: u32,
     #[serde(default = "default_updates_per_request")]
     max_batch_size: usize,
     #[serde(default = "default_max_wait_time_in_msecs")]
     max_batch_wait_time_ms: u64,
+    chain_id: u8,
 }
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    pub host: String,
-    pub port: u32,
+    pub blockchain_updates_url: String,
+    pub starting_height: u32,
     pub updates_per_request: usize,
     pub max_wait_time: Duration,
+    pub chain_id: u8,
 }
 
 pub fn load() -> Result<Config, Error> {
-    let config_flat = envy::prefixed("NODE_").from_env::<ConfigFlat>()?;
+    let config_flat = envy::from_env::<ConfigFlat>()?;
 
     Ok(Config {
-        host: config_flat.host,
-        port: config_flat.port,
+        blockchain_updates_url: config_flat.blockchain_updates_url,
+        starting_height: config_flat.starting_height,
         updates_per_request: config_flat.max_batch_size,
         max_wait_time: Duration::milliseconds(config_flat.max_batch_wait_time_ms as i64),
+        chain_id: config_flat.chain_id,
     })
 }

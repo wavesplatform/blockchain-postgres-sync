@@ -33,7 +33,7 @@ pub struct Config {
 }
 
 pub fn load() -> Result<Config, Error> {
-    let config_flat = envy::prefixed("PG").from_env::<ConfigFlat>()?;
+    let config_flat = envy::prefixed("POSTGRES__").from_env::<ConfigFlat>()?;
 
     Ok(Config {
         host: config_flat.host,

@@ -1,2 +1,2 @@
-pub mod asset;
+pub mod assets;
 pub mod block_microblock;

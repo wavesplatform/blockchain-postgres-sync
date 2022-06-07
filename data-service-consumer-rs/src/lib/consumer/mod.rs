@@ -3,7 +3,6 @@ pub mod repo;
 pub mod updates;
 
 use anyhow::{Error, Result};
-use bigdecimal::ToPrimitive;
 use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -13,11 +12,12 @@ use std::time::Instant;
 use tokio::sync::mpsc::Receiver;
 use waves_protobuf_schemas::waves::{
     events::{StateUpdate, TransactionMetadata},
-    SignedTransaction, Transaction,
+    signed_transaction::Transaction,
+    SignedTransaction, Transaction as WavesTx,
 };
 use wavesexchange_log::{debug, info, timer};
 
-use self::models::asset::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
+use self::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use self::models::block_microblock::BlockMicroblock;
 use crate::error::Error as AppError;
 use crate::models::BaseAssetInfoUpdate;
@@ -78,10 +78,11 @@ pub trait UpdatesSource {
 
 // TODO: handle shutdown signals -> rollback current transaction
 pub async fn start<T, R>(
+    starting_height: u32,
     updates_src: T,
     repo: Arc<R>,
     updates_per_request: usize,
-    max_wait_time_in_secs: u64,
+    max_duration: Duration,
     chain_id: u8,
 ) -> Result<()>
 where
@@ -100,7 +101,6 @@ where
         "Start fetching updates from height {}",
         starting_from_height
     );
-    let max_duration = Duration::seconds(max_wait_time_in_secs.to_i64().unwrap());
 
     let mut rx = updates_src
         .stream(starting_from_height, updates_per_request, max_duration)
@@ -288,14 +288,19 @@ fn extract_base_asset_info_updates(
                 .iter()
                 .filter_map(|asset_update| {
                     if let Some(asset_details) = &asset_update.after {
-                        let time_stamp = match tx.data.transaction {
-                            Some(Transaction { timestamp, .. }) => DateTime::from_utc(
-                                NaiveDateTime::from_timestamp(
-                                    timestamp / 1000,
-                                    timestamp as u32 % 1000 * 1000,
-                                ),
-                                Utc,
-                            ),
+                        let time_stamp = match tx.data.transaction.as_ref() {
+                            Some(stx) => match stx {
+                                Transaction::WavesTransaction(WavesTx { timestamp, .. }) => {
+                                    DateTime::from_utc(
+                                        NaiveDateTime::from_timestamp(
+                                            timestamp / 1000,
+                                            *timestamp as u32 % 1000 * 1000,
+                                        ),
+                                        Utc,
+                                    )
+                                }
+                                Transaction::EthereumTransaction(_) => return None,
+                            },
                             _ => Utc::now(),
                         };
 

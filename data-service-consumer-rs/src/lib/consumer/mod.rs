@@ -363,7 +363,7 @@ fn handle_base_asset_info_updates<R: repo::Repo>(
             nft: update.nft,
             reissuable: update.reissuable,
             decimals: update.precision as i16,
-            script: update.script.clone().map(|s| String::from_utf8(s).unwrap()),
+            script: update.script.clone().map(|s| base64::encode(s)),
             sponsorship: update.min_sponsored_fee,
             volume: update.quantity,
         })

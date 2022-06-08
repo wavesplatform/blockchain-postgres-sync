@@ -12,7 +12,8 @@ use std::time::Instant;
 use tokio::sync::mpsc::Receiver;
 use waves_protobuf_schemas::waves::{
     events::{StateUpdate, TransactionMetadata},
-    SignedTransaction, Transaction,
+    signed_transaction::Transaction,
+    SignedTransaction, Transaction as WavesTx,
 };
 use wavesexchange_log::{debug, info, timer};
 
@@ -287,14 +288,19 @@ fn extract_base_asset_info_updates(
                 .iter()
                 .filter_map(|asset_update| {
                     if let Some(asset_details) = &asset_update.after {
-                        let time_stamp = match tx.data.transaction {
-                            Some(Transaction { timestamp, .. }) => DateTime::from_utc(
-                                NaiveDateTime::from_timestamp(
-                                    timestamp / 1000,
-                                    timestamp as u32 % 1000 * 1000,
-                                ),
-                                Utc,
-                            ),
+                        let time_stamp = match tx.data.transaction.as_ref() {
+                            Some(stx) => match stx {
+                                Transaction::WavesTransaction(WavesTx { timestamp, .. }) => {
+                                    DateTime::from_utc(
+                                        NaiveDateTime::from_timestamp(
+                                            timestamp / 1000,
+                                            *timestamp as u32 % 1000 * 1000,
+                                        ),
+                                        Utc,
+                                    )
+                                }
+                                Transaction::EthereumTransaction(_) => return None,
+                            },
                             _ => Utc::now(),
                         };
 
@@ -357,7 +363,7 @@ fn handle_base_asset_info_updates<R: repo::Repo>(
             nft: update.nft,
             reissuable: update.reissuable,
             decimals: update.precision as i16,
-            script: update.script.clone().map(|s| String::from_utf8(s).unwrap()),
+            script: update.script.clone().map(|s| base64::encode(s)),
             sponsorship: update.min_sponsored_fee,
             volume: update.quantity,
         })

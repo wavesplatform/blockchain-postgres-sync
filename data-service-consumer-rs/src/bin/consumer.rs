@@ -8,7 +8,7 @@ async fn main() -> Result<()> {
     let config = config::load_consumer_config()?;
 
     info!(
-        "Starting asset-search consumer with config: {:?}",
+        "Starting data-service consumer with config: {:?}",
         config.node
     );
 
@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
 
     let updates_src = consumer::updates::new(&config.node.blockchain_updates_url)
         .await
-        .context("Consumer connection failed")?;
+        .context("Blockchain connection failed")?;
 
     let pg_repo = Arc::new(consumer::repo::pg::new(conn));
 
@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
     .await
     {
         error!("{}", err);
-        panic!("asset-search consumer panic: {}", err);
+        panic!("data-service consumer panic: {}", err);
     }
     Ok(())
 }

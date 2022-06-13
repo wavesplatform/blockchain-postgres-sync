@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS txs_1 (
     amount bigint NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS txs_2 (
     amount bigint NOT NULL,
 
     PRIMARY KEY (id, time_stamp),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS txs_3 (
     script character varying,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS txs_4 (
     attachment character varying NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 ALTER TABLE ONLY txs_4 ALTER COLUMN sender SET STATISTICS 1000;
@@ -121,7 +121,7 @@ CREATE TABLE IF NOT EXISTS txs_5 (
     reissuable boolean NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS txs_6 (
     amount bigint NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS txs_7 (
     sell_matcher_fee bigint NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS txs_8 (
     amount bigint NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS txs_9 (
     lease_id character varying NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS txs_10 (
     alias character varying NOT NULL,
     
     PRIMARY KEY (id, time_stamp),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS txs_11 (
     attachment character varying NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS txs_11_transfers (
     position_in_tx smallint NOT NULL,
 
     PRIMARY KEY (tx_id, position_in_tx),
-    FOREIGN KEY (tx_id) REFERENCES txs_11(id) ON DELETE CASCADE
+    CONSTRAINT fk_tx_id FOREIGN KEY (tx_id) REFERENCES txs_11(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_12 (
@@ -210,7 +210,7 @@ CREATE TABLE IF NOT EXISTS txs_12 (
     sender_public_key character varying NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT txs_12_height_fkey FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -225,7 +225,7 @@ CREATE TABLE IF NOT EXISTS txs_12_data (
     position_in_tx smallint NOT NULL,
 
     PRIMARY KEY (tx_id, position_in_tx),
-    FOREIGN KEY (tx_id) REFERENCES txs_12(id) ON DELETE CASCADE
+    CONSTRAINT txs_12_data_tx_id_fkey FOREIGN KEY (tx_id) REFERENCES txs_12(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_13 (
@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS txs_13 (
     script character varying,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -245,7 +245,7 @@ CREATE TABLE IF NOT EXISTS txs_14 (
     min_sponsored_asset_fee bigint,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -256,7 +256,7 @@ CREATE TABLE IF NOT EXISTS txs_15 (
     script character varying,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT txs_15_blocks_fk FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -268,7 +268,7 @@ CREATE TABLE IF NOT EXISTS txs_16 (
     fee_asset_id VARCHAR NOT NULL,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT txs_16_blocks_fk FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -283,7 +283,7 @@ CREATE TABLE IF NOT EXISTS txs_16_args (
     position_in_args smallint NOT NULL,
 
     PRIMARY KEY (tx_id, position_in_args),
-    FOREIGN KEY (tx_id) REFERENCES txs_16(id) ON DELETE CASCADE
+    CONSTRAINT txs_16_args_tx_id_fkey FOREIGN KEY (tx_id) REFERENCES txs_16(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_16_payment (
@@ -293,7 +293,7 @@ CREATE TABLE IF NOT EXISTS txs_16_payment (
     position_in_payment smallint NOT NULL,
 
     PRIMARY KEY (tx_id, position_in_payment),
-    FOREIGN KEY (tx_id) REFERENCES txs_16(id) ON DELETE CASCADE
+    CONSTRAINT txs_16_payment_tx_id_fkey FOREIGN KEY (tx_id) REFERENCES txs_16(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_17
@@ -309,14 +309,14 @@ CREATE TABLE IF NOT EXISTS txs_17
 ) INHERITS (txs);
 
 CREATE TABLE IF NOT EXISTS assets_metadata (
-    asset_id character varying NOT NULL PRIMARY KEY,
+    asset_id character varying NOT NULL,
     asset_name character varying,
     ticker character varying,
     height integer
 );
 
 CREATE TABLE IF NOT EXISTS assets_names_map (
-    asset_id character varying NOT NULL PRIMARY KEY,
+    asset_id character varying NOT NULL,
     asset_name character varying NOT NULL,
     searchable_asset_name tsvector NOT NULL
 );
@@ -381,7 +381,7 @@ CREATE TABLE IF NOT EXISTS waves_data (
 	height int4 NOT NULL PRIMARY KEY,
 	quantity numeric NOT NULL,
 
-    FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT waves_data_fk FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS bm_id_idx ON blocks_microblocks(id);

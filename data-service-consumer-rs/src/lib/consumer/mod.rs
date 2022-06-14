@@ -19,6 +19,7 @@ use wavesexchange_log::{debug, info, timer};
 
 use self::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use self::models::block_microblock::BlockMicroblock;
+use crate::consumer::models::txs::Tx as ConvertedTx;
 use crate::error::Error as AppError;
 use crate::models::BaseAssetInfoUpdate;
 use crate::waves::{get_asset_id, Address};
@@ -199,11 +200,7 @@ where
     Ok(())
 }
 
-fn handle_appends<'a, R>(
-    repo: Arc<R>,
-    chain_id: u8,
-    appends: &Vec<BlockMicroblockAppend>,
-) -> Result<()>
+fn handle_appends<R>(repo: Arc<R>, chain_id: u8, appends: &Vec<BlockMicroblockAppend>) -> Result<()>
 where
     R: repo::Repo,
 {
@@ -255,8 +252,21 @@ where
         repo.insert_asset_origins(&asset_origins)?;
     }
 
+    handle_txs(appends)?;
+
     info!("handled {} assets updates", updates_amount);
 
+    Ok(())
+}
+
+fn handle_txs(bma: &Vec<BlockMicroblockAppend>) -> Result<(), Error> {
+    //TODO: optimize this
+    for bm in bma {
+        for tx in bm.txs {
+            let result_tx =
+                ConvertedTx::try_from((tx.data, tx.id, bm.height, tx.meta.sender_address))?;
+        }
+    }
     Ok(())
 }
 

@@ -31,12 +31,6 @@ table! {
 }
 
 table! {
-    asset_updates_uid_seq (last_value) {
-        last_value -> BigInt,
-    }
-}
-
-table! {
     use diesel::sql_types::*;
 
     assets_metadata (asset_id) {
@@ -55,24 +49,6 @@ table! {
         asset_id -> Varchar,
         asset_name -> Varchar,
         searchable_asset_name -> TsVector,
-    }
-}
-
-table! {
-    use diesel::sql_types::*;
-
-    blocks (height) {
-        schema_version -> Int2,
-        time_stamp -> Timestamp,
-        reference -> Varchar,
-        nxt_consensus_base_target -> Int8,
-        nxt_consensus_generation_signature -> Varchar,
-        generator -> Varchar,
-        signature -> Varchar,
-        fee -> Int8,
-        blocksize -> Nullable<Int4>,
-        height -> Int4,
-        features -> Nullable<Array<Int2>>,
     }
 }
 
@@ -567,35 +543,16 @@ table! {
     }
 }
 
-joinable!(txs_1 -> blocks (height));
-joinable!(txs_10 -> blocks (height));
-joinable!(txs_11 -> blocks (height));
 joinable!(txs_11_transfers -> txs_11 (tx_id));
-joinable!(txs_12 -> blocks (height));
 joinable!(txs_12_data -> txs_12 (tx_id));
-joinable!(txs_13 -> blocks (height));
-joinable!(txs_14 -> blocks (height));
-joinable!(txs_15 -> blocks (height));
-joinable!(txs_16 -> blocks (height));
 joinable!(txs_16_args -> txs_16 (tx_id));
 joinable!(txs_16_payment -> txs_16 (tx_id));
-joinable!(txs_17 -> blocks (height));
-joinable!(txs_2 -> blocks (height));
-joinable!(txs_3 -> blocks (height));
-joinable!(txs_4 -> blocks (height));
-joinable!(txs_5 -> blocks (height));
-joinable!(txs_6 -> blocks (height));
-joinable!(txs_7 -> blocks (height));
-joinable!(txs_8 -> blocks (height));
-joinable!(txs_9 -> blocks (height));
-joinable!(waves_data -> blocks (height));
 
 allow_tables_to_appear_in_same_query!(
     asset_origins,
     asset_updates,
     assets_metadata,
     assets_names_map,
-    blocks,
     blocks_microblocks,
     candles,
     pairs,

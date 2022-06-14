@@ -18,5 +18,5 @@ pub struct Candle {
     open: BigDecimal,
     close: BigDecimal,
     interval: String,
-    matcher: String,
+    matcher_address: String,
 }

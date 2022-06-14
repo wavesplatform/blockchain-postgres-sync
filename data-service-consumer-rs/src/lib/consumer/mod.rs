@@ -252,21 +252,24 @@ where
         repo.insert_asset_origins(&asset_origins)?;
     }
 
-    handle_txs(appends)?;
+    handle_txs(repo.clone(), appends)?;
 
     info!("handled {} assets updates", updates_amount);
 
     Ok(())
 }
 
-fn handle_txs(bma: &Vec<BlockMicroblockAppend>) -> Result<(), Error> {
+fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> Result<(), Error> {
     //TODO: optimize this
+    let mut txs = vec![];
     for bm in bma {
         for tx in bm.txs {
             let result_tx =
                 ConvertedTx::try_from((tx.data, tx.id, bm.height, tx.meta.sender_address))?;
+            txs.push(result_tx);
         }
     }
+    repo.insert_txs(&txs)?;
     Ok(())
 }
 

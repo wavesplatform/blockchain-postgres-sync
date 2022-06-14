@@ -4,6 +4,7 @@ use anyhow::Result;
 
 use super::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use super::models::block_microblock::BlockMicroblock;
+use super::models::txs::Tx;
 use super::PrevHandledHeight;
 
 #[async_trait::async_trait]
@@ -51,4 +52,6 @@ pub trait Repo {
     fn rollback_assets(&self, block_uid: &i64) -> Result<Vec<DeletedAsset>>;
 
     fn assets_gt_block_uid(&self, block_uid: &i64) -> Result<Vec<i64>>;
+
+    fn insert_txs(&self, txs: &Vec<Tx>) -> Result<()>;
 }

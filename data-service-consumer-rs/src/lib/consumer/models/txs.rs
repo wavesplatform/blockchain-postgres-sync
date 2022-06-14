@@ -63,7 +63,11 @@ impl TryFrom<(SignedTransaction, Id, Height, Vec<u8>)> for Tx {
         };
         let tx = match tx {
             Transaction::WavesTransaction(t) => t,
-            Transaction::EthereumTransaction(_) => todo!(),
+            Transaction::EthereumTransaction(_) => {
+                return Err(Error::IncosistDataError(
+                    "EthereumTransaction is not supported yet".to_string(),
+                ))
+            }
         };
         let tx_data = tx.data.ok_or(Error::IncosistDataError(format!(
             "No inner transaction data in id={id}, height={height}",
@@ -104,7 +108,8 @@ impl TryFrom<(SignedTransaction, Id, Height, Vec<u8>)> for Tx {
                     None
                 },
                 status,
-                recipient: into_b58(t.recipient_address),
+                recipient_address: into_b58(t.recipient_address),
+                recipient_alias: None,
                 amount: t.amount,
             }),
             Data::Payment(t) => Tx::Payment(Tx2 {
@@ -119,7 +124,8 @@ impl TryFrom<(SignedTransaction, Id, Height, Vec<u8>)> for Tx {
                 sender,
                 sender_public_key,
                 status,
-                recipient: into_b58(t.recipient_address),
+                recipient_address: into_b58(t.recipient_address),
+                recipient_alias: None,
                 amount: t.amount,
             }),
             Data::Issue(t) => Tx::Issue(Tx3 {
@@ -134,6 +140,7 @@ impl TryFrom<(SignedTransaction, Id, Height, Vec<u8>)> for Tx {
                 sender,
                 sender_public_key,
                 status,
+                //TODO: maybe pick from StateUpdate
                 asset_id: todo!(),
                 asset_name: t.name,
                 description: t.description,
@@ -158,9 +165,9 @@ impl TryFrom<(SignedTransaction, Id, Height, Vec<u8>)> for Tx {
                 sender,
                 sender_public_key,
                 status,
-                asset_id: todo!(),
-                // TODO: is really unwrap
-                fee_asset: into_b58(tx.fee.unwrap().asset_id),
+                asset_id: into_b58(t.amount.unwrap().asset_id),
+                fee_asset_id: into_b58(tx.fee.unwrap().asset_id),
+                amount: t.amount.unwrap().amount,
                 attachment: parse_attachment(t.attachment),
             }),
             Data::Reissue(t) => Tx::Reissue(Tx5 {
@@ -206,14 +213,16 @@ impl TryFrom<(SignedTransaction, Id, Height, Vec<u8>)> for Tx {
                 sender,
                 sender_public_key,
                 status,
-                order1: todo!(),
-                order2: todo!(),
-                amount_asset: todo!(),
-                price_asset: todo!(),
-                amount: todo!(),
-                price: todo!(),
-                buy_matcher_fee: todo!(),
-                sell_matcher_fee: todo!(),
+                //TODO: serialize foreign struct
+                order1: serde_json::to_value(t.orders[0]).unwrap(),
+                order2: serde_json::to_value(t.orders[1]).unwrap(),
+                amount_asset_id: into_b58(t.orders[0].asset_pair.unwrap().amount_asset_id),
+                price_asset_id: into_b58(t.orders[0].asset_pair.unwrap().price_asset_id),
+                amount: t.amount,
+                price: t.price,
+                buy_matcher_fee: t.buy_matcher_fee,
+                sell_matcher_fee: t.sell_matcher_fee,
+                fee_asset_id: into_b58(tx.fee.unwrap().asset_id),
             }),
             Data::Lease(t) => Tx::Lease(Tx8 {
                 height,
@@ -227,8 +236,9 @@ impl TryFrom<(SignedTransaction, Id, Height, Vec<u8>)> for Tx {
                 sender,
                 sender_public_key,
                 status,
-                recipient: parse_recipient(t.recipient.unwrap()),
                 amount: t.amount,
+                recipient_address: parse_recipient(t.recipient.unwrap()),
+                recipient_alias: None,
             }),
             Data::LeaseCancel(t) => Tx::LeaseCancel(Tx9 {
                 height,
@@ -242,7 +252,6 @@ impl TryFrom<(SignedTransaction, Id, Height, Vec<u8>)> for Tx {
                 sender,
                 sender_public_key,
                 status,
-                //TODO
                 lease_tx_uid: if t.lease_id.len() > 0 {
                     Some(i64::from_be_bytes(&t.lease_id))
                 } else {
@@ -347,9 +356,10 @@ impl TryFrom<(SignedTransaction, Id, Height, Vec<u8>)> for Tx {
                 sender,
                 sender_public_key,
                 status,
-                dapp: todo!(),
-                function_name: todo!(),
-                fee_asset_id: todo!(),
+                function_name: Some(String::from_utf8(t.function_call).unwrap()),
+                fee_asset_id: into_b58(tx.fee.unwrap().asset_id),
+                dapp_address: parse_recipient(t.d_app.unwrap()),
+                dapp_alias: None,
             }),
             Data::UpdateAssetInfo(t) => Tx::UpdateAssetInfo(Tx17 {
                 height,
@@ -386,7 +396,8 @@ pub struct Tx1 {
     pub sender: Sender,
     pub sender_public_key: Option<SenderPubKey>,
     pub status: Status,
-    pub recipient: String,
+    pub recipient_address: String,
+    pub recipient_alias: Option<String>,
     pub amount: i64,
 }
 
@@ -404,7 +415,8 @@ pub struct Tx2 {
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
-    pub recipient: String,
+    pub recipient_address: String,
+    pub recipient_alias: Option<String>,
     pub amount: i64,
 }
 
@@ -445,8 +457,9 @@ pub struct Tx4 {
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
+    pub amount: i64,
     pub asset_id: String,
-    pub fee_asset: String,
+    pub fee_asset_id: String,
     pub attachment: String,
 }
 
@@ -503,12 +516,13 @@ pub struct Tx7 {
     pub status: Status,
     pub order1: Value,
     pub order2: Value,
-    pub amount_asset: String,
-    pub price_asset: String,
+    pub amount_asset_id: String,
+    pub price_asset_id: String,
     pub amount: i64,
     pub price: i64,
     pub buy_matcher_fee: i64,
     pub sell_matcher_fee: i64,
+    pub fee_asset_id: String,
 }
 
 #[derive(Clone, Debug, Insertable)]
@@ -525,7 +539,8 @@ pub struct Tx8 {
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
-    pub recipient: String,
+    pub recipient_address: String,
+    pub recipient_alias: Option<String>,
     pub amount: i64,
 }
 
@@ -584,10 +599,12 @@ pub struct Tx11 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_11_transfers"]
 pub struct Tx11Transfers {
-    pub tx_id: String,
-    pub recipient: String,
+    pub tx_uid: i64,
+    pub recipient_address: String,
+    pub recipient_alias: Option<String>,
     pub amount: i64,
     pub position_in_tx: i16,
+    pub height: i32,
 }
 
 #[derive(Clone, Debug, Insertable)]
@@ -609,7 +626,7 @@ pub struct Tx12 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_12_data"]
 pub struct Tx12Data {
-    pub tx_id: String,
+    pub tx_uid: i64,
     pub data_key: String,
     pub data_type: Option<String>,
     pub data_value_integer: Option<i64>,
@@ -617,6 +634,7 @@ pub struct Tx12Data {
     pub data_value_binary: Option<String>,
     pub data_value_string: Option<String>,
     pub position_in_tx: i16,
+    pub height: i32,
 }
 
 #[derive(Clone, Debug, Insertable)]
@@ -686,7 +704,8 @@ pub struct Tx16 {
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
-    pub dapp: String,
+    pub dapp_address: String,
+    pub dapp_alias: Option<String>,
     pub function_name: Option<String>,
     pub fee_asset_id: String,
 }
@@ -694,7 +713,7 @@ pub struct Tx16 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_16_args"]
 pub struct Tx16Args {
-    pub tx_id: String,
+    pub tx_uid: i64,
     pub arg_type: String,
     pub arg_value_integer: Option<i64>,
     pub arg_value_boolean: Option<bool>,
@@ -702,15 +721,17 @@ pub struct Tx16Args {
     pub arg_value_string: Option<String>,
     pub arg_value_list: Option<Value>,
     pub position_in_args: i16,
+    pub height: i32,
 }
 
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_16_payment"]
 pub struct Tx16Payment {
-    pub tx_id: String,
+    pub tx_uid: i64,
     pub amount: i64,
-    pub asset_id: Option<String>,
     pub position_in_payment: i16,
+    pub height: i32,
+    pub asset_id: String,
 }
 
 #[derive(Clone, Debug, Insertable)]

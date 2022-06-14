@@ -3,12 +3,13 @@ use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::sql_types::{Array, BigInt, VarChar};
 
-use super::super::models::{
-    assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
-    block_microblock::BlockMicroblock,
-};
 use super::super::PrevHandledHeight;
 use super::Repo;
+use crate::consumer::models::{
+    assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
+    block_microblock::BlockMicroblock,
+    txs::Tx,
+};
 use crate::error::Error as AppError;
 use crate::schema::*;
 use crate::tuple_len::TupleLen;
@@ -277,5 +278,157 @@ impl Repo for PgRepoImpl {
                 );
                 Error::new(AppError::DbDieselError(err)).context(context)
             })
+    }
+
+    fn insert_txs(&self, txs: &Vec<Tx>) -> Result<()> {
+        for tx in txs {
+            match tx {
+                Tx::Genesis(t) => diesel::insert_into(txs_1::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context = format!("Cannot insert Genesis transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::Payment(t) => diesel::insert_into(txs_2::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context = format!("Cannot insert Payment transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::Issue(t) => diesel::insert_into(txs_3::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context = format!("Cannot insert Issue transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::Transfer(t) => diesel::insert_into(txs_4::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context = format!("Cannot insert Transfer transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::Reissue(t) => diesel::insert_into(txs_5::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context = format!("Cannot insert Reissue transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::Burn(t) => diesel::insert_into(txs_6::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context = format!("Cannot insert Burn transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::Exchange(t) => diesel::insert_into(txs_7::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context = format!("Cannot insert Exchange transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::Lease(t) => diesel::insert_into(txs_8::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context = format!("Cannot insert Lease transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::LeaseCancel(t) => diesel::insert_into(txs_9::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context =
+                            format!("Cannot insert LeaseCancel transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::CreateAlias(t) => diesel::insert_into(txs_10::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context =
+                            format!("Cannot insert CreateAlias transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::MassTransfer(t) => diesel::insert_into(txs_11::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context =
+                            format!("Cannot insert MassTransfer transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::DataTransaction(t) => diesel::insert_into(txs_12::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context =
+                            format!("Cannot insert DataTransaction transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::SetScript(t) => diesel::insert_into(txs_13::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context = format!("Cannot insert SetScript transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::SponsorFee(t) => diesel::insert_into(txs_14::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context = format!("Cannot insert SponsorFee transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::SetAssetScript(t) => diesel::insert_into(txs_15::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context =
+                            format!("Cannot insert SetAssetScript transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::InvokeScript(t) => diesel::insert_into(txs_16::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context =
+                            format!("Cannot insert InvokeScript transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::UpdateAssetInfo(t) => diesel::insert_into(txs_17::table)
+                    .values(t)
+                    .execute(&self.conn)
+                    .map(|_| ())
+                    .map_err(|err| {
+                        let context =
+                            format!("Cannot insert UpdateAssetInfo transaction {t:?}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                Tx::InvokeExpression => todo!(),
+            };
+        }
+        Ok(())
     }
 }

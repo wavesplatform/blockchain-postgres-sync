@@ -15,5 +15,5 @@ pub struct Pair {
     low: BigDecimal,
     weighted_average_price: BigDecimal,
     txs_count: i32,
-    matcher: String,
+    matcher_address: String,
 }

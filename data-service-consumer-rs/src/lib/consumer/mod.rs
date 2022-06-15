@@ -19,7 +19,7 @@ use wavesexchange_log::{debug, info, timer};
 
 use self::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use self::models::block_microblock::BlockMicroblock;
-use crate::consumer::models::txs::Tx as ConvertedTx;
+use crate::consumer::models::txs::{Tx as ConvertedTx, TxUidGenerator};
 use crate::error::Error as AppError;
 use crate::models::BaseAssetInfoUpdate;
 use crate::waves::{get_asset_id, Address};
@@ -262,10 +262,17 @@ where
 fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> Result<(), Error> {
     //TODO: optimize this
     let mut txs = vec![];
+    let mut ugen = TxUidGenerator::new(Some(100000));
     for bm in bma {
         for tx in bm.txs {
-            let result_tx =
-                ConvertedTx::try_from((tx.data, tx.id, bm.height, tx.meta.sender_address))?;
+            ugen.maybe_update_height(bm.height as usize);
+            let result_tx = ConvertedTx::try_from((
+                tx.data,
+                tx.id,
+                bm.height,
+                tx.meta.sender_address,
+                &mut ugen,
+            ))?;
             txs.push(result_tx);
         }
     }

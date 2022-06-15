@@ -365,24 +365,50 @@ impl Repo for PgRepoImpl {
                             format!("Cannot insert CreateAlias transaction {t:?}: {err}",);
                         Error::new(AppError::DbDieselError(err)).context(context)
                     })?,
-                Tx::MassTransfer(t) => diesel::insert_into(txs_11::table)
-                    .values(t)
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context =
-                            format!("Cannot insert MassTransfer transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::DataTransaction(t) => diesel::insert_into(txs_12::table)
-                    .values(t)
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context =
-                            format!("Cannot insert DataTransaction transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
+                Tx::MassTransfer(t) => {
+                    let (tx11, transfers) = t;
+                    diesel::insert_into(txs_11::table)
+                        .values(tx11)
+                        .execute(&self.conn)
+                        .map(|_| ())
+                        .map_err(|err| {
+                            let context =
+                                format!("Cannot insert MassTransfer transaction {tx11:?}: {err}",);
+                            Error::new(AppError::DbDieselError(err)).context(context)
+                        })?;
+                    diesel::insert_into(txs_11_transfers::table)
+                        .values(transfers)
+                        .execute(&self.conn)
+                        .map(|_| ())
+                        .map_err(|err| {
+                            let context = format!(
+                                "Cannot insert MassTransfer transfers {transfers:?}: {err}",
+                            );
+                            Error::new(AppError::DbDieselError(err)).context(context)
+                        })?;
+                }
+                Tx::DataTransaction(t) => {
+                    let (tx12, data) = t;
+                    diesel::insert_into(txs_12::table)
+                        .values(tx12)
+                        .execute(&self.conn)
+                        .map(|_| ())
+                        .map_err(|err| {
+                            let context = format!(
+                                "Cannot insert DataTransaction transaction {tx12:?}: {err}",
+                            );
+                            Error::new(AppError::DbDieselError(err)).context(context)
+                        })?;
+                    diesel::insert_into(txs_12_data::table)
+                        .values(data)
+                        .execute(&self.conn)
+                        .map(|_| ())
+                        .map_err(|err| {
+                            let context =
+                                format!("Cannot insert DataTransaction data {data:?}: {err}",);
+                            Error::new(AppError::DbDieselError(err)).context(context)
+                        })?;
+                }
                 Tx::SetScript(t) => diesel::insert_into(txs_13::table)
                     .values(t)
                     .execute(&self.conn)
@@ -408,15 +434,36 @@ impl Repo for PgRepoImpl {
                             format!("Cannot insert SetAssetScript transaction {t:?}: {err}",);
                         Error::new(AppError::DbDieselError(err)).context(context)
                     })?,
-                Tx::InvokeScript(t) => diesel::insert_into(txs_16::table)
-                    .values(t)
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context =
-                            format!("Cannot insert InvokeScript transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
+                Tx::InvokeScript(t) => {
+                    let (tx16, args, payments) = t;
+                    diesel::insert_into(txs_16::table)
+                        .values(tx16)
+                        .execute(&self.conn)
+                        .map(|_| ())
+                        .map_err(|err| {
+                            let context =
+                                format!("Cannot insert InvokeScript transaction {tx16:?}: {err}",);
+                            Error::new(AppError::DbDieselError(err)).context(context)
+                        })?;
+                    diesel::insert_into(txs_16_args::table)
+                        .values(args)
+                        .execute(&self.conn)
+                        .map(|_| ())
+                        .map_err(|err| {
+                            let context =
+                                format!("Cannot insert InvokeScript args {args:?}: {err}",);
+                            Error::new(AppError::DbDieselError(err)).context(context)
+                        })?;
+                    diesel::insert_into(txs_16_payment::table)
+                        .values(payments)
+                        .execute(&self.conn)
+                        .map(|_| ())
+                        .map_err(|err| {
+                            let context =
+                                format!("Cannot insert InvokeScript payments {payments:?}: {err}",);
+                            Error::new(AppError::DbDieselError(err)).context(context)
+                        })?
+                }
                 Tx::UpdateAssetInfo(t) => diesel::insert_into(txs_17::table)
                     .values(t)
                     .execute(&self.conn)

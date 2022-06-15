@@ -197,7 +197,7 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                         updated_waves_amount,
                     })) => Ok(Block(BlockMicroblockAppend {
                         id: bs58::encode(&value.id).into_string(),
-                        time_stamp: Some(NaiveDateTime::from_timestamp(timestamp, 0)),
+                        time_stamp: Some(NaiveDateTime::from_timestamp(timestamp / 1000, 0)),
                         height,
                         updated_waves_amount: if updated_waves_amount > 0 {
                             Some(updated_waves_amount)

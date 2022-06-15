@@ -1,3 +1,4 @@
+pub mod function_call;
 pub mod models;
 pub mod repo;
 pub mod updates;
@@ -252,9 +253,9 @@ where
         repo.insert_asset_origins(&asset_origins)?;
     }
 
-    handle_txs(repo.clone(), appends)?;
-
     info!("handled {} assets updates", updates_amount);
+
+    handle_txs(repo.clone(), appends)?;
 
     Ok(())
 }
@@ -264,19 +265,22 @@ fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> 
     let mut txs = vec![];
     let mut ugen = TxUidGenerator::new(Some(100000));
     for bm in bma {
-        for tx in bm.txs {
+        for tx in &bm.txs {
             ugen.maybe_update_height(bm.height as usize);
             let result_tx = ConvertedTx::try_from((
-                tx.data,
-                tx.id,
+                &tx.data,
+                &tx.id,
                 bm.height,
-                tx.meta.sender_address,
+                &tx.meta.sender_address,
                 &mut ugen,
             ))?;
             txs.push(result_tx);
         }
     }
     repo.insert_txs(&txs)?;
+
+    info!("handled {} transactions", txs.len());
+
     Ok(())
 }
 

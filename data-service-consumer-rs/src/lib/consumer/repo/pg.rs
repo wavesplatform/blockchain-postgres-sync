@@ -8,7 +8,7 @@ use super::Repo;
 use crate::consumer::models::{
     assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
     block_microblock::BlockMicroblock,
-    txs::Tx,
+    txs::{Tx, Tx9},
 };
 use crate::error::Error as AppError;
 use crate::schema::*;
@@ -347,15 +347,29 @@ impl Repo for PgRepoImpl {
                         let context = format!("Cannot insert Lease transaction {t:?}: {err}",);
                         Error::new(AppError::DbDieselError(err)).context(context)
                     })?,
-                Tx::LeaseCancel(t) => diesel::insert_into(txs_9::table)
-                    .values(t)
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context =
-                            format!("Cannot insert LeaseCancel transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
+                Tx::LeaseCancel(t) => {
+                    let lease_tx_uid = match t.lease_id.as_ref() {
+                        Some(lid) => txs::table
+                            .select(txs::uid)
+                            .filter(txs::id.eq(lid))
+                            .first(&self.conn)
+                            .optional()
+                            .map_err(|err| {
+                                let context = format!("Cannot find uid for lease_id {lid}: {err}",);
+                                Error::new(AppError::DbDieselError(err)).context(context)
+                            })?,
+                        None => None,
+                    };
+                    diesel::insert_into(txs_9::table)
+                        .values(Tx9::from((t, lease_tx_uid)))
+                        .execute(&self.conn)
+                        .map(|_| ())
+                        .map_err(|err| {
+                            let context =
+                                format!("Cannot insert LeaseCancel transaction {t:?}: {err}",);
+                            Error::new(AppError::DbDieselError(err)).context(context)
+                        })?
+                }
                 Tx::CreateAlias(t) => diesel::insert_into(txs_10::table)
                     .values(t)
                     .execute(&self.conn)

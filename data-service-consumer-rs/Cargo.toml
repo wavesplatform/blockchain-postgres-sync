@@ -42,6 +42,7 @@ wavesexchange_log = { git = "https://github.com/waves-exchange/wavesexchange-rs"
 wavesexchange_warp = { git = "https://github.com/waves-exchange/wavesexchange-rs", tag = "wavesexchange_warp/0.12.3" }
 diesel_full_text_search = "1.0.1"
 waves-protobuf-schemas = { git = "https://github.com/wavesplatform/protobuf-schemas", tag = "v1.4.3" }
+nom = "7.1.1"
 
 [lib]
 name = "app_lib"

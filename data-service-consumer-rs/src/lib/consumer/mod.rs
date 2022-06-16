@@ -267,22 +267,17 @@ fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> 
     for bm in bma {
         for tx in &bm.txs {
             ugen.maybe_update_height(bm.height as usize);
-            let result_tx = match ConvertedTx::try_from((
-                &tx.data,
-                &tx.id,
-                bm.height,
-                &tx.meta.sender_address,
-                &mut ugen,
-            )) {
-                Ok(r) => r,
-                Err(e) => match e {
-                    AppError::NotImplementedYetError(e) => {
-                        warn!("{}", e);
-                        continue;
-                    }
-                    o => return Err(o.into()),
-                },
-            };
+            let result_tx =
+                match ConvertedTx::try_from((&tx.data, &tx.id, bm.height, &tx.meta, &mut ugen)) {
+                    Ok(r) => r,
+                    Err(e) => match e {
+                        AppError::NotImplementedYetError(e) => {
+                            warn!("{}", e);
+                            continue;
+                        }
+                        o => return Err(o.into()),
+                    },
+                };
             txs.push(result_tx);
         }
     }

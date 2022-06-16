@@ -7,8 +7,9 @@ use diesel::Insertable;
 use serde_json::Value;
 use waves_protobuf_schemas::waves::Amount;
 use waves_protobuf_schemas::waves::{
-    data_transaction_data::data_entry::Value as DataValue, recipient::Recipient as InnerRecipient,
-    signed_transaction::Transaction, transaction::Data, Recipient, SignedTransaction,
+    data_transaction_data::data_entry::Value as DataValue, events::TransactionMetadata,
+    recipient::Recipient as InnerRecipient, signed_transaction::Transaction, transaction::Data,
+    Recipient, SignedTransaction,
 };
 
 type Uid = i64;
@@ -79,18 +80,18 @@ impl
         &SignedTransaction,
         &Id,
         Height,
-        &Vec<u8>,
+        &TransactionMetadata,
         &mut TxUidGenerator,
     )> for Tx
 {
     type Error = Error;
 
     fn try_from(
-        (tx, id, height, sender, ugen): (
+        (tx, id, height, meta, ugen): (
             &SignedTransaction,
             &Id,
             Height,
-            &Vec<u8>,
+            &TransactionMetadata,
             &mut TxUidGenerator,
         ),
     ) -> Result<Self, Self::Error> {
@@ -120,9 +121,11 @@ impl
             "No inner transaction data in id={id}, height={height}",
         )))?;
         let time_stamp = NaiveDateTime::from_timestamp(tx.timestamp / 1000, 0);
-        let fee = tx.fee.clone().unwrap();
-        let fee_asset_id = fee.asset_id;
-        let fee = fee.amount;
+        let fee = tx.fee.clone();
+        let (fee, fee_asset_id) = match fee {
+            Some(f) => (f.amount, f.asset_id.to_vec()),
+            None => (0, b"WAVES".to_vec()),
+        };
         let proofs = proofs.into_iter().map(|p| into_b58(p)).collect::<Vec<_>>();
         let signature = proofs.get(0).map(ToOwned::to_owned);
         let proofs = Some(proofs);
@@ -130,7 +133,7 @@ impl
         let sender_public_key = into_b58(tx.sender_public_key.as_ref());
         //TODO: find status
         let status = String::from("succeeded");
-        let sender = into_b58(sender);
+        let sender = into_b58(&meta.sender_address);
         let uid = ugen.next() as i64;
         let id = id.to_owned();
 
@@ -159,7 +162,6 @@ impl
                     None
                 },
                 status,
-                //TODO: действительно ли такая конвертация?
                 recipient_address: into_b58(&t.recipient_address),
                 recipient_alias: None,
                 amount: t.amount,

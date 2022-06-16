@@ -139,8 +139,10 @@ impl
         let uid = ugen.next() as i64;
         let id = id.to_owned();
 
-        let parse_attachment =
-            |a: Vec<u8>| String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(&a));
+        let sanitize_str = |s: String| s.replace("\x00", "");
+        let parse_attachment = |a: Vec<u8>| {
+            sanitize_str(String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(&a)))
+        };
         let parse_recipient = |r: Recipient| match r.recipient.unwrap() {
             InnerRecipient::Alias(a) => a,
             InnerRecipient::PublicKeyHash(p) => into_b58(&p),
@@ -199,8 +201,8 @@ impl
                 sender_public_key,
                 status,
                 asset_id: id.to_owned(),
-                asset_name: t.name,
-                description: t.description,
+                asset_name: sanitize_str(t.name),
+                description: sanitize_str(t.description),
                 quantity: t.amount,
                 decimals: t.decimals as i16,
                 reissuable: t.reissuable,
@@ -559,8 +561,8 @@ impl
                 sender_public_key,
                 status,
                 asset_id: into_b58(&t.asset_id),
-                asset_name: t.name,
-                description: t.description,
+                asset_name: sanitize_str(t.name),
+                description: sanitize_str(t.description),
             }),
             Data::InvokeExpression(_t) => unimplemented!(),
         })

@@ -318,6 +318,7 @@ fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> 
         }
     }
 
+    #[inline]
     fn insert_txs<T: 'static, F: Fn(&Vec<T>) -> Result<()>>(
         txs: &Vec<T>,
         inserter: F,

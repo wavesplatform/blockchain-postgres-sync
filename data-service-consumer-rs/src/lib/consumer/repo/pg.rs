@@ -146,43 +146,31 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_asset_updates(&self, updates: &Vec<AssetUpdate>) -> Result<()> {
-        let columns_count = asset_updates::table::all_columns().len();
-        let chunk_size = (PG_MAX_INSERT_FIELDS_COUNT / columns_count) / 10 * 10;
-        updates
-            .to_owned()
-            .chunks(chunk_size)
-            .into_iter()
-            .try_fold((), |_, chunk| {
-                diesel::insert_into(asset_updates::table)
-                    .values(chunk)
-                    .execute(&self.conn)
-                    .map(|_| ())
-            })
-            .map_err(|err| {
-                let context = format!("Cannot insert new asset updates: {}", err);
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })
+        chunked(asset_updates::table, updates, |t| {
+            diesel::insert_into(asset_updates::table)
+                .values(t)
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert new asset updates: {}", err);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
     }
 
     fn insert_asset_origins(&self, origins: &Vec<AssetOrigin>) -> Result<()> {
-        let columns_count = asset_origins::table::all_columns().len();
-        let chunk_size = (PG_MAX_INSERT_FIELDS_COUNT / columns_count) / 10 * 10;
-        origins
-            .to_owned()
-            .chunks(chunk_size)
-            .into_iter()
-            .try_fold((), |_, chunk| {
-                diesel::insert_into(asset_origins::table)
-                    .values(chunk)
-                    .on_conflict(asset_origins::asset_id)
-                    .do_nothing() // а может и не nothing
-                    .execute(&self.conn)
-                    .map(|_| ())
-            })
-            .map_err(|err| {
-                let context = format!("Cannot insert new assets: {}", err);
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })
+        chunked(asset_origins::table, origins, |t| {
+            diesel::insert_into(asset_origins::table)
+                .values(t)
+                .on_conflict(asset_origins::asset_id)
+                .do_nothing() // а может и не nothing
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert new assets: {}", err);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
     }
 
     fn update_assets_block_references(&self, block_uid: &i64) -> Result<()> {
@@ -287,7 +275,7 @@ impl Repo for PgRepoImpl {
     //
 
     fn insert_txs_1(&self, txs: &Vec<Tx1>) -> Result<()> {
-        chunked(txs_1::table, &txs, |t| {
+        chunked(txs_1::table, txs, |t| {
             diesel::insert_into(txs_1::table)
                 .values(t)
                 .on_conflict(txs_1::uid)
@@ -302,7 +290,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_2(&self, txs: &Vec<Tx2>) -> Result<()> {
-        chunked(txs_2::table, &txs, |t| {
+        chunked(txs_2::table, txs, |t| {
             diesel::insert_into(txs_2::table)
                 .values(t)
                 .on_conflict(txs_2::uid)
@@ -317,7 +305,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_3(&self, txs: &Vec<Tx3>) -> Result<()> {
-        chunked(txs_3::table, &txs, |t| {
+        chunked(txs_3::table, txs, |t| {
             diesel::insert_into(txs_3::table)
                 .values(t)
                 .on_conflict(txs_3::uid)
@@ -332,7 +320,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_4(&self, txs: &Vec<Tx4>) -> Result<()> {
-        chunked(txs_4::table, &txs, |t| {
+        chunked(txs_4::table, txs, |t| {
             diesel::insert_into(txs_4::table)
                 .values(t)
                 .on_conflict(txs_4::uid)
@@ -347,7 +335,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_5(&self, txs: &Vec<Tx5>) -> Result<()> {
-        chunked(txs_5::table, &txs, |t| {
+        chunked(txs_5::table, txs, |t| {
             diesel::insert_into(txs_5::table)
                 .values(t)
                 .on_conflict(txs_5::uid)
@@ -362,7 +350,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_6(&self, txs: &Vec<Tx6>) -> Result<()> {
-        chunked(txs_6::table, &txs, |t| {
+        chunked(txs_6::table, txs, |t| {
             diesel::insert_into(txs_6::table)
                 .values(t)
                 .on_conflict(txs_6::uid)
@@ -377,7 +365,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_7(&self, txs: &Vec<Tx7>) -> Result<()> {
-        chunked(txs_7::table, &txs, |t| {
+        chunked(txs_7::table, txs, |t| {
             diesel::insert_into(txs_7::table)
                 .values(t)
                 .on_conflict(txs_7::uid)
@@ -392,7 +380,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_8(&self, txs: &Vec<Tx8>) -> Result<()> {
-        chunked(txs_8::table, &txs, |t| {
+        chunked(txs_8::table, txs, |t| {
             diesel::insert_into(txs_8::table)
                 .values(t)
                 .on_conflict(txs_8::uid)
@@ -440,7 +428,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_10(&self, txs: &Vec<Tx10>) -> Result<()> {
-        chunked(txs_10::table, &txs, |t| {
+        chunked(txs_10::table, txs, |t| {
             diesel::insert_into(txs_10::table)
                 .values(t)
                 .on_conflict(txs_10::uid)
@@ -514,7 +502,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_13(&self, txs: &Vec<Tx13>) -> Result<()> {
-        chunked(txs_13::table, &txs, |t| {
+        chunked(txs_13::table, txs, |t| {
             diesel::insert_into(txs_13::table)
                 .values(t)
                 .on_conflict(txs_13::uid)
@@ -529,7 +517,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_14(&self, txs: &Vec<Tx14>) -> Result<()> {
-        chunked(txs_14::table, &txs, |t| {
+        chunked(txs_14::table, txs, |t| {
             diesel::insert_into(txs_14::table)
                 .values(t)
                 .on_conflict(txs_14::uid)
@@ -544,7 +532,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_15(&self, txs: &Vec<Tx15>) -> Result<()> {
-        chunked(txs_15::table, &txs, |t| {
+        chunked(txs_15::table, txs, |t| {
             diesel::insert_into(txs_15::table)
                 .values(t)
                 .on_conflict(txs_15::uid)

@@ -1,14 +1,16 @@
 use anyhow::{Error, Result};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
+use diesel::result::Error as DslError;
 use diesel::sql_types::{Array, BigInt, VarChar};
+use diesel::Table;
 
 use super::super::PrevHandledHeight;
 use super::Repo;
 use crate::consumer::models::{
     assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
     block_microblock::BlockMicroblock,
-    txs::{Tx, Tx9},
+    txs::*,
 };
 use crate::error::Error as AppError;
 use crate::schema::*;
@@ -280,250 +282,347 @@ impl Repo for PgRepoImpl {
             })
     }
 
-    fn insert_txs(&self, txs: &Vec<Tx>) -> Result<()> {
-        for tx in txs {
-            match tx {
-                Tx::Genesis(t) => diesel::insert_into(txs_1::table)
-                    .values(t)
-                    .on_conflict(txs_1::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context = format!("Cannot insert Genesis transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::Payment(t) => diesel::insert_into(txs_2::table)
-                    .values(t)
-                    .on_conflict(txs_2::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context = format!("Cannot insert Payment transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::Issue(t) => diesel::insert_into(txs_3::table)
-                    .values(t)
-                    .on_conflict(txs_3::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context = format!("Cannot insert Issue transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::Transfer(t) => diesel::insert_into(txs_4::table)
-                    .values(t)
-                    .on_conflict(txs_4::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context = format!("Cannot insert Transfer transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::Reissue(t) => diesel::insert_into(txs_5::table)
-                    .values(t)
-                    .on_conflict(txs_5::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context = format!("Cannot insert Reissue transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::Burn(t) => diesel::insert_into(txs_6::table)
-                    .values(t)
-                    .on_conflict(txs_6::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context = format!("Cannot insert Burn transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::Exchange(t) => diesel::insert_into(txs_7::table)
-                    .values(t)
-                    .on_conflict(txs_7::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context = format!("Cannot insert Exchange transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::Lease(t) => diesel::insert_into(txs_8::table)
-                    .values(t)
-                    .on_conflict(txs_8::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context = format!("Cannot insert Lease transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::LeaseCancel(t) => {
-                    let lease_tx_uid = match t.lease_id.as_ref() {
-                        Some(lid) => txs::table
-                            .select(txs::uid)
-                            .filter(txs::id.eq(lid))
-                            .first(&self.conn)
-                            .optional()
-                            .map_err(|err| {
-                                let context = format!("Cannot find uid for lease_id {lid}: {err}",);
-                                Error::new(AppError::DbDieselError(err)).context(context)
-                            })?,
-                        None => None,
-                    };
-                    diesel::insert_into(txs_9::table)
-                        .values(Tx9::from((t, lease_tx_uid)))
-                        .on_conflict(txs_9::uid)
-                        .do_nothing()
-                        .execute(&self.conn)
-                        .map(|_| ())
-                        .map_err(|err| {
-                            let context =
-                                format!("Cannot insert LeaseCancel transaction {t:?}: {err}",);
-                            Error::new(AppError::DbDieselError(err)).context(context)
-                        })?
-                }
-                Tx::CreateAlias(t) => diesel::insert_into(txs_10::table)
-                    .values(t)
-                    .on_conflict(txs_10::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context =
-                            format!("Cannot insert CreateAlias transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::MassTransfer(t) => {
-                    let (tx11, transfers) = t;
-                    diesel::insert_into(txs_11::table)
-                        .values(tx11)
-                        .on_conflict(txs_11::uid)
-                        .do_nothing()
-                        .execute(&self.conn)
-                        .map(|_| ())
-                        .map_err(|err| {
-                            let context =
-                                format!("Cannot insert MassTransfer transaction {tx11:?}: {err}",);
-                            Error::new(AppError::DbDieselError(err)).context(context)
-                        })?;
-                    diesel::insert_into(txs_11_transfers::table)
-                        .values(transfers)
-                        .execute(&self.conn)
-                        .map(|_| ())
-                        .map_err(|err| {
-                            let context = format!(
-                                "Cannot insert MassTransfer transfers {transfers:?}: {err}",
-                            );
-                            Error::new(AppError::DbDieselError(err)).context(context)
-                        })?;
-                }
-                Tx::DataTransaction(t) => {
-                    let (tx12, data) = t;
-                    diesel::insert_into(txs_12::table)
-                        .values(tx12)
-                        .on_conflict(txs_12::uid)
-                        .do_nothing()
-                        .execute(&self.conn)
-                        .map(|_| ())
-                        .map_err(|err| {
-                            let context = format!(
-                                "Cannot insert DataTransaction transaction {tx12:?}: {err}",
-                            );
-                            Error::new(AppError::DbDieselError(err)).context(context)
-                        })?;
-                    diesel::insert_into(txs_12_data::table)
-                        .values(data)
-                        .execute(&self.conn)
-                        .map(|_| ())
-                        .map_err(|err| {
-                            let context =
-                                format!("Cannot insert DataTransaction data {data:?}: {err}",);
-                            Error::new(AppError::DbDieselError(err)).context(context)
-                        })?;
-                }
-                Tx::SetScript(t) => diesel::insert_into(txs_13::table)
-                    .values(t)
-                    .on_conflict(txs_13::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context = format!("Cannot insert SetScript transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::SponsorFee(t) => diesel::insert_into(txs_14::table)
-                    .values(t)
-                    .on_conflict(txs_14::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context = format!("Cannot insert SponsorFee transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::SetAssetScript(t) => diesel::insert_into(txs_15::table)
-                    .values(t)
-                    .on_conflict(txs_15::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context =
-                            format!("Cannot insert SetAssetScript transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::InvokeScript(t) => {
-                    let (tx16, args, payments) = t;
-                    diesel::insert_into(txs_16::table)
-                        .values(tx16)
-                        .on_conflict(txs_16::uid)
-                        .do_nothing()
-                        .execute(&self.conn)
-                        .map(|_| ())
-                        .map_err(|err| {
-                            let context =
-                                format!("Cannot insert InvokeScript transaction {tx16:?}: {err}",);
-                            Error::new(AppError::DbDieselError(err)).context(context)
-                        })?;
-                    diesel::insert_into(txs_16_args::table)
-                        .values(args)
-                        .execute(&self.conn)
-                        .map(|_| ())
-                        .map_err(|err| {
-                            let context =
-                                format!("Cannot insert InvokeScript args {args:?}: {err}",);
-                            Error::new(AppError::DbDieselError(err)).context(context)
-                        })?;
-                    diesel::insert_into(txs_16_payment::table)
-                        .values(payments)
-                        .execute(&self.conn)
-                        .map(|_| ())
-                        .map_err(|err| {
-                            let context =
-                                format!("Cannot insert InvokeScript payments {payments:?}: {err}",);
-                            Error::new(AppError::DbDieselError(err)).context(context)
-                        })?
-                }
-                Tx::UpdateAssetInfo(t) => diesel::insert_into(txs_17::table)
-                    .values(t)
-                    .on_conflict(txs_17::uid)
-                    .do_nothing()
-                    .execute(&self.conn)
-                    .map(|_| ())
-                    .map_err(|err| {
-                        let context =
-                            format!("Cannot insert UpdateAssetInfo transaction {t:?}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                Tx::InvokeExpression => todo!(),
-            };
-        }
-        Ok(())
+    //
+    // TRANSACTIONS
+    //
+
+    fn insert_txs_1(&self, txs: &Vec<Tx1>) -> Result<()> {
+        chunked(txs_1::table, &txs, |t| {
+            diesel::insert_into(txs_1::table)
+                .values(t)
+                .on_conflict(txs_1::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert Genesis transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
     }
+
+    fn insert_txs_2(&self, txs: &Vec<Tx2>) -> Result<()> {
+        chunked(txs_2::table, &txs, |t| {
+            diesel::insert_into(txs_2::table)
+                .values(t)
+                .on_conflict(txs_2::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert Payment transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_3(&self, txs: &Vec<Tx3>) -> Result<()> {
+        chunked(txs_3::table, &txs, |t| {
+            diesel::insert_into(txs_3::table)
+                .values(t)
+                .on_conflict(txs_3::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert Issue transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_4(&self, txs: &Vec<Tx4>) -> Result<()> {
+        chunked(txs_4::table, &txs, |t| {
+            diesel::insert_into(txs_4::table)
+                .values(t)
+                .on_conflict(txs_4::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert Transfer transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_5(&self, txs: &Vec<Tx5>) -> Result<()> {
+        chunked(txs_5::table, &txs, |t| {
+            diesel::insert_into(txs_5::table)
+                .values(t)
+                .on_conflict(txs_5::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert Reissue transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_6(&self, txs: &Vec<Tx6>) -> Result<()> {
+        chunked(txs_6::table, &txs, |t| {
+            diesel::insert_into(txs_6::table)
+                .values(t)
+                .on_conflict(txs_6::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert Burn transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_7(&self, txs: &Vec<Tx7>) -> Result<()> {
+        chunked(txs_17::table, &txs, |t| {
+            diesel::insert_into(txs_7::table)
+                .values(t)
+                .on_conflict(txs_7::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert Exchange transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_8(&self, txs: &Vec<Tx8>) -> Result<()> {
+        chunked(txs_8::table, &txs, |t| {
+            diesel::insert_into(txs_8::table)
+                .values(t)
+                .on_conflict(txs_8::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert Lease transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_9(&self, txs: &Vec<Tx9Partial>) -> Result<()> {
+        //TODO: optimize selects
+        let mut txs9 = vec![];
+        for tx in txs.into_iter() {
+            let lease_tx_uid = match tx.lease_id.as_ref() {
+                Some(lid) => txs::table
+                    .select(txs::uid)
+                    .filter(txs::id.eq(lid))
+                    .first(&self.conn)
+                    .optional()
+                    .map_err(|err| {
+                        let context = format!("Cannot find uid for lease_id {lid}: {err}",);
+                        Error::new(AppError::DbDieselError(err)).context(context)
+                    })?,
+                None => None,
+            };
+            txs9.push(Tx9::from((tx, lease_tx_uid)));
+        }
+
+        chunked(txs_9::table, &txs9, |t| {
+            diesel::insert_into(txs_9::table)
+                .values(t)
+                .on_conflict(txs_9::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert LeaseCancel transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_10(&self, txs: &Vec<Tx10>) -> Result<()> {
+        chunked(txs_10::table, &txs, |t| {
+            diesel::insert_into(txs_10::table)
+                .values(t)
+                .on_conflict(txs_10::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert CreateAlias transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_11(&self, txs: &Vec<Tx11Combined>) -> Result<()> {
+        // TODO: figure out how to pass references to freaking diesel
+        let txs11: Vec<Tx11> = txs.iter().map(|t| t.tx.clone()).collect();
+        let transfers: Vec<Tx11Transfers> = txs.iter().flat_map(|t| t.transfers.clone()).collect();
+
+        chunked(txs_11::table, &txs11, |t| {
+            diesel::insert_into(txs_11::table)
+                .values(t)
+                .on_conflict(txs_11::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert MassTransfer transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
+
+        chunked(txs_11_transfers::table, &transfers, |t| {
+            diesel::insert_into(txs_11_transfers::table)
+                .values(t)
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert MassTransfer transfers: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_12(&self, txs: &Vec<Tx12Combined>) -> Result<()> {
+        let txs12: Vec<Tx12> = txs.iter().map(|t| t.tx.clone()).collect();
+        let data: Vec<Tx12Data> = txs.iter().flat_map(|t| t.data.clone()).collect();
+
+        chunked(txs_12::table, &txs12, |t| {
+            diesel::insert_into(txs_12::table)
+                .values(t)
+                .on_conflict(txs_12::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert DataTransaction transaction: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
+
+        chunked(txs_12_data::table, &data, |t| {
+            diesel::insert_into(txs_12_data::table)
+                .values(t)
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert DataTransaction data: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_13(&self, txs: &Vec<Tx13>) -> Result<()> {
+        chunked(txs_13::table, &txs, |t| {
+            diesel::insert_into(txs_13::table)
+                .values(t)
+                .on_conflict(txs_13::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert SetScript transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_14(&self, txs: &Vec<Tx14>) -> Result<()> {
+        chunked(txs_14::table, &txs, |t| {
+            diesel::insert_into(txs_14::table)
+                .values(t)
+                .on_conflict(txs_14::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert SponsorFee transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_15(&self, txs: &Vec<Tx15>) -> Result<()> {
+        chunked(txs_15::table, &txs, |t| {
+            diesel::insert_into(txs_15::table)
+                .values(t)
+                .on_conflict(txs_15::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert SetAssetScript transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_16(&self, txs: &Vec<Tx16Combined>) -> Result<()> {
+        let txs16: Vec<Tx16> = txs.into_iter().map(|t| t.tx.clone()).collect();
+        let args: Vec<Tx16Args> = txs.iter().flat_map(|t| t.args.clone()).collect();
+        let payments: Vec<Tx16Payment> = txs.iter().flat_map(|t| t.payments.clone()).collect();
+
+        chunked(txs_16::table, &txs16, |t| {
+            diesel::insert_into(txs_16::table)
+                .values(t)
+                .on_conflict(txs_16::uid)
+                .do_nothing()
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert InvokeScript transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
+
+        chunked(txs_16_args::table, &args, |t| {
+            diesel::insert_into(txs_16_args::table)
+                .values(t)
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert InvokeScript args: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
+
+        chunked(txs_16_payment::table, &payments, |t| {
+            diesel::insert_into(txs_16_payment::table)
+                .values(t)
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert InvokeScript payments: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+
+    fn insert_txs_17(&self, txs: &Vec<Tx17>) -> Result<()> {
+        chunked(txs_17::table, txs, |t| {
+            diesel::insert_into(txs_17::table)
+                .values(t)
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert UpdateAssetInfo transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
+}
+
+fn chunked<T, F, V>(_: T, values: &Vec<V>, query_fn: F) -> Result<(), DslError>
+where
+    T: Table,
+    T::AllColumns: TupleLen,
+    F: Fn(&[V]) -> Result<(), DslError>,
+{
+    let columns_count = T::all_columns().len();
+    let chunk_size = (PG_MAX_INSERT_FIELDS_COUNT / columns_count) / 10 * 10;
+    values
+        .chunks(chunk_size)
+        .into_iter()
+        .try_fold((), |_, chunk| query_fn(chunk))
 }

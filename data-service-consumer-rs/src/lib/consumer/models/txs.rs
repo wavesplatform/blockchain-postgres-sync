@@ -5,10 +5,14 @@ use crate::schema::*;
 use chrono::NaiveDateTime;
 use diesel::Insertable;
 use serde_json::Value;
+use std::any::Any;
 use waves_protobuf_schemas::waves::Amount;
 use waves_protobuf_schemas::waves::{
-    data_transaction_data::data_entry::Value as DataValue, events::TransactionMetadata,
-    recipient::Recipient as InnerRecipient, signed_transaction::Transaction, transaction::Data,
+    data_transaction_data::data_entry::Value as DataValue,
+    events::{transaction_metadata::*, TransactionMetadata},
+    recipient::Recipient as InnerRecipient,
+    signed_transaction::Transaction,
+    transaction::Data,
     Recipient, SignedTransaction,
 };
 
@@ -36,14 +40,13 @@ pub enum Tx {
     Lease(Tx8),
     LeaseCancel(Tx9Partial),
     CreateAlias(Tx10),
-    MassTransfer((Tx11, Vec<Tx11Transfers>)),
-    DataTransaction((Tx12, Vec<Tx12Data>)),
+    MassTransfer(Tx11Combined),
+    DataTransaction(Tx12Combined),
     SetScript(Tx13),
     SponsorFee(Tx14),
     SetAssetScript(Tx15),
-    InvokeScript((Tx16, Vec<Tx16Args>, Vec<Tx16Payment>)),
+    InvokeScript(Tx16Combined),
     UpdateAssetInfo(Tx17),
-    InvokeExpression,
 }
 
 pub struct TxUidGenerator {
@@ -162,7 +165,7 @@ impl
                     None
                 },
                 status,
-                recipient_address: into_b58(&t.recipient_address),
+                recipient_address: String::from("TODO"),
                 recipient_alias: None,
                 amount: t.amount,
             }),
@@ -179,7 +182,7 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                recipient_address: into_b58(&t.recipient_address),
+                recipient_address: String::from("TODO"),
                 recipient_alias: None,
                 amount: t.amount,
             }),
@@ -227,8 +230,11 @@ impl
                     fee_asset_id: into_b58(&fee_asset_id),
                     amount,
                     attachment: parse_attachment(t.attachment),
-                    //TODO: конвертация
-                    recipient_address: parse_recipient(t.recipient.unwrap()),
+                    recipient_address: if let Some(Metadata::Transfer(ref m)) = meta.metadata {
+                        into_b58(&m.recipient_address)
+                    } else {
+                        unreachable!()
+                    },
                     recipient_alias: None,
                 })
             }
@@ -345,8 +351,8 @@ impl
                 status,
                 alias: t.alias,
             }),
-            Data::MassTransfer(t) => Tx::MassTransfer((
-                Tx11 {
+            Data::MassTransfer(t) => Tx::MassTransfer(Tx11Combined {
+                tx: Tx11 {
                     uid,
                     height,
                     tx_type: 11,
@@ -362,7 +368,8 @@ impl
                     asset_id: into_b58(&t.asset_id),
                     attachment: parse_attachment(t.attachment),
                 },
-                t.transfers
+                transfers: t
+                    .transfers
                     .into_iter()
                     .enumerate()
                     .map(|(i, tr)| Tx11Transfers {
@@ -374,9 +381,9 @@ impl
                         height,
                     })
                     .collect(),
-            )),
-            Data::DataTransaction(t) => Tx::DataTransaction((
-                Tx12 {
+            }),
+            Data::DataTransaction(t) => Tx::DataTransaction(Tx12Combined {
+                tx: Tx12 {
                     uid,
                     height,
                     tx_type: 12,
@@ -390,7 +397,8 @@ impl
                     sender_public_key,
                     status,
                 },
-                t.data
+                data: t
+                    .data
                     .into_iter()
                     .enumerate()
                     .map(|(i, d)| {
@@ -422,7 +430,7 @@ impl
                         }
                     })
                     .collect(),
-            )),
+            }),
             Data::SetScript(t) => Tx::SetScript(Tx13 {
                 uid,
                 height,
@@ -473,8 +481,8 @@ impl
             Data::InvokeScript(t) => {
                 let fc = FunctionCall::from_raw_bytes(t.function_call.as_ref())
                     .map_err(|e| Error::IncosistDataError(e))?;
-                Tx::InvokeScript((
-                    Tx16 {
+                Tx::InvokeScript(Tx16Combined {
+                    tx: Tx16 {
                         uid,
                         height,
                         tx_type: 16,
@@ -492,7 +500,8 @@ impl
                         dapp_address: parse_recipient(t.d_app.unwrap()),
                         dapp_alias: None,
                     },
-                    fc.args
+                    args: fc
+                        .args
                         .into_iter()
                         .enumerate()
                         .map(|(i, arg)| {
@@ -523,7 +532,8 @@ impl
                             }
                         })
                         .collect(),
-                    t.payments
+                    payments: t
+                        .payments
                         .into_iter()
                         .enumerate()
                         .map(|(i, p)| Tx16Payment {
@@ -534,7 +544,7 @@ impl
                             asset_id: into_b58(&p.asset_id),
                         })
                         .collect(),
-                ))
+                })
             }
             Data::UpdateAssetInfo(t) => Tx::UpdateAssetInfo(Tx17 {
                 uid,
@@ -553,7 +563,7 @@ impl
                 asset_name: t.name,
                 description: t.description,
             }),
-            Data::InvokeExpression(_t) => Tx::InvokeExpression,
+            Data::InvokeExpression(_t) => unimplemented!(),
         })
     }
 }
@@ -834,6 +844,12 @@ pub struct Tx11Transfers {
     pub height: i32,
 }
 
+#[derive(Clone, Debug)]
+pub struct Tx11Combined {
+    pub tx: Tx11,
+    pub transfers: Vec<Tx11Transfers>,
+}
+
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_12"]
 pub struct Tx12 {
@@ -863,6 +879,12 @@ pub struct Tx12Data {
     pub data_value_string: Option<String>,
     pub position_in_tx: i16,
     pub height: i32,
+}
+
+#[derive(Clone, Debug)]
+pub struct Tx12Combined {
+    pub tx: Tx12,
+    pub data: Vec<Tx12Data>,
 }
 
 #[derive(Clone, Debug, Insertable)]
@@ -964,6 +986,13 @@ pub struct Tx16Payment {
     pub position_in_payment: i16,
     pub height: i32,
     pub asset_id: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct Tx16Combined {
+    pub tx: Tx16,
+    pub args: Vec<Tx16Args>,
+    pub payments: Vec<Tx16Payment>,
 }
 
 #[derive(Clone, Debug, Insertable)]

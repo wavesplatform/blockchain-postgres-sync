@@ -261,9 +261,26 @@ where
 }
 
 fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> Result<(), Error> {
-    //TODO: optimize this
-    let mut txs = vec![];
+    let mut txs_1 = vec![];
+    let mut txs_2 = vec![];
+    let mut txs_3 = vec![];
+    let mut txs_4 = vec![];
+    let mut txs_5 = vec![];
+    let mut txs_6 = vec![];
+    let mut txs_7 = vec![];
+    let mut txs_8 = vec![];
+    let mut txs_9 = vec![];
+    let mut txs_10 = vec![];
+    let mut txs_11 = vec![];
+    let mut txs_12 = vec![];
+    let mut txs_13 = vec![];
+    let mut txs_14 = vec![];
+    let mut txs_15 = vec![];
+    let mut txs_16 = vec![];
+    let mut txs_17 = vec![];
+
     let mut ugen = TxUidGenerator::new(Some(100000));
+    let mut txs_count = 0;
     for bm in bma {
         for tx in &bm.txs {
             ugen.maybe_update_height(bm.height as usize);
@@ -278,12 +295,58 @@ fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> 
                         o => return Err(o.into()),
                     },
                 };
-            txs.push(result_tx);
+            txs_count += 1;
+            match result_tx {
+                ConvertedTx::Genesis(t) => txs_1.push(t),
+                ConvertedTx::Payment(t) => txs_2.push(t),
+                ConvertedTx::Issue(t) => txs_3.push(t),
+                ConvertedTx::Transfer(t) => txs_4.push(t),
+                ConvertedTx::Reissue(t) => txs_5.push(t),
+                ConvertedTx::Burn(t) => txs_6.push(t),
+                ConvertedTx::Exchange(t) => txs_7.push(t),
+                ConvertedTx::Lease(t) => txs_8.push(t),
+                ConvertedTx::LeaseCancel(t) => txs_9.push(t),
+                ConvertedTx::CreateAlias(t) => txs_10.push(t),
+                ConvertedTx::MassTransfer(t) => txs_11.push(t),
+                ConvertedTx::DataTransaction(t) => txs_12.push(t),
+                ConvertedTx::SetScript(t) => txs_13.push(t),
+                ConvertedTx::SponsorFee(t) => txs_14.push(t),
+                ConvertedTx::SetAssetScript(t) => txs_15.push(t),
+                ConvertedTx::InvokeScript(t) => txs_16.push(t),
+                ConvertedTx::UpdateAssetInfo(t) => txs_17.push(t),
+            }
         }
     }
-    repo.insert_txs(&txs)?;
 
-    info!("handled {} transactions", txs.len());
+    fn insert_txs<T: 'static, F: Fn(&Vec<T>) -> Result<()>>(
+        txs: &Vec<T>,
+        inserter: F,
+    ) -> Result<()> {
+        if !txs.is_empty() {
+            inserter(txs)?;
+        }
+        Ok(())
+    }
+
+    insert_txs(&txs_1, |txs| repo.insert_txs_1(txs))?;
+    insert_txs(&txs_2, |txs| repo.insert_txs_2(txs))?;
+    insert_txs(&txs_3, |txs| repo.insert_txs_3(txs))?;
+    insert_txs(&txs_4, |txs| repo.insert_txs_4(txs))?;
+    insert_txs(&txs_5, |txs| repo.insert_txs_5(txs))?;
+    insert_txs(&txs_6, |txs| repo.insert_txs_6(txs))?;
+    insert_txs(&txs_7, |txs| repo.insert_txs_7(txs))?;
+    insert_txs(&txs_8, |txs| repo.insert_txs_8(txs))?;
+    insert_txs(&txs_9, |txs| repo.insert_txs_9(txs))?;
+    insert_txs(&txs_10, |txs| repo.insert_txs_10(txs))?;
+    insert_txs(&txs_11, |txs| repo.insert_txs_11(txs))?;
+    insert_txs(&txs_12, |txs| repo.insert_txs_12(txs))?;
+    insert_txs(&txs_13, |txs| repo.insert_txs_13(txs))?;
+    insert_txs(&txs_14, |txs| repo.insert_txs_14(txs))?;
+    insert_txs(&txs_15, |txs| repo.insert_txs_15(txs))?;
+    insert_txs(&txs_16, |txs| repo.insert_txs_16(txs))?;
+    insert_txs(&txs_17, |txs| repo.insert_txs_17(txs))?;
+
+    info!("handled {} transactions", txs_count);
 
     Ok(())
 }

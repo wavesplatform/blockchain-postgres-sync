@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use super::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use super::models::block_microblock::BlockMicroblock;
-use super::models::txs::Tx;
+use super::models::txs::*;
 use super::PrevHandledHeight;
 
 #[async_trait::async_trait]
@@ -53,5 +53,41 @@ pub trait Repo {
 
     fn assets_gt_block_uid(&self, block_uid: &i64) -> Result<Vec<i64>>;
 
-    fn insert_txs(&self, txs: &Vec<Tx>) -> Result<()>;
+    //
+    // TRANSACTIONS
+    //
+
+    fn insert_txs_1(&self, txs: &Vec<Tx1>) -> Result<()>;
+
+    fn insert_txs_2(&self, txs: &Vec<Tx2>) -> Result<()>;
+
+    fn insert_txs_3(&self, txs: &Vec<Tx3>) -> Result<()>;
+
+    fn insert_txs_4(&self, txs: &Vec<Tx4>) -> Result<()>;
+
+    fn insert_txs_5(&self, txs: &Vec<Tx5>) -> Result<()>;
+
+    fn insert_txs_6(&self, txs: &Vec<Tx6>) -> Result<()>;
+
+    fn insert_txs_7(&self, txs: &Vec<Tx7>) -> Result<()>;
+
+    fn insert_txs_8(&self, txs: &Vec<Tx8>) -> Result<()>;
+
+    fn insert_txs_9(&self, txs: &Vec<Tx9Partial>) -> Result<()>;
+
+    fn insert_txs_10(&self, txs: &Vec<Tx10>) -> Result<()>;
+
+    fn insert_txs_11(&self, txs: &Vec<Tx11Combined>) -> Result<()>;
+
+    fn insert_txs_12(&self, txs: &Vec<Tx12Combined>) -> Result<()>;
+
+    fn insert_txs_13(&self, txs: &Vec<Tx13>) -> Result<()>;
+
+    fn insert_txs_14(&self, txs: &Vec<Tx14>) -> Result<()>;
+
+    fn insert_txs_15(&self, txs: &Vec<Tx15>) -> Result<()>;
+
+    fn insert_txs_16(&self, txs: &Vec<Tx16Combined>) -> Result<()>;
+
+    fn insert_txs_17(&self, txs: &Vec<Tx17>) -> Result<()>;
 }

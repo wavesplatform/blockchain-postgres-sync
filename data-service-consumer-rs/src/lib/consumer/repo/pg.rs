@@ -377,7 +377,7 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_7(&self, txs: &Vec<Tx7>) -> Result<()> {
-        chunked(txs_17::table, &txs, |t| {
+        chunked(txs_7::table, &txs, |t| {
             diesel::insert_into(txs_7::table)
                 .values(t)
                 .on_conflict(txs_7::uid)

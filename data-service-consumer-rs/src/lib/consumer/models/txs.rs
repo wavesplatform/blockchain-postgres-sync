@@ -5,7 +5,6 @@ use crate::schema::*;
 use chrono::NaiveDateTime;
 use diesel::Insertable;
 use serde_json::Value;
-use std::any::Any;
 use waves_protobuf_schemas::waves::Amount;
 use waves_protobuf_schemas::waves::{
     data_transaction_data::data_entry::Value as DataValue,

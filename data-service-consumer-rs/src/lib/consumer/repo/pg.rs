@@ -285,6 +285,8 @@ impl Repo for PgRepoImpl {
             match tx {
                 Tx::Genesis(t) => diesel::insert_into(txs_1::table)
                     .values(t)
+                    .on_conflict(txs_1::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -293,6 +295,8 @@ impl Repo for PgRepoImpl {
                     })?,
                 Tx::Payment(t) => diesel::insert_into(txs_2::table)
                     .values(t)
+                    .on_conflict(txs_2::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -301,6 +305,8 @@ impl Repo for PgRepoImpl {
                     })?,
                 Tx::Issue(t) => diesel::insert_into(txs_3::table)
                     .values(t)
+                    .on_conflict(txs_3::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -309,6 +315,8 @@ impl Repo for PgRepoImpl {
                     })?,
                 Tx::Transfer(t) => diesel::insert_into(txs_4::table)
                     .values(t)
+                    .on_conflict(txs_4::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -317,6 +325,8 @@ impl Repo for PgRepoImpl {
                     })?,
                 Tx::Reissue(t) => diesel::insert_into(txs_5::table)
                     .values(t)
+                    .on_conflict(txs_5::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -325,6 +335,8 @@ impl Repo for PgRepoImpl {
                     })?,
                 Tx::Burn(t) => diesel::insert_into(txs_6::table)
                     .values(t)
+                    .on_conflict(txs_6::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -333,6 +345,8 @@ impl Repo for PgRepoImpl {
                     })?,
                 Tx::Exchange(t) => diesel::insert_into(txs_7::table)
                     .values(t)
+                    .on_conflict(txs_7::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -341,6 +355,8 @@ impl Repo for PgRepoImpl {
                     })?,
                 Tx::Lease(t) => diesel::insert_into(txs_8::table)
                     .values(t)
+                    .on_conflict(txs_8::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -362,6 +378,8 @@ impl Repo for PgRepoImpl {
                     };
                     diesel::insert_into(txs_9::table)
                         .values(Tx9::from((t, lease_tx_uid)))
+                        .on_conflict(txs_9::uid)
+                        .do_nothing()
                         .execute(&self.conn)
                         .map(|_| ())
                         .map_err(|err| {
@@ -372,6 +390,8 @@ impl Repo for PgRepoImpl {
                 }
                 Tx::CreateAlias(t) => diesel::insert_into(txs_10::table)
                     .values(t)
+                    .on_conflict(txs_10::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -383,6 +403,8 @@ impl Repo for PgRepoImpl {
                     let (tx11, transfers) = t;
                     diesel::insert_into(txs_11::table)
                         .values(tx11)
+                        .on_conflict(txs_11::uid)
+                        .do_nothing()
                         .execute(&self.conn)
                         .map(|_| ())
                         .map_err(|err| {
@@ -405,6 +427,8 @@ impl Repo for PgRepoImpl {
                     let (tx12, data) = t;
                     diesel::insert_into(txs_12::table)
                         .values(tx12)
+                        .on_conflict(txs_12::uid)
+                        .do_nothing()
                         .execute(&self.conn)
                         .map(|_| ())
                         .map_err(|err| {
@@ -425,6 +449,8 @@ impl Repo for PgRepoImpl {
                 }
                 Tx::SetScript(t) => diesel::insert_into(txs_13::table)
                     .values(t)
+                    .on_conflict(txs_13::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -433,6 +459,8 @@ impl Repo for PgRepoImpl {
                     })?,
                 Tx::SponsorFee(t) => diesel::insert_into(txs_14::table)
                     .values(t)
+                    .on_conflict(txs_14::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -441,6 +469,8 @@ impl Repo for PgRepoImpl {
                     })?,
                 Tx::SetAssetScript(t) => diesel::insert_into(txs_15::table)
                     .values(t)
+                    .on_conflict(txs_15::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {
@@ -452,6 +482,8 @@ impl Repo for PgRepoImpl {
                     let (tx16, args, payments) = t;
                     diesel::insert_into(txs_16::table)
                         .values(tx16)
+                        .on_conflict(txs_16::uid)
+                        .do_nothing()
                         .execute(&self.conn)
                         .map(|_| ())
                         .map_err(|err| {
@@ -480,6 +512,8 @@ impl Repo for PgRepoImpl {
                 }
                 Tx::UpdateAssetInfo(t) => diesel::insert_into(txs_17::table)
                     .values(t)
+                    .on_conflict(txs_17::uid)
+                    .do_nothing()
                     .execute(&self.conn)
                     .map(|_| ())
                     .map_err(|err| {

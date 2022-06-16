@@ -48,6 +48,8 @@ pub enum Error {
     InvalidateCacheError(String),
     #[error("IncosistDataError: {0}")]
     IncosistDataError(String),
+    #[error("NotImplementedYetError: {0}")]
+    NotImplementedYetError(String),
 }
 
 impl Reject for Error {}

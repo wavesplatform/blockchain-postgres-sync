@@ -16,7 +16,7 @@ use waves_protobuf_schemas::waves::{
     signed_transaction::Transaction,
     SignedTransaction, Transaction as WavesTx,
 };
-use wavesexchange_log::{debug, info, timer};
+use wavesexchange_log::{debug, info, timer, warn};
 
 use self::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use self::models::block_microblock::BlockMicroblock;
@@ -267,13 +267,22 @@ fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> 
     for bm in bma {
         for tx in &bm.txs {
             ugen.maybe_update_height(bm.height as usize);
-            let result_tx = ConvertedTx::try_from((
+            let result_tx = match ConvertedTx::try_from((
                 &tx.data,
                 &tx.id,
                 bm.height,
                 &tx.meta.sender_address,
                 &mut ugen,
-            ))?;
+            )) {
+                Ok(r) => r,
+                Err(e) => match e {
+                    AppError::NotImplementedYetError(e) => {
+                        warn!("{}", e);
+                        continue;
+                    }
+                    o => return Err(o.into()),
+                },
+            };
             txs.push(result_tx);
         }
     }

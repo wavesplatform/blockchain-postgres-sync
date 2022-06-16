@@ -111,7 +111,7 @@ impl
         let tx = match tx {
             Transaction::WavesTransaction(t) => t,
             Transaction::EthereumTransaction(_) => {
-                return Err(Error::IncosistDataError(
+                return Err(Error::NotImplementedYetError(
                     "EthereumTransaction is not supported yet".to_string(),
                 ))
             }

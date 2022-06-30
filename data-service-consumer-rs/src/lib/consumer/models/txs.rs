@@ -119,7 +119,7 @@ impl
                 ))
             }
         };
-        let tx_data = tx.data.clone().ok_or(Error::IncosistDataError(format!(
+        let tx_data = tx.data.as_ref().ok_or(Error::IncosistDataError(format!(
             "No inner transaction data in id={id}, height={height}",
         )))?;
         let time_stamp = NaiveDateTime::from_timestamp(tx.timestamp / 1000, 0);
@@ -139,12 +139,13 @@ impl
         let uid = ugen.next() as i64;
         let id = id.to_owned();
 
-        let sanitize_str = |s: String| s.replace("\x00", "");
-        let parse_attachment = |a: Vec<u8>| {
-            sanitize_str(String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(&a)))
+        let sanitize_str = |s: &String| s.replace("\x00", "");
+        let parse_attachment = |a: &Vec<u8>| {
+            sanitize_str(&String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(&a)))
         };
-        let parse_recipient = |r: Recipient| match r.recipient.unwrap() {
-            InnerRecipient::Alias(a) => a,
+        //todo: rework
+        let parse_recipient = |r: &Recipient| match r.recipient.as_ref().unwrap() {
+            InnerRecipient::Alias(a) => a.to_owned(),
             InnerRecipient::PublicKeyHash(p) => into_b58(&p),
         };
 
@@ -201,8 +202,8 @@ impl
                 sender_public_key,
                 status,
                 asset_id: id.to_owned(),
-                asset_name: sanitize_str(t.name),
-                description: sanitize_str(t.description),
+                asset_name: sanitize_str(&t.name),
+                description: sanitize_str(&t.description),
                 quantity: t.amount,
                 decimals: t.decimals as i16,
                 reissuable: t.reissuable,
@@ -213,7 +214,7 @@ impl
                 },
             }),
             Data::Transfer(t) => {
-                let Amount { asset_id, amount } = t.amount.unwrap();
+                let Amount { asset_id, amount } = t.amount.as_ref().unwrap();
                 Tx::Transfer(Tx4 {
                     uid,
                     height,
@@ -229,8 +230,8 @@ impl
                     status,
                     asset_id: into_b58(&asset_id),
                     fee_asset_id: into_b58(&fee_asset_id),
-                    amount,
-                    attachment: parse_attachment(t.attachment),
+                    amount: *amount,
+                    attachment: parse_attachment(&t.attachment),
                     recipient_address: if let Some(Metadata::Transfer(ref m)) = meta.metadata {
                         into_b58(&m.recipient_address)
                     } else {
@@ -240,7 +241,7 @@ impl
                 })
             }
             Data::Reissue(t) => {
-                let Amount { asset_id, amount } = t.asset_amount.unwrap();
+                let Amount { asset_id, amount } = t.asset_amount.as_ref().unwrap();
                 Tx::Reissue(Tx5 {
                     uid,
                     height,
@@ -255,12 +256,12 @@ impl
                     sender_public_key,
                     status,
                     asset_id: into_b58(&asset_id),
-                    quantity: amount,
+                    quantity: *amount,
                     reissuable: t.reissuable,
                 })
             }
             Data::Burn(t) => {
-                let Amount { asset_id, amount } = t.asset_amount.unwrap();
+                let Amount { asset_id, amount } = t.asset_amount.as_ref().unwrap();
                 Tx::Burn(Tx6 {
                     uid,
                     height,
@@ -275,7 +276,7 @@ impl
                     sender_public_key,
                     status,
                     asset_id: into_b58(&asset_id),
-                    amount,
+                    amount: *amount,
                 })
             }
             Data::Exchange(t) => Tx::Exchange(Tx7 {
@@ -315,7 +316,7 @@ impl
                 sender_public_key,
                 status,
                 amount: t.amount,
-                recipient_address: parse_recipient(t.recipient.unwrap()),
+                recipient_address: parse_recipient(t.recipient.as_ref().unwrap()),
                 recipient_alias: None,
             }),
             Data::LeaseCancel(t) => Tx::LeaseCancel(Tx9Partial {
@@ -350,7 +351,7 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                alias: t.alias,
+                alias: t.alias.clone(),
             }),
             Data::MassTransfer(t) => Tx::MassTransfer(Tx11Combined {
                 tx: Tx11 {
@@ -367,15 +368,15 @@ impl
                     sender_public_key,
                     status,
                     asset_id: into_b58(&t.asset_id),
-                    attachment: parse_attachment(t.attachment),
+                    attachment: parse_attachment(&t.attachment),
                 },
                 transfers: t
                     .transfers
-                    .into_iter()
+                    .iter()
                     .enumerate()
                     .map(|(i, tr)| Tx11Transfers {
                         tx_uid: uid,
-                        recipient_address: parse_recipient(tr.recipient.unwrap()),
+                        recipient_address: parse_recipient(tr.recipient.as_ref().unwrap()),
                         recipient_alias: None,
                         amount: tr.amount,
                         position_in_tx: i as i16,
@@ -400,10 +401,10 @@ impl
                 },
                 data: t
                     .data
-                    .into_iter()
+                    .iter()
                     .enumerate()
                     .map(|(i, d)| {
-                        let (v_type, v_int, v_bool, v_bin, v_str) = match d.value {
+                        let (v_type, v_int, v_bool, v_bin, v_str) = match &d.value {
                             Some(DataValue::IntValue(v)) => {
                                 (Some("integer"), Some(v.to_owned()), None, None, None)
                             }
@@ -420,7 +421,7 @@ impl
                         };
                         Tx12Data {
                             tx_uid: uid,
-                            data_key: d.key,
+                            data_key: d.key.clone(),
                             data_type: v_type.map(String::from),
                             data_value_integer: v_int,
                             data_value_boolean: v_bool,
@@ -461,7 +462,7 @@ impl
                 sender_public_key,
                 status,
                 asset_id: into_b58(&t.min_fee.as_ref().unwrap().asset_id.clone()),
-                min_sponsored_asset_fee: t.min_fee.map(|f| f.amount),
+                min_sponsored_asset_fee: t.min_fee.as_ref().map(|f| f.amount),
             }),
             Data::SetAssetScript(t) => Tx::SetAssetScript(Tx15 {
                 uid,
@@ -498,7 +499,7 @@ impl
                         status,
                         function_name: Some(fc.name),
                         fee_asset_id: into_b58(&tx.fee.as_ref().unwrap().asset_id.clone()),
-                        dapp_address: parse_recipient(t.d_app.unwrap()),
+                        dapp_address: parse_recipient(t.d_app.as_ref().unwrap()),
                         dapp_alias: None,
                     },
                     args: fc
@@ -535,7 +536,7 @@ impl
                         .collect(),
                     payments: t
                         .payments
-                        .into_iter()
+                        .iter()
                         .enumerate()
                         .map(|(i, p)| Tx16Payment {
                             tx_uid: uid,
@@ -561,8 +562,8 @@ impl
                 sender_public_key,
                 status,
                 asset_id: into_b58(&t.asset_id),
-                asset_name: sanitize_str(t.name),
-                description: sanitize_str(t.description),
+                asset_name: sanitize_str(&t.name),
+                description: sanitize_str(&t.description),
             }),
             Data::InvokeExpression(_t) => unimplemented!(),
         })

@@ -463,6 +463,8 @@ impl Repo for PgRepoImpl {
         chunked(txs_11_transfers::table, &transfers, |t| {
             diesel::insert_into(txs_11_transfers::table)
                 .values(t)
+                .on_conflict((txs_11_transfers::tx_uid, txs_11_transfers::position_in_tx))
+                .do_nothing()
                 .execute(&self.conn)
                 .map(|_| ())
         })

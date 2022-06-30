@@ -135,7 +135,10 @@ impl Repo for PgRepoImpl {
     fn insert_waves_data(&self, waves_data: &Vec<WavesData>) -> Result<()> {
         for data in waves_data {
             let q = diesel::sql_query("INSERT INTO waves_data (height, quantity) 
-            values ($1::integer, (SELECT quantity FROM waves_data WHERE height < $1::integer OR height IS NULL ORDER BY height DESC nulls last LIMIT 1) + $2::bigint) 
+            values (
+                $1::integer, 
+                (SELECT quantity FROM waves_data WHERE height < $1::integer OR height IS NULL ORDER BY height DESC NULLS LAST LIMIT 1) + $2::bigint
+            )
             ON CONFLICT DO NOTHING;")
             .bind::<Integer, _>(data.height)
             .bind::<Numeric, _>(&data.quantity);

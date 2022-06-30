@@ -9,10 +9,9 @@ use waves_protobuf_schemas::waves::Amount;
 use waves_protobuf_schemas::waves::{
     data_transaction_data::data_entry::Value as DataValue,
     events::{transaction_metadata::*, TransactionMetadata},
-    recipient::Recipient as InnerRecipient,
     signed_transaction::Transaction,
     transaction::Data,
-    Recipient, SignedTransaction,
+    SignedTransaction,
 };
 
 type Uid = i64;
@@ -142,11 +141,6 @@ impl
         let sanitize_str = |s: &String| s.replace("\x00", "");
         let parse_attachment = |a: &Vec<u8>| {
             sanitize_str(&String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(&a)))
-        };
-        //todo: rework
-        let parse_recipient = |r: &Recipient| match r.recipient.as_ref().unwrap() {
-            InnerRecipient::Alias(a) => a.to_owned(),
-            InnerRecipient::PublicKeyHash(p) => into_b58(&p),
         };
 
         Ok(match tx_data {
@@ -316,7 +310,11 @@ impl
                 sender_public_key,
                 status,
                 amount: t.amount,
-                recipient_address: parse_recipient(t.recipient.as_ref().unwrap()),
+                recipient_address: if let Some(Metadata::Lease(ref m)) = meta.metadata {
+                    into_b58(&m.recipient_address)
+                } else {
+                    unreachable!()
+                },
                 recipient_alias: None,
             }),
             Data::LeaseCancel(t) => Tx::LeaseCancel(Tx9Partial {
@@ -373,10 +371,15 @@ impl
                 transfers: t
                     .transfers
                     .iter()
+                    .zip(if let Some(Metadata::MassTransfer(ref m)) = meta.metadata {
+                        &m.recipients_addresses
+                    } else {
+                        unreachable!()
+                    })
                     .enumerate()
-                    .map(|(i, tr)| Tx11Transfers {
+                    .map(|(i, (tr, rcp_addr))| Tx11Transfers {
                         tx_uid: uid,
-                        recipient_address: parse_recipient(tr.recipient.as_ref().unwrap()),
+                        recipient_address: into_b58(rcp_addr),
                         recipient_alias: None,
                         amount: tr.amount,
                         position_in_tx: i as i16,
@@ -481,6 +484,7 @@ impl
                 script: into_prefixed_b64(&t.script),
             }),
             Data::InvokeScript(t) => {
+                //todo: maybe use metadata
                 let fc = FunctionCall::from_raw_bytes(t.function_call.as_ref())
                     .map_err(|e| Error::IncosistDataError(e))?;
                 Tx::InvokeScript(Tx16Combined {
@@ -499,7 +503,11 @@ impl
                         status,
                         function_name: Some(fc.name),
                         fee_asset_id: into_b58(&tx.fee.as_ref().unwrap().asset_id.clone()),
-                        dapp_address: parse_recipient(t.d_app.as_ref().unwrap()),
+                        dapp_address: if let Some(Metadata::InvokeScript(ref m)) = meta.metadata {
+                            into_b58(&m.d_app_address)
+                        } else {
+                            unreachable!()
+                        },
                         dapp_alias: None,
                     },
                     args: fc

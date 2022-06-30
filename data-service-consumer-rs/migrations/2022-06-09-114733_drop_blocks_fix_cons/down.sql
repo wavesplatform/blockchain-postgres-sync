@@ -91,3 +91,5 @@ ALTER TABLE ONLY waves_data
     ADD CONSTRAINT fk_waves_data FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE;
 
 ALTER TABLE blocks_microblocks DROP CONSTRAINT height_uniq;
+
+DELETE FROM waves_data WHERE height = null AND quantity = 10000000000000000;

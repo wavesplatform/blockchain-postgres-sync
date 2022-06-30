@@ -74,3 +74,5 @@ ALTER TABLE ONLY waves_data
 
 DROP TABLE IF EXISTS blocks_raw;
 DROP TABLE IF EXISTS blocks;
+
+INSERT INTO waves_data (height, quantity) VALUES (null, 10000000000000000);

@@ -29,7 +29,7 @@ impl FunctionCall {
                     tag(b"\x02"), // str
                     tag(b"\x06"), // true
                     tag(b"\x07"), // false
-                    tag(b"\x0b"), // [...]
+                    tag(b"\x0b"), // array of some data, not supported
                 )),
             )(ii)?;
             let arg_type = arg_type[0];

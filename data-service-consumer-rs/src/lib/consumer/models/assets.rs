@@ -72,21 +72,3 @@ pub struct AssetOrigin {
     pub issue_height: i32,
     pub issue_time_stamp: NaiveDateTime,
 }
-/* TODO: find usages
-#[derive(Clone, Debug, Insertable)]
-#[table_name = "assets_metadata"]
-pub struct AssetsMetadata {
-    pub asset_id: String,
-    pub asset_name: Option<String>,
-    pub ticker: Option<String>,
-    pub height: Option<i32>,
-}
-
-#[derive(Clone, Debug, Insertable)]
-#[table_name = "assets_names_map"]
-pub struct AssetsNames {
-    pub asset_id: String,
-    pub asset_name: Option<String>,
-    pub searchable_asset_name: String,
-}
-*/

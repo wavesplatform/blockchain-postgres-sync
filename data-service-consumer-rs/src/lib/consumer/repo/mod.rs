@@ -5,6 +5,7 @@ use anyhow::Result;
 use super::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use super::models::block_microblock::BlockMicroblock;
 use super::models::txs::*;
+use super::models::waves_data::WavesData;
 use super::PrevHandledHeight;
 
 #[async_trait::async_trait]
@@ -30,6 +31,8 @@ pub trait Repo {
     fn delete_microblocks(&self) -> Result<()>;
 
     fn rollback_blocks_microblocks(&self, block_uid: &i64) -> Result<()>;
+
+    fn insert_waves_data(&self, waves_data: &Vec<WavesData>) -> Result<()>;
 
     //
     // ASSETS

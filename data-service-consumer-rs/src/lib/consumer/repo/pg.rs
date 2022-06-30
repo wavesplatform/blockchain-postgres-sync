@@ -2,7 +2,7 @@ use anyhow::{Error, Result};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::result::Error as DslError;
-use diesel::sql_types::{Array, BigInt, VarChar};
+use diesel::sql_types::{Array, BigInt, Integer, Numeric, VarChar};
 use diesel::Table;
 
 use super::super::PrevHandledHeight;
@@ -11,6 +11,7 @@ use crate::consumer::models::{
     assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
     block_microblock::BlockMicroblock,
     txs::*,
+    waves_data::WavesData,
 };
 use crate::error::Error as AppError;
 use crate::schema::*;
@@ -129,6 +130,22 @@ impl Repo for PgRepoImpl {
                 let context = format!("Cannot rollback blocks/microblocks: {}", err);
                 Error::new(AppError::DbDieselError(err)).context(context)
             })
+    }
+
+    fn insert_waves_data(&self, waves_data: &Vec<WavesData>) -> Result<()> {
+        for data in waves_data {
+            let q = diesel::sql_query("INSERT INTO waves_data (height, quantity) 
+            values ($1::integer, (SELECT quantity FROM waves_data WHERE height < $1::integer OR height IS NULL ORDER BY height DESC nulls last LIMIT 1) + $2::bigint) 
+            ON CONFLICT DO NOTHING;")
+            .bind::<Integer, _>(data.height)
+            .bind::<Numeric, _>(&data.quantity);
+
+            q.execute(&self.conn).map(|_| ()).map_err(|err| {
+                let context = format!("Cannot insert waves data {waves_data:?}: {err}");
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
+        }
+        Ok(())
     }
 
     //

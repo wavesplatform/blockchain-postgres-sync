@@ -4,6 +4,7 @@ pub mod repo;
 pub mod updates;
 
 use anyhow::{Error, Result};
+use bigdecimal::BigDecimal;
 use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -20,7 +21,10 @@ use wavesexchange_log::{debug, info, timer, warn};
 
 use self::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use self::models::block_microblock::BlockMicroblock;
-use crate::consumer::models::txs::{Tx as ConvertedTx, TxUidGenerator};
+use crate::consumer::models::{
+    txs::{Tx as ConvertedTx, TxUidGenerator},
+    waves_data::WavesData,
+};
 use crate::error::Error as AppError;
 use crate::models::BaseAssetInfoUpdate;
 use crate::waves::{get_asset_id, Address};
@@ -257,6 +261,20 @@ where
 
     handle_txs(repo.clone(), appends)?;
 
+    let waves_data = appends
+        .into_iter()
+        .filter_map(|append| {
+            append.updated_waves_amount.map(|reward| WavesData {
+                height: append.height,
+                quantity: BigDecimal::from(reward),
+            })
+        })
+        .collect_vec();
+
+    if waves_data.len() > 0 {
+        repo.insert_waves_data(&waves_data)?;
+    }
+
     Ok(())
 }
 
@@ -320,32 +338,32 @@ fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> 
 
     #[inline]
     fn insert_txs<T: 'static, F: Fn(&Vec<T>) -> Result<()>>(
-        txs: &Vec<T>,
+        txs: Vec<T>,
         inserter: F,
     ) -> Result<()> {
         if !txs.is_empty() {
-            inserter(txs)?;
+            inserter(&txs)?;
         }
         Ok(())
     }
 
-    insert_txs(&txs_1, |txs| repo.insert_txs_1(txs))?;
-    insert_txs(&txs_2, |txs| repo.insert_txs_2(txs))?;
-    insert_txs(&txs_3, |txs| repo.insert_txs_3(txs))?;
-    insert_txs(&txs_4, |txs| repo.insert_txs_4(txs))?;
-    insert_txs(&txs_5, |txs| repo.insert_txs_5(txs))?;
-    insert_txs(&txs_6, |txs| repo.insert_txs_6(txs))?;
-    insert_txs(&txs_7, |txs| repo.insert_txs_7(txs))?;
-    insert_txs(&txs_8, |txs| repo.insert_txs_8(txs))?;
-    insert_txs(&txs_9, |txs| repo.insert_txs_9(txs))?;
-    insert_txs(&txs_10, |txs| repo.insert_txs_10(txs))?;
-    insert_txs(&txs_11, |txs| repo.insert_txs_11(txs))?;
-    insert_txs(&txs_12, |txs| repo.insert_txs_12(txs))?;
-    insert_txs(&txs_13, |txs| repo.insert_txs_13(txs))?;
-    insert_txs(&txs_14, |txs| repo.insert_txs_14(txs))?;
-    insert_txs(&txs_15, |txs| repo.insert_txs_15(txs))?;
-    insert_txs(&txs_16, |txs| repo.insert_txs_16(txs))?;
-    insert_txs(&txs_17, |txs| repo.insert_txs_17(txs))?;
+    insert_txs(txs_1, |txs| repo.insert_txs_1(txs))?;
+    insert_txs(txs_2, |txs| repo.insert_txs_2(txs))?;
+    insert_txs(txs_3, |txs| repo.insert_txs_3(txs))?;
+    insert_txs(txs_4, |txs| repo.insert_txs_4(txs))?;
+    insert_txs(txs_5, |txs| repo.insert_txs_5(txs))?;
+    insert_txs(txs_6, |txs| repo.insert_txs_6(txs))?;
+    insert_txs(txs_7, |txs| repo.insert_txs_7(txs))?;
+    insert_txs(txs_8, |txs| repo.insert_txs_8(txs))?;
+    insert_txs(txs_9, |txs| repo.insert_txs_9(txs))?;
+    insert_txs(txs_10, |txs| repo.insert_txs_10(txs))?;
+    insert_txs(txs_11, |txs| repo.insert_txs_11(txs))?;
+    insert_txs(txs_12, |txs| repo.insert_txs_12(txs))?;
+    insert_txs(txs_13, |txs| repo.insert_txs_13(txs))?;
+    insert_txs(txs_14, |txs| repo.insert_txs_14(txs))?;
+    insert_txs(txs_15, |txs| repo.insert_txs_15(txs))?;
+    insert_txs(txs_16, |txs| repo.insert_txs_16(txs))?;
+    insert_txs(txs_17, |txs| repo.insert_txs_17(txs))?;
 
     info!("handled {} transactions", txs_count);
 

@@ -562,7 +562,7 @@ table! {
     use diesel::sql_types::*;
 
     waves_data (height) {
-        height -> Int4,
+        height -> Nullable<Int4>,
         quantity -> Numeric,
     }
 }

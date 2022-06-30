@@ -402,7 +402,7 @@ CREATE TABLE IF NOT EXISTS tickers (
 );
 
 CREATE TABLE IF NOT EXISTS waves_data (
-	height int4 PRIMARY KEY,
+	height int4 NULL,
 	quantity numeric NOT NULL,
 
     CONSTRAINT fk_waves_data FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE

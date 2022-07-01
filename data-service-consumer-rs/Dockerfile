@@ -1,4 +1,4 @@
-FROM rust:1.60 AS builder
+FROM rust:1.62 AS builder
 WORKDIR /app
 
 RUN rustup component add rustfmt
@@ -10,7 +10,7 @@ COPY ./migrations ./migrations
 RUN cargo install --path .
 
 
-FROM debian:buster-slim as runtime
+FROM debian:11 as runtime
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y curl openssl libssl-dev libpq-dev

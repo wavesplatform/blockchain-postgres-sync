@@ -132,7 +132,7 @@ impl
         let proofs = Some(proofs);
         let tx_version = Some(tx.version as i16);
         let sender_public_key = into_b58(tx.sender_public_key.as_ref());
-        //TODO: find status
+
         let status = String::from("succeeded");
         let sender = into_b58(&meta.sender_address);
         let uid = ugen.next() as i64;

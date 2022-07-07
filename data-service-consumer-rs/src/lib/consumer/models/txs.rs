@@ -158,7 +158,7 @@ impl
                     signature,
                     fee: meta.fee,
                     proofs,
-                    tx_version: None,
+                    tx_version: Some(1),
                     sender,
                     sender_public_key: into_b58(&meta.sender_public_key),
                     status,

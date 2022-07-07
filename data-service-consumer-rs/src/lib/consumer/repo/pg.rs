@@ -622,6 +622,19 @@ impl Repo for PgRepoImpl {
             Error::new(AppError::DbDieselError(err)).context(context)
         })
     }
+
+    fn insert_txs_18(&self, txs: &Vec<Tx18>) -> Result<()> {
+        chunked(txs_18::table, txs, |t| {
+            diesel::insert_into(txs_18::table)
+                .values(t)
+                .execute(&self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert Ethereum transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
+    }
 }
 
 fn chunked<T, F, V>(_: T, values: &Vec<V>, query_fn: F) -> Result<(), DslError>

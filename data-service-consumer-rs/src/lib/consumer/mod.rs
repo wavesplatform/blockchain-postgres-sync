@@ -296,6 +296,7 @@ fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> 
     let mut txs_15 = vec![];
     let mut txs_16 = vec![];
     let mut txs_17 = vec![];
+    let mut txs_18 = vec![];
 
     let mut ugen = TxUidGenerator::new(Some(100000));
     let mut txs_count = 0;
@@ -332,6 +333,7 @@ fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> 
                 ConvertedTx::SetAssetScript(t) => txs_15.push(t),
                 ConvertedTx::InvokeScript(t) => txs_16.push(t),
                 ConvertedTx::UpdateAssetInfo(t) => txs_17.push(t),
+                ConvertedTx::Ethereum(t) => txs_18.push(t),
             }
         }
     }
@@ -364,6 +366,7 @@ fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> 
     insert_txs(txs_15, |txs| repo.insert_txs_15(txs))?;
     insert_txs(txs_16, |txs| repo.insert_txs_16(txs))?;
     insert_txs(txs_17, |txs| repo.insert_txs_17(txs))?;
+    insert_txs(txs_18, |txs| repo.insert_txs_18(txs))?;
 
     info!("handled {} transactions", txs_count);
 

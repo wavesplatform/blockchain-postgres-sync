@@ -5,13 +5,15 @@ use crate::schema::*;
 use chrono::NaiveDateTime;
 use diesel::Insertable;
 use serde_json::Value;
-use waves_protobuf_schemas::waves::Amount;
 use waves_protobuf_schemas::waves::{
     data_transaction_data::data_entry::Value as DataValue,
-    events::{transaction_metadata::*, TransactionMetadata},
+    events::{
+        transaction_metadata::ethereum_metadata::Action as EthAction, transaction_metadata::*,
+        TransactionMetadata,
+    },
     signed_transaction::Transaction,
     transaction::Data,
-    SignedTransaction,
+    Amount, SignedTransaction,
 };
 
 type Uid = i64;
@@ -45,6 +47,7 @@ pub enum Tx {
     SetAssetScript(Tx15),
     InvokeScript(Tx16Combined),
     UpdateAssetInfo(Tx17),
+    Ethereum(Tx18),
 }
 
 pub struct TxUidGenerator {
@@ -98,6 +101,10 @@ impl
     ) -> Result<Self, Self::Error> {
         let into_b58 = |b: &[u8]| bs58::encode(b).into_string();
         let into_prefixed_b64 = |b: &[u8]| String::from("base64:") + &base64::encode(b);
+        let sanitize_str = |s: &String| s.replace("\x00", "");
+        let parse_attachment = |a: &Vec<u8>| {
+            sanitize_str(&String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(&a)))
+        };
 
         let (tx, proofs) = match tx {
             SignedTransaction {
@@ -110,12 +117,53 @@ impl
                 )))
             }
         };
+        let uid = ugen.next() as i64;
+        let id = id.to_owned();
+        let proofs = proofs.into_iter().map(|p| into_b58(p)).collect::<Vec<_>>();
+        let signature = proofs.get(0).map(ToOwned::to_owned);
+        let proofs = Some(proofs);
+
+        let mut status = String::from("succeeded");
+        if let Some(
+            Metadata::Ethereum(EthereumMetadata {
+                action: Some(EthAction::Invoke(ref m)),
+                ..
+            })
+            | Metadata::InvokeScript(ref m),
+        ) = meta.metadata
+        {
+            if let Some(ref result) = m.result {
+                if let Some(ref err) = result.error_message {
+                    status = err.text.clone();
+                }
+            }
+        }
+
+        let sender = into_b58(&meta.sender_address);
+
         let tx = match tx {
             Transaction::WavesTransaction(t) => t,
-            Transaction::EthereumTransaction(_) => {
-                return Err(Error::NotImplementedYetError(
-                    "EthereumTransaction is not supported yet".to_string(),
-                ))
+            Transaction::EthereumTransaction(t) => {
+                let meta = if let Some(Metadata::Ethereum(ref m)) = meta.metadata {
+                    m
+                } else {
+                    unreachable!()
+                };
+                return Ok(Tx::Ethereum(Tx18 {
+                    uid,
+                    height,
+                    tx_type: 18,
+                    id,
+                    time_stamp: NaiveDateTime::from_timestamp(meta.timestamp / 1000, 0),
+                    signature,
+                    fee: meta.fee,
+                    proofs,
+                    tx_version: todo!(),
+                    sender,
+                    sender_public_key: into_b58(&meta.sender_public_key),
+                    status,
+                    payload: t.clone(),
+                }));
             }
         };
         let tx_data = tx.data.as_ref().ok_or(Error::IncosistDataError(format!(
@@ -127,21 +175,8 @@ impl
             Some(f) => (f.amount, f.asset_id.to_vec()),
             None => (0, b"WAVES".to_vec()),
         };
-        let proofs = proofs.into_iter().map(|p| into_b58(p)).collect::<Vec<_>>();
-        let signature = proofs.get(0).map(ToOwned::to_owned);
-        let proofs = Some(proofs);
         let tx_version = Some(tx.version as i16);
         let sender_public_key = into_b58(tx.sender_public_key.as_ref());
-
-        let status = String::from("succeeded");
-        let sender = into_b58(&meta.sender_address);
-        let uid = ugen.next() as i64;
-        let id = id.to_owned();
-
-        let sanitize_str = |s: &String| s.replace("\x00", "");
-        let parse_attachment = |a: &Vec<u8>| {
-            sanitize_str(&String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(&a)))
-        };
 
         Ok(match tx_data {
             Data::Genesis(t) => Tx::Genesis(Tx1 {
@@ -1023,4 +1058,22 @@ pub struct Tx17 {
     pub asset_id: String,
     pub asset_name: String,
     pub description: String,
+}
+
+#[derive(Clone, Debug, Insertable)]
+#[table_name = "txs_18"]
+pub struct Tx18 {
+    pub uid: Uid,
+    pub height: Height,
+    pub tx_type: TxType,
+    pub id: Id,
+    pub time_stamp: TimeStamp,
+    pub signature: Signature,
+    pub fee: Fee,
+    pub proofs: Proofs,
+    pub tx_version: TxVersion,
+    pub sender: Sender,
+    pub sender_public_key: SenderPubKey,
+    pub status: Status,
+    pub payload: Vec<u8>,
 }

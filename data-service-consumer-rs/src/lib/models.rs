@@ -1,7 +1,12 @@
 use crate::waves::{WAVES_ID, WAVES_NAME, WAVES_PRECISION};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use waves_protobuf_schemas::waves::{order::Sender as SenderPb, Order as OrderPb};
+use serde_json::{json, Value};
+use waves_protobuf_schemas::waves::{
+    invoke_script_result::call::argument::{List as ListPb, Value as InvokeScriptArgValue},
+    order::Sender as SenderPb,
+    Order as OrderPb,
+};
 
 #[derive(Clone, Debug)]
 pub struct BaseAssetInfoUpdate {
@@ -40,12 +45,44 @@ impl BaseAssetInfoUpdate {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "lowercase")]
+#[serde(tag = "type", content = "value")]
 pub enum DataEntryTypeValue {
-    BinVal(String),
-    BoolVal(bool),
-    IntVal(i64),
-    StrVal(String),
+    Binary(String),
+    Boolean(bool),
+    Integer(i64),
+    String(String),
+    List(Value),
+}
+
+impl From<&InvokeScriptArgValue> for DataEntryTypeValue {
+    fn from(val: &InvokeScriptArgValue) -> Self {
+        match val {
+            InvokeScriptArgValue::IntegerValue(v) => DataEntryTypeValue::Integer(*v),
+            InvokeScriptArgValue::BinaryValue(v) => {
+                DataEntryTypeValue::Binary(format!("base64:{}", base64::encode(v)))
+            }
+            InvokeScriptArgValue::StringValue(v) => DataEntryTypeValue::String(v.to_owned()),
+            InvokeScriptArgValue::BooleanValue(v) => DataEntryTypeValue::Boolean(*v),
+            InvokeScriptArgValue::List(v) => DataEntryTypeValue::List(json!(ArgList::from(v))),
+            InvokeScriptArgValue::CaseObj(_) => unimplemented!(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct ArgList(pub Vec<DataEntryTypeValue>);
+
+impl From<&ListPb> for ArgList {
+    fn from(list: &ListPb) -> Self {
+        ArgList(
+            list.items
+                .iter()
+                .filter_map(|i| i.value.as_ref().map(DataEntryTypeValue::from))
+                .collect(),
+        )
+    }
 }
 
 #[derive(Serialize)]
@@ -111,4 +148,36 @@ pub struct Amount {
 pub enum Sender {
     SenderPublicKey(Vec<u8>),
     Eip712Signature(Vec<u8>),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use waves_protobuf_schemas::waves::invoke_script_result::call::Argument;
+
+    #[test]
+    fn serialize_arg_list() {
+        let src = InvokeScriptArgValue::List(ListPb {
+            items: vec![
+                Argument {
+                    value: Some(InvokeScriptArgValue::IntegerValue(5)),
+                },
+                Argument {
+                    value: Some(InvokeScriptArgValue::BinaryValue(b"\x00\x01".to_vec())),
+                },
+            ],
+        });
+        let data_value = DataEntryTypeValue::from(&src);
+        if matches!(data_value, DataEntryTypeValue::List(_)) {
+            let json = json!(data_value);
+            let serialized = serde_json::to_string(&json["value"]).unwrap();
+            let expected = json!([
+                {"type": "integer", "value": 5},
+                {"type": "binary", "value": "base64:AAE="},
+            ]);
+            assert_eq!(serialized, serde_json::to_string(&expected).unwrap());
+        } else {
+            panic!("Wrong variant: {:?}", src);
+        }
+    }
 }

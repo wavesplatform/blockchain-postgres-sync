@@ -1,4 +1,3 @@
-pub mod function_call;
 pub mod models;
 pub mod repo;
 pub mod updates;

@@ -1,16 +1,16 @@
-use crate::consumer::function_call::FunctionCall;
 use crate::error::Error;
-use crate::models::{DataEntryTypeValue, Order};
+use crate::models::{ArgList, DataEntryTypeValue, Order};
 use crate::schema::*;
 use chrono::NaiveDateTime;
 use diesel::Insertable;
-use serde_json::Value;
+use serde_json::{json, Value};
 use waves_protobuf_schemas::waves::{
     data_transaction_data::data_entry::Value as DataValue,
     events::{
-        transaction_metadata::ethereum_metadata::Action as EthAction, transaction_metadata::*,
+        transaction_metadata::{ethereum_metadata::Action as EthAction, *},
         TransactionMetadata,
     },
+    invoke_script_result::call::argument::Value as InvokeScriptArgValue,
     signed_transaction::Transaction,
     transaction::Data,
     Amount, SignedTransaction,
@@ -519,9 +519,11 @@ impl
                 script: into_prefixed_b64(&t.script),
             }),
             Data::InvokeScript(t) => {
-                //todo: maybe use metadata
-                let fc = FunctionCall::from_raw_bytes(t.function_call.as_ref())
-                    .map_err(|e| Error::IncosistDataError(e))?;
+                let meta = if let Some(Metadata::InvokeScript(ref m)) = meta.metadata {
+                    m
+                } else {
+                    unreachable!()
+                };
                 Tx::InvokeScript(Tx16Combined {
                     tx: Tx16 {
                         uid,
@@ -536,32 +538,40 @@ impl
                         sender,
                         sender_public_key,
                         status,
-                        function_name: Some(fc.name),
+                        function_name: Some(meta.function_name.clone()),
                         fee_asset_id: into_b58(&tx.fee.as_ref().unwrap().asset_id.clone()),
-                        dapp_address: if let Some(Metadata::InvokeScript(ref m)) = meta.metadata {
-                            into_b58(&m.d_app_address)
-                        } else {
-                            unreachable!()
-                        },
+                        dapp_address: into_b58(&meta.d_app_address),
                         dapp_alias: None,
                     },
-                    args: fc
-                        .args
-                        .into_iter()
+                    args: meta
+                        .arguments
+                        .iter()
+                        .filter_map(|arg| arg.value.as_ref())
                         .enumerate()
                         .map(|(i, arg)| {
-                            let (v_type, v_int, v_bool, v_bin, v_str) = match arg {
-                                DataEntryTypeValue::IntVal(v) => {
-                                    ("integer", Some(v.to_owned()), None, None, None)
+                            let (v_type, v_int, v_bool, v_bin, v_str, v_list) = match &arg {
+                                InvokeScriptArgValue::IntegerValue(v) => {
+                                    ("integer", Some(v.to_owned()), None, None, None, None)
                                 }
-                                DataEntryTypeValue::BoolVal(v) => {
-                                    ("boolean", None, Some(v.to_owned()), None, None)
+                                InvokeScriptArgValue::BooleanValue(v) => {
+                                    ("boolean", None, Some(v.to_owned()), None, None, None)
                                 }
-                                DataEntryTypeValue::BinVal(v) => {
-                                    ("integer", None, None, Some(v.to_owned()), None)
+                                InvokeScriptArgValue::BinaryValue(v) => {
+                                    ("binary", None, None, Some(v.to_owned()), None, None)
                                 }
-                                DataEntryTypeValue::StrVal(v) => {
-                                    ("string", None, None, None, Some(v.to_owned()))
+                                InvokeScriptArgValue::StringValue(v) => {
+                                    ("string", None, None, None, Some(v.to_owned()), None)
+                                }
+                                InvokeScriptArgValue::List(_) => (
+                                    "list",
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    Some(json!(DataEntryTypeValue::from(arg))["value"].clone()),
+                                ),
+                                InvokeScriptArgValue::CaseObj(_) => {
+                                    ("case", None, None, None, None, None)
                                 }
                             };
                             Tx16Args {
@@ -569,9 +579,9 @@ impl
                                 arg_type: v_type.to_string(),
                                 arg_value_integer: v_int,
                                 arg_value_boolean: v_bool,
-                                arg_value_binary: v_bin,
+                                arg_value_binary: v_bin.map(|v| into_prefixed_b64(&v)),
                                 arg_value_string: v_str,
-                                arg_value_list: None,
+                                arg_value_list: v_list,
                                 position_in_args: i as i16,
                                 height,
                             }

@@ -66,7 +66,7 @@ impl From<&InvokeScriptArgValue> for DataEntryTypeValue {
             InvokeScriptArgValue::StringValue(v) => DataEntryTypeValue::String(v.to_owned()),
             InvokeScriptArgValue::BooleanValue(v) => DataEntryTypeValue::Boolean(*v),
             InvokeScriptArgValue::List(v) => DataEntryTypeValue::List(json!(ArgList::from(v))),
-            InvokeScriptArgValue::CaseObj(_) => unimplemented!(),
+            InvokeScriptArgValue::CaseObj(_) => todo!(),
         }
     }
 }

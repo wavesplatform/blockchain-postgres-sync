@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::models::{ArgList, DataEntryTypeValue, Order};
+use crate::models::{DataEntryTypeValue, Order};
 use crate::schema::*;
 use chrono::NaiveDateTime;
 use diesel::Insertable;

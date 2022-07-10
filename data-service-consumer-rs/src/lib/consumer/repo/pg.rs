@@ -137,7 +137,9 @@ impl Repo for PgRepoImpl {
             let q = diesel::sql_query("INSERT INTO waves_data (height, quantity) 
             VALUES (
                 $1::integer, 
-                (SELECT quantity FROM waves_data WHERE height < $1::integer OR height IS NULL ORDER BY height DESC NULLS LAST LIMIT 1) + $2::bigint
+                COALESCE(
+                    (SELECT quantity FROM waves_data WHERE height < $1::integer OR height IS NULL ORDER BY height DESC NULLS LAST LIMIT 1), 0
+                ) + $2::bigint
             )
             ON CONFLICT DO NOTHING;")
             .bind::<Integer, _>(data.height)

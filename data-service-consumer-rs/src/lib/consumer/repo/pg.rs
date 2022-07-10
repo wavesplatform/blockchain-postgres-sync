@@ -90,6 +90,8 @@ impl Repo for PgRepoImpl {
     fn insert_blocks_or_microblocks(&self, blocks: &Vec<BlockMicroblock>) -> Result<Vec<i64>> {
         diesel::insert_into(blocks_microblocks::table)
             .values(blocks)
+            .on_conflict(blocks_microblocks::height)
+            .do_nothing()
             .returning(blocks_microblocks::uid)
             .get_results(&self.conn)
             .map_err(|err| {

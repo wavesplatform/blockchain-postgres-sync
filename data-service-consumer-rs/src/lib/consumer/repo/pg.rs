@@ -468,9 +468,8 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_11(&self, txs: &Vec<Tx11Combined>) -> Result<()> {
-        // TODO: figure out how to pass references to freaking diesel
-        let txs11: Vec<Tx11> = txs.iter().map(|t| t.tx.clone()).collect();
-        let transfers: Vec<Tx11Transfers> = txs.iter().flat_map(|t| t.transfers.clone()).collect();
+        let txs11: Vec<&Tx11> = txs.iter().map(|t| &t.tx).collect();
+        let transfers: Vec<&Tx11Transfers> = txs.iter().flat_map(|t| &t.transfers).collect();
 
         chunked(txs_11::table, &txs11, |t| {
             diesel::insert_into(txs_11::table)
@@ -500,8 +499,8 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_12(&self, txs: &Vec<Tx12Combined>) -> Result<()> {
-        let txs12: Vec<Tx12> = txs.iter().map(|t| t.tx.clone()).collect();
-        let data: Vec<Tx12Data> = txs.iter().flat_map(|t| t.data.clone()).collect();
+        let txs12: Vec<&Tx12> = txs.iter().map(|t| &t.tx).collect();
+        let data: Vec<&Tx12Data> = txs.iter().flat_map(|t| &t.data).collect();
 
         chunked(txs_12::table, &txs12, |t| {
             diesel::insert_into(txs_12::table)
@@ -574,9 +573,9 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_16(&self, txs: &Vec<Tx16Combined>) -> Result<()> {
-        let txs16: Vec<Tx16> = txs.into_iter().map(|t| t.tx.clone()).collect();
-        let args: Vec<Tx16Args> = txs.iter().flat_map(|t| t.args.clone()).collect();
-        let payments: Vec<Tx16Payment> = txs.iter().flat_map(|t| t.payments.clone()).collect();
+        let txs16: Vec<&Tx16> = txs.into_iter().map(|t| &t.tx).collect();
+        let args: Vec<&Tx16Args> = txs.iter().flat_map(|t| &t.args).collect();
+        let payments: Vec<&Tx16Payment> = txs.iter().flat_map(|t| &t.payments).collect();
 
         chunked(txs_16::table, &txs16, |t| {
             diesel::insert_into(txs_16::table)

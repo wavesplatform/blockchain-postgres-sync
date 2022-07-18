@@ -15,7 +15,8 @@ bs58 = "0.4.0"
 bytes = "1.1"
 cached = "0.26"
 chrono = { version = "0.4", features = ["serde"] }
-diesel = { git = "http://github.com/plazmoid/diesel.git", branch = "double_ref", default-features = false, features = ["chrono", "postgres", "r2d2", "32-column-tables", "serde_json", "numeric"] }
+# git = "http://github.com/plazmoid/diesel.git", branch = "double_ref", 
+diesel = { version = "1.4", default-features = false, features = ["chrono", "postgres", "r2d2", "32-column-tables", "serde_json", "numeric"] }
 diesel-derive-enum = { version = "1.1.1", features = ["postgres"] }
 diesel_migrations = { version = "1.4", features = ["postgres"] }
 envy = "0.4"

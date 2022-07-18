@@ -104,8 +104,7 @@ impl UpdatesSourceImpl {
                 last_height = update.height as u32;
                 match BlockchainUpdate::try_from(update) {
                     Ok(upd) => Ok({
-                        result.push(upd.clone());
-                        match upd {
+                        match &upd {
                             BlockchainUpdate::Block(_) => {
                                 if result.len() >= batch_max_size
                                     || start.elapsed().ge(&batch_max_wait_time)
@@ -117,6 +116,7 @@ impl UpdatesSourceImpl {
                                 should_receive_more = false
                             }
                         }
+                        result.push(upd);
                     }),
                     Err(err) => Err(err),
                 }?;
@@ -125,13 +125,12 @@ impl UpdatesSourceImpl {
             if !should_receive_more {
                 tx.send(BlockchainUpdatesWithLastHeight {
                     last_height,
-                    updates: result.clone(),
+                    updates: result.drain(..).collect(),
                 })
                 .await
                 .map_err(|e| AppError::StreamError(e.to_string()))?;
                 should_receive_more = true;
                 start = Instant::now();
-                result.clear();
             }
         }
     }
@@ -140,29 +139,37 @@ impl UpdatesSourceImpl {
 impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
     type Error = AppError;
 
-    fn try_from(value: BlockchainUpdatedPB) -> Result<Self, Self::Error> {
+    fn try_from(mut value: BlockchainUpdatedPB) -> Result<Self, Self::Error> {
         use BlockchainUpdate::{Block, Microblock, Rollback};
 
         match value.update {
             Some(UpdatePB::Append(AppendPB {
-                body,
+                ref mut body,
                 state_update: Some(_),
-                transaction_ids,
-                transactions_metadata,
-                transaction_state_updates,
+                mut transaction_ids,
+                mut transactions_metadata,
+                mut transaction_state_updates,
                 ..
             })) => {
                 let height = value.height;
 
                 let txs: Option<(Vec<SignedTransactionPB>, Option<i64>)> = match body {
-                    Some(BodyPB::Block(BlockAppendPB { ref block, .. })) => Ok(block
-                        .clone()
-                        .map(|it| (it.transactions, it.header.map(|it| it.timestamp)))),
+                    Some(BodyPB::Block(BlockAppendPB { ref mut block, .. })) => {
+                        Ok(block.as_mut().map(|it| {
+                            (
+                                it.transactions.drain(..).collect(),
+                                it.header.as_ref().map(|it| it.timestamp),
+                            )
+                        }))
+                    }
                     Some(BodyPB::MicroBlock(MicroBlockAppendPB {
-                        ref micro_block, ..
-                    })) => Ok(micro_block
-                        .clone()
-                        .and_then(|it| it.micro_block.map(|it| (it.transactions, None)))),
+                        ref mut micro_block,
+                        ..
+                    })) => Ok(micro_block.as_mut().and_then(|it| {
+                        it.micro_block
+                            .as_mut()
+                            .map(|it| (it.transactions.drain(..).collect(), None))
+                    })),
                     _ => Err(AppError::InvalidMessage(
                         "Append body is empty.".to_string(),
                     )),
@@ -173,14 +180,12 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                         .into_iter()
                         .enumerate()
                         .filter_map(|(idx, tx)| {
-                            let id = transaction_ids.get(idx).unwrap();
-                            let meta = transactions_metadata.get(idx).unwrap();
-                            let state_updates = transaction_state_updates.get(idx).unwrap();
+                            let id = transaction_ids.remove(idx);
                             Some(Tx {
                                 id: bs58::encode(id).into_string(),
                                 data: tx,
-                                meta: meta.clone(),
-                                state_update: state_updates.clone(),
+                                meta: transactions_metadata.remove(idx),
+                                state_update: transaction_state_updates.remove(idx),
                             })
                         })
                         .collect(),
@@ -197,10 +202,10 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                         updated_waves_amount,
                     })) => Ok(Block(BlockMicroblockAppend {
                         id: bs58::encode(&value.id).into_string(),
-                        time_stamp: Some(NaiveDateTime::from_timestamp(timestamp / 1000, 0)),
+                        time_stamp: Some(NaiveDateTime::from_timestamp(*timestamp / 1000, 0)),
                         height,
-                        updated_waves_amount: if updated_waves_amount > 0 {
-                            Some(updated_waves_amount)
+                        updated_waves_amount: if *updated_waves_amount > 0 {
+                            Some(*updated_waves_amount)
                         } else {
                             None
                         },

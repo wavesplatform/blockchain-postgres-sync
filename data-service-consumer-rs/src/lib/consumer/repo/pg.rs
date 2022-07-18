@@ -1,9 +1,11 @@
+use std::fmt::Display;
+
 use anyhow::{Error, Result};
 use diesel::pg::PgConnection;
-use diesel::prelude::*;
 use diesel::result::Error as DslError;
 use diesel::sql_types::{Array, BigInt, Integer, Numeric, VarChar};
 use diesel::Table;
+use diesel::{prelude::*, sql_query};
 
 use super::super::PrevHandledHeight;
 use super::Repo;
@@ -468,14 +470,34 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_11(&self, txs: &Vec<Tx11Combined>) -> Result<()> {
-        let txs11: Vec<&Tx11> = txs.iter().map(|t| &t.tx).collect();
-        let transfers: Vec<&Tx11Transfers> = txs.iter().flat_map(|t| &t.transfers).collect();
+        let txs11 = txs
+            .iter()
+            .map(|t: &Tx11Combined| {
+                format!(
+                    "({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
+                    t.tx.uid,
+                    t.tx.height,
+                    t.tx.tx_type,
+                    t.tx.id,
+                    t.tx.time_stamp,
+                    t.tx.signature,
+                    t.tx.fee,
+                    t.tx.proofs,
+                    t.tx.tx_version,
+                    t.tx.sender,
+                    t.tx.sender_public_key,
+                    t.tx.status,
+                    t.tx.asset_id,
+                    t.tx.attachment
+                )
+            })
+            .collect::<Vec<_>>();
+        //let transfers: Vec<String> = txs.iter().flat_map(|t| t.transfers).collect();
 
         chunked(txs_11::table, &txs11, |t| {
-            diesel::insert_into(txs_11::table)
-                .values(t)
-                .on_conflict(txs_11::uid)
-                .do_nothing()
+            diesel::sql_query(format!("INSERT INTO txs_11 (
+                uid, height, tx_type, id, time_stamp, signature, fee, proofs, tx_version, 
+                sender, sender_public_key, status, asset_id, attachment) VALUES ({}) ON CONFLICT DO NOTHING;", txs11.join(", ")))
                 .execute(&self.conn)
                 .map(|_| ())
         })
@@ -652,4 +674,21 @@ where
         .chunks(chunk_size)
         .into_iter()
         .try_fold((), |_, chunk| query_fn(chunk))
+}
+
+struct DisplayAsSql<'a, T>(&'a T);
+
+impl<'a, T> Display for DisplayAsSql<'a, Option<T>> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            Some(s) => write!(f, "{}", DisplayAsSql(s)),
+            None => write!(f, "null"),
+        }
+    }
+}
+
+impl<T: Display> Display for DisplayAsSql<'_, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{s}")
+    }
 }

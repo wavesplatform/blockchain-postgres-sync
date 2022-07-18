@@ -146,9 +146,9 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
             Some(UpdatePB::Append(AppendPB {
                 ref mut body,
                 state_update: Some(_),
-                mut transaction_ids,
-                mut transactions_metadata,
-                mut transaction_state_updates,
+                transaction_ids,
+                transactions_metadata,
+                transaction_state_updates,
                 ..
             })) => {
                 let height = value.height;
@@ -180,12 +180,12 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                         .into_iter()
                         .enumerate()
                         .filter_map(|(idx, tx)| {
-                            let id = transaction_ids.remove(idx);
+                            let id = transaction_ids.get(idx).unwrap().clone();
                             Some(Tx {
                                 id: bs58::encode(id).into_string(),
                                 data: tx,
-                                meta: transactions_metadata.remove(idx),
-                                state_update: transaction_state_updates.remove(idx),
+                                meta: transactions_metadata.get(idx).unwrap().clone(),
+                                state_update: transaction_state_updates.get(idx).unwrap().clone(),
                             })
                         })
                         .collect(),

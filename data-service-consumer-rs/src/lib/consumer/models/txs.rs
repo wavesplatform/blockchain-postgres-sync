@@ -86,17 +86,19 @@ impl
         Height,
         &TransactionMetadata,
         &mut TxUidGenerator,
+        i64,
     )> for Tx
 {
     type Error = Error;
 
     fn try_from(
-        (tx, id, height, meta, ugen): (
+        (tx, id, height, meta, ugen, block_uid): (
             &SignedTransaction,
             &Id,
             Height,
             &TransactionMetadata,
             &mut TxUidGenerator,
+            i64,
         ),
     ) -> Result<Self, Self::Error> {
         let into_b58 = |b: &[u8]| bs58::encode(b).into_string();
@@ -163,6 +165,7 @@ impl
                     sender_public_key: into_b58(&meta.sender_public_key),
                     status,
                     payload: t.clone(),
+                    block_uid,
                 }));
             }
         };
@@ -199,6 +202,7 @@ impl
                 recipient_address: String::from("TODO"),
                 recipient_alias: None,
                 amount: t.amount,
+                block_uid,
             }),
             Data::Payment(t) => Tx::Payment(Tx2 {
                 uid,
@@ -216,6 +220,7 @@ impl
                 recipient_address: String::from("TODO"),
                 recipient_alias: None,
                 amount: t.amount,
+                block_uid,
             }),
             Data::Issue(t) => Tx::Issue(Tx3 {
                 uid,
@@ -241,6 +246,7 @@ impl
                 } else {
                     None
                 },
+                block_uid,
             }),
             Data::Transfer(t) => {
                 let Amount { asset_id, amount } = t.amount.as_ref().unwrap();
@@ -267,6 +273,7 @@ impl
                         unreachable!()
                     },
                     recipient_alias: None,
+                    block_uid,
                 })
             }
             Data::Reissue(t) => {
@@ -287,6 +294,7 @@ impl
                     asset_id: into_b58(&asset_id),
                     quantity: *amount,
                     reissuable: t.reissuable,
+                    block_uid,
                 })
             }
             Data::Burn(t) => {
@@ -306,6 +314,7 @@ impl
                     status,
                     asset_id: into_b58(&asset_id),
                     amount: *amount,
+                    block_uid,
                 })
             }
             Data::Exchange(t) => Tx::Exchange(Tx7 {
@@ -330,6 +339,7 @@ impl
                 buy_matcher_fee: t.buy_matcher_fee,
                 sell_matcher_fee: t.sell_matcher_fee,
                 fee_asset_id: into_b58(&fee_asset_id),
+                block_uid,
             }),
             Data::Lease(t) => Tx::Lease(Tx8 {
                 uid,
@@ -351,6 +361,7 @@ impl
                     unreachable!()
                 },
                 recipient_alias: None,
+                block_uid,
             }),
             Data::LeaseCancel(t) => Tx::LeaseCancel(Tx9Partial {
                 uid,
@@ -370,6 +381,7 @@ impl
                 } else {
                     None
                 },
+                block_uid,
             }),
             Data::CreateAlias(t) => Tx::CreateAlias(Tx10 {
                 uid,
@@ -385,6 +397,7 @@ impl
                 sender_public_key,
                 status,
                 alias: t.alias.clone(),
+                block_uid,
             }),
             Data::MassTransfer(t) => Tx::MassTransfer(Tx11Combined {
                 tx: Tx11 {
@@ -402,6 +415,7 @@ impl
                     status,
                     asset_id: into_b58(&t.asset_id),
                     attachment: parse_attachment(&t.attachment),
+                    block_uid,
                 },
                 transfers: t
                     .transfers
@@ -436,6 +450,7 @@ impl
                     sender,
                     sender_public_key,
                     status,
+                    block_uid,
                 },
                 data: t
                     .data
@@ -485,6 +500,7 @@ impl
                 sender_public_key,
                 status,
                 script: into_b58(&t.script),
+                block_uid,
             }),
             Data::SponsorFee(t) => Tx::SponsorFee(Tx14 {
                 uid,
@@ -501,6 +517,7 @@ impl
                 status,
                 asset_id: into_b58(&t.min_fee.as_ref().unwrap().asset_id.clone()),
                 min_sponsored_asset_fee: t.min_fee.as_ref().map(|f| f.amount),
+                block_uid,
             }),
             Data::SetAssetScript(t) => Tx::SetAssetScript(Tx15 {
                 uid,
@@ -517,6 +534,7 @@ impl
                 status,
                 asset_id: into_b58(&t.asset_id),
                 script: into_prefixed_b64(&t.script),
+                block_uid,
             }),
             Data::InvokeScript(t) => {
                 let meta = if let Some(Metadata::InvokeScript(ref m)) = meta.metadata {
@@ -542,6 +560,7 @@ impl
                         fee_asset_id: into_b58(&tx.fee.as_ref().unwrap().asset_id.clone()),
                         dapp_address: into_b58(&meta.d_app_address),
                         dapp_alias: None,
+                        block_uid,
                     },
                     args: meta
                         .arguments
@@ -617,6 +636,7 @@ impl
                 asset_id: into_b58(&t.asset_id),
                 asset_name: sanitize_str(&t.name),
                 description: sanitize_str(&t.description),
+                block_uid,
             }),
             Data::InvokeExpression(_t) => unimplemented!(),
         })
@@ -635,6 +655,7 @@ pub struct Tx1 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: Option<SenderPubKey>,
     pub status: Status,
@@ -655,6 +676,7 @@ pub struct Tx2 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -675,6 +697,7 @@ pub struct Tx3 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -699,6 +722,7 @@ pub struct Tx4 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -722,6 +746,7 @@ pub struct Tx5 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -742,6 +767,7 @@ pub struct Tx6 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -761,6 +787,7 @@ pub struct Tx7 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -787,6 +814,7 @@ pub struct Tx8 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -806,6 +834,7 @@ pub struct Tx9Partial {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -824,6 +853,7 @@ pub struct Tx9 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -847,6 +877,7 @@ impl From<(&Tx9Partial, Option<i64>)> for Tx9 {
             sender_public_key: tx.sender_public_key,
             status: tx.status,
             lease_tx_uid: tx.lease_id.and_then(|_| lease_tx_uid),
+            block_uid: tx.block_uid,
         }
     }
 }
@@ -863,6 +894,7 @@ pub struct Tx10 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -881,6 +913,7 @@ pub struct Tx11 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -917,6 +950,7 @@ pub struct Tx12 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -954,6 +988,7 @@ pub struct Tx13 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -972,6 +1007,7 @@ pub struct Tx14 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -991,6 +1027,7 @@ pub struct Tx15 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -1010,6 +1047,7 @@ pub struct Tx16 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -1062,6 +1100,7 @@ pub struct Tx17 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
@@ -1082,6 +1121,7 @@ pub struct Tx18 {
     pub fee: Fee,
     pub proofs: Proofs,
     pub tx_version: TxVersion,
+    pub block_uid: i64,
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,

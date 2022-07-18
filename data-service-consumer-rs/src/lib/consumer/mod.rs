@@ -258,7 +258,7 @@ where
 
     info!("handled {} assets updates", updates_amount);
 
-    handle_txs(repo.clone(), appends)?;
+    handle_txs(repo.clone(), &block_uids_with_appends)?;
 
     let waves_data = appends
         .into_iter()
@@ -277,7 +277,10 @@ where
     Ok(())
 }
 
-fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> Result<(), Error> {
+fn handle_txs<R: repo::Repo>(
+    repo: Arc<R>,
+    block_uid_data: &Vec<(i64, &BlockMicroblockAppend)>,
+) -> Result<(), Error> {
     let mut txs_1 = vec![];
     let mut txs_2 = vec![];
     let mut txs_3 = vec![];
@@ -299,20 +302,21 @@ fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> 
 
     let mut ugen = TxUidGenerator::new(Some(100000));
     let mut txs_count = 0;
-    for bm in bma {
+    for (block_uid, bm) in block_uid_data {
         for tx in &bm.txs {
             ugen.maybe_update_height(bm.height as usize);
-            let result_tx =
-                match ConvertedTx::try_from((&tx.data, &tx.id, bm.height, &tx.meta, &mut ugen)) {
-                    Ok(r) => r,
-                    Err(e) => match e {
-                        AppError::NotImplementedYetError(e) => {
-                            warn!("{}", e);
-                            continue;
-                        }
-                        o => return Err(o.into()),
-                    },
-                };
+            let result_tx = match ConvertedTx::try_from((
+                &tx.data, &tx.id, bm.height, &tx.meta, &mut ugen, *block_uid,
+            )) {
+                Ok(r) => r,
+                Err(e) => match e {
+                    AppError::NotImplementedYetError(e) => {
+                        warn!("{}", e);
+                        continue;
+                    }
+                    o => return Err(o.into()),
+                },
+            };
             txs_count += 1;
             match result_tx {
                 ConvertedTx::Genesis(t) => txs_1.push(t),
@@ -338,12 +342,9 @@ fn handle_txs<R: repo::Repo>(repo: Arc<R>, bma: &Vec<BlockMicroblockAppend>) -> 
     }
 
     #[inline]
-    fn insert_txs<T: 'static, F: Fn(&Vec<T>) -> Result<()>>(
-        txs: Vec<T>,
-        inserter: F,
-    ) -> Result<()> {
+    fn insert_txs<T: 'static, F: Fn(Vec<T>) -> Result<()>>(txs: Vec<T>, inserter: F) -> Result<()> {
         if !txs.is_empty() {
-            inserter(&txs)?;
+            inserter(txs)?;
         }
         Ok(())
     }

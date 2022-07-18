@@ -27,8 +27,9 @@ DROP TABLE IF EXISTS txs_15;
 DROP TABLE IF EXISTS txs_16_args;
 DROP TABLE IF EXISTS txs_16_payment;
 DROP TABLE IF EXISTS txs_16;
+DROP TABLE IF EXISTS txs_17;
+DROP TABLE IF EXISTS txs_18;
 DROP TABLE IF EXISTS txs CASCADE;
-DROP TABLE IF EXISTS blocks CASCADE;
 
 DROP INDEX IF EXISTS candles_max_height_index;
 DROP INDEX IF EXISTS candles_amount_price_ids_matcher_time_start_partial_1m_idx;

@@ -42,27 +42,6 @@ CREATE TABLE IF NOT EXISTS asset_origins (
     issue_time_stamp TIMESTAMPTZ NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS blocks (
-    schema_version SMALLINT NOT NULL,
-    time_stamp TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    reference VARCHAR NOT NULL,
-    nxt_consensus_base_target BIGINT NOT NULL,
-    nxt_consensus_generation_signature VARCHAR NOT NULL,
-    generator VARCHAR NOT NULL,
-    signature VARCHAR NOT NULL,
-    fee BIGINT NOT NULL,
-    blocksize INTEGER,
-    height INTEGER NOT NULL PRIMARY KEY,
-    features SMALLINT[]
-);
-
-CREATE TABLE IF NOT EXISTS blocks_raw (
-    height integer NOT NULL,
-    b jsonb NOT NULL,
-
-    CONSTRAINT blocks_raw_pkey PRIMARY KEY (height)
-);
-
 CREATE TABLE IF NOT EXISTS txs (
     uid BIGINT NOT NULL,
     tx_type SMALLINT NOT NULL,
@@ -74,11 +53,12 @@ CREATE TABLE IF NOT EXISTS txs (
     signature VARCHAR,
     proofs TEXT[],
     tx_version SMALLINT,
+    block_uid BIGINT NOT NULL,
     fee BIGINT NOT NULL,
     status VARCHAR DEFAULT 'succeeded' NOT NULL,
 
     CONSTRAINT txs_pk PRIMARY KEY (uid, id, time_stamp),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) 
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_1 (
@@ -87,7 +67,7 @@ CREATE TABLE IF NOT EXISTS txs_1 (
     amount BIGINT NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -99,7 +79,7 @@ CREATE TABLE IF NOT EXISTS txs_2 (
     amount BIGINT NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -115,7 +95,7 @@ CREATE TABLE IF NOT EXISTS txs_3 (
     script VARCHAR,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -130,7 +110,7 @@ CREATE TABLE IF NOT EXISTS txs_4 (
     attachment VARCHAR NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 ALTER TABLE ONLY txs_4 ALTER COLUMN sender SET STATISTICS 1000;
@@ -143,7 +123,7 @@ CREATE TABLE IF NOT EXISTS txs_5 (
     reissuable BOOLEAN NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -154,7 +134,7 @@ CREATE TABLE IF NOT EXISTS txs_6 (
     amount BIGINT NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -172,7 +152,7 @@ CREATE TABLE IF NOT EXISTS txs_7 (
     fee_asset_id VARCHAR NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -184,7 +164,7 @@ CREATE TABLE IF NOT EXISTS txs_8 (
     amount BIGINT NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -194,8 +174,8 @@ CREATE TABLE IF NOT EXISTS txs_9 (
     lease_tx_uid BIGINT,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE,
-    CONSTRAINT txs_9_un UNIQUE (uid, lease_tx_uid)
+    CONSTRAINT txs_9_un UNIQUE (uid, lease_tx_uid),
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -205,7 +185,7 @@ CREATE TABLE IF NOT EXISTS txs_10 (
     alias VARCHAR NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -216,7 +196,7 @@ CREATE TABLE IF NOT EXISTS txs_11 (
     attachment VARCHAR NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -228,8 +208,7 @@ CREATE TABLE IF NOT EXISTS txs_11_transfers (
     position_in_tx smallint NOT NULL,
     height integer NOT NULL,
 
-    PRIMARY KEY (tx_uid, position_in_tx),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    PRIMARY KEY (tx_uid, position_in_tx)
 );
 
 CREATE TABLE IF NOT EXISTS txs_12 (
@@ -237,7 +216,7 @@ CREATE TABLE IF NOT EXISTS txs_12 (
     sender_public_key VARCHAR NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -252,8 +231,7 @@ CREATE TABLE IF NOT EXISTS txs_12_data (
     position_in_tx SMALLINT NOT NULL,
     height INTEGER NOT NULL,
 
-    PRIMARY KEY (tx_uid, position_in_tx),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    PRIMARY KEY (tx_uid, position_in_tx)
 );
 
 CREATE TABLE IF NOT EXISTS txs_13 (
@@ -262,7 +240,7 @@ CREATE TABLE IF NOT EXISTS txs_13 (
     script VARCHAR,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -273,7 +251,7 @@ CREATE TABLE IF NOT EXISTS txs_14 (
     min_sponsored_asset_fee BIGINT,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -284,7 +262,7 @@ CREATE TABLE IF NOT EXISTS txs_15 (
     script VARCHAR,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -297,7 +275,7 @@ CREATE TABLE IF NOT EXISTS txs_16 (
     fee_asset_id VARCHAR NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 )
 INHERITS (txs);
 
@@ -312,8 +290,7 @@ CREATE TABLE IF NOT EXISTS txs_16_args (
     tx_uid BIGINT NOT NULL,
     height INTEGER,
 
-    PRIMARY KEY (tx_uid, position_in_args),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    PRIMARY KEY (tx_uid, position_in_args)
 );
 
 CREATE TABLE IF NOT EXISTS txs_16_payment (
@@ -323,8 +300,7 @@ CREATE TABLE IF NOT EXISTS txs_16_payment (
     height INTEGER,
     asset_id VARCHAR NOT NULL,
 
-    PRIMARY KEY (tx_uid, position_in_payment),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+    PRIMARY KEY (tx_uid, position_in_payment)
 );
 
 CREATE TABLE IF NOT EXISTS txs_17
@@ -336,28 +312,26 @@ CREATE TABLE IF NOT EXISTS txs_17
     description VARCHAR NOT NULL,
 
     PRIMARY KEY (uid),
-    CONSTRAINT fk_blocks FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
-) INHERITS (txs);
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
+) 
+INHERITS (txs);
+
+CREATE TABLE IF NOT EXISTS txs_18
+(
+    payload BYTEA NOT NULL,
+
+    PRIMARY KEY (uid),
+    CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
+) 
+INHERITS (txs);
 
 CREATE TABLE IF NOT EXISTS assets_metadata (
     asset_id VARCHAR,
     asset_name VARCHAR,
     ticker VARCHAR,
-    height INTEGER
-);
+    height INTEGER,
 
-CREATE TABLE IF NOT EXISTS blocks (
-    schema_version smallint NOT NULL,
-    time_stamp timestamp without time zone NOT NULL,
-    reference character varying NOT NULL,
-    nxt_consensus_base_target bigint NOT NULL,
-    nxt_consensus_generation_signature character varying NOT NULL,
-    generator character varying NOT NULL,
-    signature character varying NOT NULL,
-    fee bigint NOT NULL,
-    blocksize integer,
-    height integer NOT NULL PRIMARY KEY,
-    features smallint[]
+    CONSTRAINT asset_meta_pk PRIMARY KEY (asset_id)
 );
 
 CREATE TABLE IF NOT EXISTS candles (
@@ -403,10 +377,10 @@ CREATE TABLE IF NOT EXISTS tickers (
 
 CREATE TABLE IF NOT EXISTS waves_data (
 	height int4 NULL,
-	quantity numeric NOT NULL PRIMARY KEY, -- quantity никогда не может быть одинаковым у двух записей
-
-    CONSTRAINT fk_waves_data FOREIGN KEY (height) REFERENCES blocks(height) ON DELETE CASCADE
+	quantity numeric NOT NULL PRIMARY KEY -- quantity никогда не может быть одинаковым у двух записей
 );
+
+INSERT INTO waves_data (height, quantity) VALUES (null, 10000000000000000);
 
 CREATE INDEX candles_max_height_index ON candles USING btree (max_height);
 CREATE INDEX candles_amount_price_ids_matcher_time_start_partial_1m_idx ON candles (amount_asset_id, price_asset_id, matcher_address, time_start) WHERE (("interval")::text = '1m'::text);
@@ -518,7 +492,6 @@ CREATE INDEX txs_9_height_idx ON txs_9 USING btree (height);
 CREATE INDEX txs_9_sender_uid_idx ON txs_9 USING btree (sender, uid);
 CREATE index txs_9_id_idx ON txs_9 USING hash (id);
 CREATE INDEX waves_data_height_desc_quantity_idx ON waves_data (height DESC NULLS LAST, quantity);
-CREATE INDEX IF NOT EXISTS blocks_time_stamp_height_gist_idx ON blocks using gist (time_stamp, height);
 CREATE INDEX IF NOT EXISTS txs_time_stamp_uid_gist_idx ON txs using gist (time_stamp, uid);
 CREATE INDEX IF NOT EXISTS txs_1_time_stamp_uid_gist_idx ON txs_1 using gist (time_stamp, uid);
 CREATE INDEX IF NOT EXISTS txs_10_time_stamp_uid_gist_idx ON txs_10 using gist (time_stamp, uid);

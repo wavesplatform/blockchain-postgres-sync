@@ -1,11 +1,9 @@
-use std::fmt::Display;
-
 use anyhow::{Error, Result};
 use diesel::pg::PgConnection;
+use diesel::prelude::*;
 use diesel::result::Error as DslError;
 use diesel::sql_types::{Array, BigInt, Integer, Numeric, VarChar};
 use diesel::Table;
-use diesel::{prelude::*, sql_query};
 
 use super::super::PrevHandledHeight;
 use super::Repo;
@@ -92,8 +90,6 @@ impl Repo for PgRepoImpl {
     fn insert_blocks_or_microblocks(&self, blocks: &Vec<BlockMicroblock>) -> Result<Vec<i64>> {
         diesel::insert_into(blocks_microblocks::table)
             .values(blocks)
-            .on_conflict(blocks_microblocks::height)
-            .do_nothing()
             .returning(blocks_microblocks::uid)
             .get_results(&self.conn)
             .map_err(|err| {
@@ -301,8 +297,8 @@ impl Repo for PgRepoImpl {
     // TRANSACTIONS
     //
 
-    fn insert_txs_1(&self, txs: &Vec<Tx1>) -> Result<()> {
-        chunked(txs_1::table, txs, |t| {
+    fn insert_txs_1(&self, txs: Vec<Tx1>) -> Result<()> {
+        chunked(txs_1::table, &txs, |t| {
             diesel::insert_into(txs_1::table)
                 .values(t)
                 .on_conflict(txs_1::uid)
@@ -316,8 +312,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_2(&self, txs: &Vec<Tx2>) -> Result<()> {
-        chunked(txs_2::table, txs, |t| {
+    fn insert_txs_2(&self, txs: Vec<Tx2>) -> Result<()> {
+        chunked(txs_2::table, &txs, |t| {
             diesel::insert_into(txs_2::table)
                 .values(t)
                 .on_conflict(txs_2::uid)
@@ -331,8 +327,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_3(&self, txs: &Vec<Tx3>) -> Result<()> {
-        chunked(txs_3::table, txs, |t| {
+    fn insert_txs_3(&self, txs: Vec<Tx3>) -> Result<()> {
+        chunked(txs_3::table, &txs, |t| {
             diesel::insert_into(txs_3::table)
                 .values(t)
                 .on_conflict(txs_3::uid)
@@ -346,8 +342,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_4(&self, txs: &Vec<Tx4>) -> Result<()> {
-        chunked(txs_4::table, txs, |t| {
+    fn insert_txs_4(&self, txs: Vec<Tx4>) -> Result<()> {
+        chunked(txs_4::table, &txs, |t| {
             diesel::insert_into(txs_4::table)
                 .values(t)
                 .on_conflict(txs_4::uid)
@@ -361,8 +357,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_5(&self, txs: &Vec<Tx5>) -> Result<()> {
-        chunked(txs_5::table, txs, |t| {
+    fn insert_txs_5(&self, txs: Vec<Tx5>) -> Result<()> {
+        chunked(txs_5::table, &txs, |t| {
             diesel::insert_into(txs_5::table)
                 .values(t)
                 .on_conflict(txs_5::uid)
@@ -376,8 +372,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_6(&self, txs: &Vec<Tx6>) -> Result<()> {
-        chunked(txs_6::table, txs, |t| {
+    fn insert_txs_6(&self, txs: Vec<Tx6>) -> Result<()> {
+        chunked(txs_6::table, &txs, |t| {
             diesel::insert_into(txs_6::table)
                 .values(t)
                 .on_conflict(txs_6::uid)
@@ -391,8 +387,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_7(&self, txs: &Vec<Tx7>) -> Result<()> {
-        chunked(txs_7::table, txs, |t| {
+    fn insert_txs_7(&self, txs: Vec<Tx7>) -> Result<()> {
+        chunked(txs_7::table, &txs, |t| {
             diesel::insert_into(txs_7::table)
                 .values(t)
                 .on_conflict(txs_7::uid)
@@ -406,8 +402,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_8(&self, txs: &Vec<Tx8>) -> Result<()> {
-        chunked(txs_8::table, txs, |t| {
+    fn insert_txs_8(&self, txs: Vec<Tx8>) -> Result<()> {
+        chunked(txs_8::table, &txs, |t| {
             diesel::insert_into(txs_8::table)
                 .values(t)
                 .on_conflict(txs_8::uid)
@@ -421,7 +417,7 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_9(&self, txs: &Vec<Tx9Partial>) -> Result<()> {
+    fn insert_txs_9(&self, txs: Vec<Tx9Partial>) -> Result<()> {
         //TODO: optimize selects
         let mut txs9 = vec![];
         for tx in txs.into_iter() {
@@ -437,7 +433,7 @@ impl Repo for PgRepoImpl {
                     })?,
                 None => None,
             };
-            txs9.push(Tx9::from((tx, lease_tx_uid)));
+            txs9.push(Tx9::from((&tx, lease_tx_uid)));
         }
 
         chunked(txs_9::table, &txs9, |t| {
@@ -454,8 +450,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_10(&self, txs: &Vec<Tx10>) -> Result<()> {
-        chunked(txs_10::table, txs, |t| {
+    fn insert_txs_10(&self, txs: Vec<Tx10>) -> Result<()> {
+        chunked(txs_10::table, &txs, |t| {
             diesel::insert_into(txs_10::table)
                 .values(t)
                 .on_conflict(txs_10::uid)
@@ -469,35 +465,14 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_11(&self, txs: &Vec<Tx11Combined>) -> Result<()> {
-        let txs11 = txs
-            .iter()
-            .map(|t: &Tx11Combined| {
-                format!(
-                    "({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
-                    t.tx.uid,
-                    t.tx.height,
-                    t.tx.tx_type,
-                    t.tx.id,
-                    t.tx.time_stamp,
-                    t.tx.signature,
-                    t.tx.fee,
-                    t.tx.proofs,
-                    t.tx.tx_version,
-                    t.tx.sender,
-                    t.tx.sender_public_key,
-                    t.tx.status,
-                    t.tx.asset_id,
-                    t.tx.attachment
-                )
-            })
-            .collect::<Vec<_>>();
-        //let transfers: Vec<String> = txs.iter().flat_map(|t| t.transfers).collect();
+    fn insert_txs_11(&self, txs: Vec<Tx11Combined>) -> Result<()> {
+        let (txs11, transfers) = txs.into_iter().map(|t| (t.tx, t.transfers)).unzip();
 
         chunked(txs_11::table, &txs11, |t| {
-            diesel::sql_query(format!("INSERT INTO txs_11 (
-                uid, height, tx_type, id, time_stamp, signature, fee, proofs, tx_version, 
-                sender, sender_public_key, status, asset_id, attachment) VALUES ({}) ON CONFLICT DO NOTHING;", txs11.join(", ")))
+            diesel::insert_into(txs_11::table)
+                .values(t)
+                .on_conflict(txs_11::uid)
+                .do_nothing()
                 .execute(&self.conn)
                 .map(|_| ())
         })
@@ -506,7 +481,7 @@ impl Repo for PgRepoImpl {
             Error::new(AppError::DbDieselError(err)).context(context)
         })?;
 
-        chunked(txs_11_transfers::table, &transfers, |t| {
+        chunked_vec(&transfers, |t| {
             diesel::insert_into(txs_11_transfers::table)
                 .values(t)
                 .on_conflict((txs_11_transfers::tx_uid, txs_11_transfers::position_in_tx))
@@ -520,9 +495,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_12(&self, txs: &Vec<Tx12Combined>) -> Result<()> {
-        let txs12: Vec<&Tx12> = txs.iter().map(|t| &t.tx).collect();
-        let data: Vec<&Tx12Data> = txs.iter().flat_map(|t| &t.data).collect();
+    fn insert_txs_12(&self, txs: Vec<Tx12Combined>) -> Result<()> {
+        let (txs12, data) = txs.into_iter().map(|t| (t.tx, t.data)).unzip();
 
         chunked(txs_12::table, &txs12, |t| {
             diesel::insert_into(txs_12::table)
@@ -537,7 +511,7 @@ impl Repo for PgRepoImpl {
             Error::new(AppError::DbDieselError(err)).context(context)
         })?;
 
-        chunked(txs_12_data::table, &data, |t| {
+        chunked_vec(&data, |t| {
             diesel::insert_into(txs_12_data::table)
                 .values(t)
                 .execute(&self.conn)
@@ -549,8 +523,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_13(&self, txs: &Vec<Tx13>) -> Result<()> {
-        chunked(txs_13::table, txs, |t| {
+    fn insert_txs_13(&self, txs: Vec<Tx13>) -> Result<()> {
+        chunked(txs_13::table, &txs, |t| {
             diesel::insert_into(txs_13::table)
                 .values(t)
                 .on_conflict(txs_13::uid)
@@ -564,8 +538,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_14(&self, txs: &Vec<Tx14>) -> Result<()> {
-        chunked(txs_14::table, txs, |t| {
+    fn insert_txs_14(&self, txs: Vec<Tx14>) -> Result<()> {
+        chunked(txs_14::table, &txs, |t| {
             diesel::insert_into(txs_14::table)
                 .values(t)
                 .on_conflict(txs_14::uid)
@@ -579,8 +553,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_15(&self, txs: &Vec<Tx15>) -> Result<()> {
-        chunked(txs_15::table, txs, |t| {
+    fn insert_txs_15(&self, txs: Vec<Tx15>) -> Result<()> {
+        chunked(txs_15::table, &txs, |t| {
             diesel::insert_into(txs_15::table)
                 .values(t)
                 .on_conflict(txs_15::uid)
@@ -594,10 +568,12 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_16(&self, txs: &Vec<Tx16Combined>) -> Result<()> {
-        let txs16: Vec<&Tx16> = txs.into_iter().map(|t| &t.tx).collect();
-        let args: Vec<&Tx16Args> = txs.iter().flat_map(|t| &t.args).collect();
-        let payments: Vec<&Tx16Payment> = txs.iter().flat_map(|t| &t.payments).collect();
+    fn insert_txs_16(&self, txs: Vec<Tx16Combined>) -> Result<()> {
+        let (txs16, data): (Vec<Tx16>, Vec<(Vec<Tx16Args>, Vec<Tx16Payment>)>) = txs
+            .into_iter()
+            .map(|t| (t.tx, (t.args, t.payments)))
+            .unzip();
+        let (args, payments) = data.into_iter().unzip();
 
         chunked(txs_16::table, &txs16, |t| {
             diesel::insert_into(txs_16::table)
@@ -612,7 +588,7 @@ impl Repo for PgRepoImpl {
             Error::new(AppError::DbDieselError(err)).context(context)
         })?;
 
-        chunked(txs_16_args::table, &args, |t| {
+        chunked_vec(&args, |t| {
             diesel::insert_into(txs_16_args::table)
                 .values(t)
                 .execute(&self.conn)
@@ -623,7 +599,7 @@ impl Repo for PgRepoImpl {
             Error::new(AppError::DbDieselError(err)).context(context)
         })?;
 
-        chunked(txs_16_payment::table, &payments, |t| {
+        chunked_vec(&payments, |t| {
             diesel::insert_into(txs_16_payment::table)
                 .values(t)
                 .execute(&self.conn)
@@ -635,8 +611,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_17(&self, txs: &Vec<Tx17>) -> Result<()> {
-        chunked(txs_17::table, txs, |t| {
+    fn insert_txs_17(&self, txs: Vec<Tx17>) -> Result<()> {
+        chunked(txs_17::table, &txs, |t| {
             diesel::insert_into(txs_17::table)
                 .values(t)
                 .execute(&self.conn)
@@ -648,8 +624,8 @@ impl Repo for PgRepoImpl {
         })
     }
 
-    fn insert_txs_18(&self, txs: &Vec<Tx18>) -> Result<()> {
-        chunked(txs_18::table, txs, |t| {
+    fn insert_txs_18(&self, txs: Vec<Tx18>) -> Result<()> {
+        chunked(txs_18::table, &txs, |t| {
             diesel::insert_into(txs_18::table)
                 .values(t)
                 .execute(&self.conn)
@@ -676,19 +652,9 @@ where
         .try_fold((), |_, chunk| query_fn(chunk))
 }
 
-struct DisplayAsSql<'a, T>(&'a T);
-
-impl<'a, T> Display for DisplayAsSql<'a, Option<T>> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.0 {
-            Some(s) => write!(f, "{}", DisplayAsSql(s)),
-            None => write!(f, "null"),
-        }
-    }
-}
-
-impl<T: Display> Display for DisplayAsSql<'_, T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{s}")
-    }
+fn chunked_vec<F, V>(values: &Vec<Vec<V>>, query_fn: F) -> Result<(), DslError>
+where
+    F: Fn(&[V]) -> Result<(), DslError>,
+{
+    values.into_iter().try_fold((), |_, chunk| query_fn(chunk))
 }

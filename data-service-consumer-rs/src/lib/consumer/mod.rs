@@ -130,7 +130,7 @@ where
         start = Instant::now();
 
         repo.transaction(|| {
-            //handle_updates(updates_with_height, repo.clone(), chain_id)?;
+            handle_updates(updates_with_height, repo.clone(), chain_id)?;
 
             info!(
                 "{} updates were handled in {:?} ms. Last updated height is {}.",
@@ -258,7 +258,7 @@ where
 
     info!("handled {} assets updates", updates_amount);
 
-    //handle_txs(repo.clone(), &block_uids_with_appends)?;
+    handle_txs(repo.clone(), &block_uids_with_appends)?;
 
     let waves_data = appends
         .into_iter()

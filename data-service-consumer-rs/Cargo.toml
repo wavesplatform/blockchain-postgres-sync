@@ -56,3 +56,6 @@ path = "src/bin/consumer.rs"
 [[bin]]
 name = "migration"
 path = "src/bin/migration.rs"
+
+[profile.release]
+lto = true

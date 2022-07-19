@@ -258,7 +258,7 @@ where
 
     info!("handled {} assets updates", updates_amount);
 
-    handle_txs(repo.clone(), &block_uids_with_appends)?;
+    //handle_txs(repo.clone(), &block_uids_with_appends)?;
 
     let waves_data = appends
         .into_iter()

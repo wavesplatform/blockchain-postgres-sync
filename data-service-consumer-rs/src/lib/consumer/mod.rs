@@ -130,7 +130,7 @@ where
         start = Instant::now();
 
         repo.transaction(|| {
-            handle_updates(updates_with_height, repo.clone(), chain_id)?;
+            //handle_updates(updates_with_height, repo.clone(), chain_id)?;
 
             info!(
                 "{} updates were handled in {:?} ms. Last updated height is {}.",

@@ -479,7 +479,7 @@ impl
                             data_value_integer: v_int,
                             data_value_boolean: v_bool,
                             data_value_binary: v_bin.map(|b| into_prefixed_b64(&b)),
-                            data_value_string: v_str,
+                            data_value_string: v_str.map(|s| sanitize_str(&s)),
                             position_in_tx: i as i16,
                             height,
                         }

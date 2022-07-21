@@ -4,6 +4,7 @@ use diesel::prelude::*;
 use diesel::result::Error as DslError;
 use diesel::sql_types::{Array, BigInt, Integer, Numeric, VarChar};
 use diesel::Table;
+use wavesexchange_log::debug;
 
 use super::super::PrevHandledHeight;
 use super::Repo;
@@ -467,7 +468,7 @@ impl Repo for PgRepoImpl {
 
     fn insert_txs_11(&self, txs: Vec<Tx11Combined>) -> Result<()> {
         let (txs11, transfers) = txs.into_iter().map(|t| (t.tx, t.transfers)).unzip();
-
+        debug!("db_insert_txs11");
         chunked(txs_11::table, &txs11, |t| {
             diesel::insert_into(txs_11::table)
                 .values(t)
@@ -481,6 +482,7 @@ impl Repo for PgRepoImpl {
             Error::new(AppError::DbDieselError(err)).context(context)
         })?;
 
+        debug!("db_insert_txs11_transfers");
         chunked_vec(&transfers, |t| {
             diesel::insert_into(txs_11_transfers::table)
                 .values(t)
@@ -646,10 +648,18 @@ where
 {
     let columns_count = T::all_columns().len();
     let chunk_size = (PG_MAX_INSERT_FIELDS_COUNT / columns_count) / 10 * 10;
+    debug!(
+        "chunked insertion of {} elements with chunk_size = {}",
+        values.len(),
+        chunk_size
+    );
     values
         .chunks(chunk_size)
         .into_iter()
-        .try_fold((), |_, chunk| query_fn(chunk))
+        .try_fold((), |_, chunk| {
+            debug!("sql_query_chunked");
+            query_fn(chunk)
+        })
 }
 
 fn chunked_vec<F, V>(values: &Vec<Vec<V>>, query_fn: F) -> Result<(), DslError>

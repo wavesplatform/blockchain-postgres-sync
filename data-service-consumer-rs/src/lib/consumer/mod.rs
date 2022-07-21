@@ -7,6 +7,7 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use itertools::Itertools;
 use std::collections::HashMap;
+use std::mem;
 use std::str;
 use std::sync::Arc;
 use std::time::Instant;
@@ -347,91 +348,42 @@ fn handle_txs<R: repo::Repo>(
         }
     }
 
-    debug!(
-        "txs vectors filled:
-    txs_1 = {},
-    txs_2 = {},
-    txs_3 = {},
-    txs_4 = {},
-    txs_5 = {},
-    txs_6 = {},
-    txs_7 = {},
-    txs_8 = {},
-    txs_9 = {},
-    txs_10 = {},
-    txs_11 = {},
-    txs_12 = {},
-    txs_13 = {},
-    txs_14 = {},
-    txs_15 = {},
-    txs_16 = {},
-    txs_17 = {},
-    txs_18 = {},
-    ",
-        txs_1.len(),
-        txs_2.len(),
-        txs_3.len(),
-        txs_4.len(),
-        txs_5.len(),
-        txs_6.len(),
-        txs_7.len(),
-        txs_8.len(),
-        txs_9.len(),
-        txs_10.len(),
-        txs_11.len(),
-        txs_12.len(),
-        txs_13.len(),
-        txs_14.len(),
-        txs_15.len(),
-        txs_16.len(),
-        txs_17.len(),
-        txs_18.len(),
-    );
-
     #[inline]
-    fn insert_txs<T: 'static, F: Fn(Vec<T>) -> Result<()>>(txs: Vec<T>, inserter: F) -> Result<()> {
+    fn insert_txs<T: 'static, F: Fn(Vec<T>) -> Result<()>>(
+        tx_num: u32,
+        txs: Vec<T>,
+        inserter: F,
+    ) -> Result<()> {
         if !txs.is_empty() {
+            debug!(
+                "inserting {} txs_{}, size = {}",
+                txs.len(),
+                tx_num,
+                mem::size_of_val(&*txs)
+            );
             inserter(txs)?;
         }
         Ok(())
     }
 
-    debug!("inserting txs1");
-    insert_txs(txs_1, |txs| repo.insert_txs_1(txs))?;
-    debug!("inserting txs2");
-    insert_txs(txs_2, |txs| repo.insert_txs_2(txs))?;
-    debug!("inserting txs3");
-    insert_txs(txs_3, |txs| repo.insert_txs_3(txs))?;
-    debug!("inserting txs4");
-    insert_txs(txs_4, |txs| repo.insert_txs_4(txs))?;
-    debug!("inserting txs5");
-    insert_txs(txs_5, |txs| repo.insert_txs_5(txs))?;
-    debug!("inserting txs6");
-    insert_txs(txs_6, |txs| repo.insert_txs_6(txs))?;
-    debug!("inserting txs7");
-    insert_txs(txs_7, |txs| repo.insert_txs_7(txs))?;
-    debug!("inserting txs8");
-    insert_txs(txs_8, |txs| repo.insert_txs_8(txs))?;
-    debug!("inserting txs9");
-    insert_txs(txs_9, |txs| repo.insert_txs_9(txs))?;
-    debug!("inserting txs10");
-    insert_txs(txs_10, |txs| repo.insert_txs_10(txs))?;
-    debug!("inserting txs11");
-    insert_txs(txs_11, |txs| repo.insert_txs_11(txs))?;
-    debug!("inserting txs12");
-    insert_txs(txs_12, |txs| repo.insert_txs_12(txs))?;
-    debug!("inserting txs13");
-    insert_txs(txs_13, |txs| repo.insert_txs_13(txs))?;
-    debug!("inserting txs14");
-    insert_txs(txs_14, |txs| repo.insert_txs_14(txs))?;
-    debug!("inserting txs15");
-    insert_txs(txs_15, |txs| repo.insert_txs_15(txs))?;
-    debug!("inserting txs16");
-    insert_txs(txs_16, |txs| repo.insert_txs_16(txs))?;
-    debug!("inserting txs17");
-    insert_txs(txs_17, |txs| repo.insert_txs_17(txs))?;
-    debug!("inserting txs18");
-    insert_txs(txs_18, |txs| repo.insert_txs_18(txs))?;
+    insert_txs(1, txs_1, |txs| repo.insert_txs_1(txs))?;
+    insert_txs(2, txs_2, |txs| repo.insert_txs_2(txs))?;
+    insert_txs(3, txs_3, |txs| repo.insert_txs_3(txs))?;
+    insert_txs(4, txs_4, |txs| repo.insert_txs_4(txs))?;
+    insert_txs(5, txs_5, |txs| repo.insert_txs_5(txs))?;
+    insert_txs(6, txs_6, |txs| repo.insert_txs_6(txs))?;
+    insert_txs(7, txs_7, |txs| repo.insert_txs_7(txs))?;
+    insert_txs(8, txs_8, |txs| repo.insert_txs_8(txs))?;
+    insert_txs(9, txs_9, |txs| repo.insert_txs_9(txs))?;
+    insert_txs(10, txs_10, |txs| repo.insert_txs_10(txs))?;
+    insert_txs(11, txs_11, |txs| repo.insert_txs_11(txs))?;
+    insert_txs(12, txs_12, |txs| repo.insert_txs_12(txs))?;
+    insert_txs(13, txs_13, |txs| repo.insert_txs_13(txs))?;
+    insert_txs(14, txs_14, |txs| repo.insert_txs_14(txs))?;
+    insert_txs(15, txs_15, |txs| repo.insert_txs_15(txs))?;
+    insert_txs(16, txs_16, |txs| repo.insert_txs_16(txs))?;
+    insert_txs(17, txs_17, |txs| repo.insert_txs_17(txs))?;
+    insert_txs(18, txs_18, |txs| repo.insert_txs_18(txs))?;
 
     info!("all {} txs handled", txs_count);
 

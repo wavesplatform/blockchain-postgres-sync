@@ -17,9 +17,9 @@ struct ConfigFlat {
     blockchain_updates_url: String,
     starting_height: u32,
     #[serde(default = "default_updates_per_request")]
-    max_batch_size: usize,
+    updates_per_request: usize,
     #[serde(default = "default_max_wait_time_in_msecs")]
-    max_batch_wait_time_ms: u64,
+    max_wait_time_in_msecs: u64,
     chain_id: u8,
 }
 
@@ -38,8 +38,8 @@ pub fn load() -> Result<Config, Error> {
     Ok(Config {
         blockchain_updates_url: config_flat.blockchain_updates_url,
         starting_height: config_flat.starting_height,
-        updates_per_request: config_flat.max_batch_size,
-        max_wait_time: Duration::milliseconds(config_flat.max_batch_wait_time_ms as i64),
+        updates_per_request: config_flat.updates_per_request,
+        max_wait_time: Duration::milliseconds(config_flat.max_wait_time_in_msecs as i64),
         chain_id: config_flat.chain_id,
     })
 }

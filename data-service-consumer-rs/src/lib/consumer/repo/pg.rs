@@ -19,7 +19,7 @@ use crate::schema::*;
 use crate::tuple_len::TupleLen;
 
 const MAX_UID: i64 = std::i64::MAX - 1;
-const PG_MAX_INSERT_FIELDS_COUNT: usize = 65535;
+const PG_MAX_INSERT_FIELDS_COUNT: usize = 32767;
 
 pub struct PgRepoImpl {
     conn: PgConnection,
@@ -467,7 +467,10 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_11(&self, txs: Vec<Tx11Combined>) -> Result<()> {
-        let (txs11, transfers) = txs.into_iter().map(|t| (t.tx, t.transfers)).unzip();
+        let (txs11, transfers): (Vec<Tx11>, Vec<Vec<Tx11Transfers>>) =
+            txs.into_iter().map(|t| (t.tx, t.transfers)).unzip();
+        let transfers = transfers.into_iter().flatten().collect::<Vec<_>>();
+
         debug!("db_insert_txs11");
         chunked(txs_11::table, &txs11, |t| {
             diesel::insert_into(txs_11::table)
@@ -483,7 +486,7 @@ impl Repo for PgRepoImpl {
         })?;
 
         debug!("db_insert_txs11_transfers");
-        chunked_vec(&transfers, |t| {
+        chunked(txs_11_transfers::table, &transfers, |t| {
             diesel::insert_into(txs_11_transfers::table)
                 .values(t)
                 .on_conflict((txs_11_transfers::tx_uid, txs_11_transfers::position_in_tx))
@@ -498,7 +501,9 @@ impl Repo for PgRepoImpl {
     }
 
     fn insert_txs_12(&self, txs: Vec<Tx12Combined>) -> Result<()> {
-        let (txs12, data) = txs.into_iter().map(|t| (t.tx, t.data)).unzip();
+        let (txs12, data): (Vec<Tx12>, Vec<Vec<Tx12Data>>) =
+            txs.into_iter().map(|t| (t.tx, t.data)).unzip();
+        let data = data.into_iter().flatten().collect::<Vec<_>>();
 
         chunked(txs_12::table, &txs12, |t| {
             diesel::insert_into(txs_12::table)
@@ -513,7 +518,7 @@ impl Repo for PgRepoImpl {
             Error::new(AppError::DbDieselError(err)).context(context)
         })?;
 
-        chunked_vec(&data, |t| {
+        chunked(txs_12_data::table, &data, |t| {
             diesel::insert_into(txs_12_data::table)
                 .values(t)
                 .execute(&self.conn)
@@ -575,7 +580,10 @@ impl Repo for PgRepoImpl {
             .into_iter()
             .map(|t| (t.tx, (t.args, t.payments)))
             .unzip();
-        let (args, payments) = data.into_iter().unzip();
+        let (args, payments): (Vec<Vec<Tx16Args>>, Vec<Vec<Tx16Payment>>) =
+            data.into_iter().unzip();
+        let args = args.into_iter().flatten().collect::<Vec<_>>();
+        let payments = payments.into_iter().flatten().collect::<Vec<_>>();
 
         chunked(txs_16::table, &txs16, |t| {
             diesel::insert_into(txs_16::table)
@@ -590,7 +598,7 @@ impl Repo for PgRepoImpl {
             Error::new(AppError::DbDieselError(err)).context(context)
         })?;
 
-        chunked_vec(&args, |t| {
+        chunked(txs_16_args::table, &args, |t| {
             diesel::insert_into(txs_16_args::table)
                 .values(t)
                 .execute(&self.conn)
@@ -601,7 +609,7 @@ impl Repo for PgRepoImpl {
             Error::new(AppError::DbDieselError(err)).context(context)
         })?;
 
-        chunked_vec(&payments, |t| {
+        chunked(txs_16_payment::table, &payments, |t| {
             diesel::insert_into(txs_16_payment::table)
                 .values(t)
                 .execute(&self.conn)
@@ -660,11 +668,4 @@ where
             debug!("sql_query_chunked");
             query_fn(chunk)
         })
-}
-
-fn chunked_vec<F, V>(values: &Vec<Vec<V>>, query_fn: F) -> Result<(), DslError>
-where
-    F: Fn(&[V]) -> Result<(), DslError>,
-{
-    values.into_iter().try_fold((), |_, chunk| query_fn(chunk))
 }

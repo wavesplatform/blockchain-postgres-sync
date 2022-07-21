@@ -301,7 +301,14 @@ fn handle_txs<R: repo::Repo>(
     let mut txs_18 = vec![];
 
     let mut ugen = TxUidGenerator::new(Some(100000));
-    let mut txs_count = 0;
+
+    debug!("some dbg msg");
+
+    let txs_count = block_uid_data
+        .iter()
+        .fold(0usize, |txs, (_, block)| txs + block.txs.len());
+    info!("handling {} transactions", txs_count);
+
     for (block_uid, bm) in block_uid_data {
         for tx in &bm.txs {
             ugen.maybe_update_height(bm.height as usize);
@@ -317,7 +324,6 @@ fn handle_txs<R: repo::Repo>(
                     o => return Err(o.into()),
                 },
             };
-            txs_count += 1;
             match result_tx {
                 ConvertedTx::Genesis(t) => txs_1.push(t),
                 ConvertedTx::Payment(t) => txs_2.push(t),
@@ -341,6 +347,47 @@ fn handle_txs<R: repo::Repo>(
         }
     }
 
+    debug!(
+        "txs vectors filled:
+    txs_1 = {},
+    txs_2 = {},
+    txs_3 = {},
+    txs_4 = {},
+    txs_5 = {},
+    txs_6 = {},
+    txs_7 = {},
+    txs_8 = {},
+    txs_9 = {},
+    txs_10 = {},
+    txs_11 = {},
+    txs_12 = {},
+    txs_13 = {},
+    txs_14 = {},
+    txs_15 = {},
+    txs_16 = {},
+    txs_17 = {},
+    txs_18 = {},
+    ",
+        txs_1.len(),
+        txs_2.len(),
+        txs_3.len(),
+        txs_4.len(),
+        txs_5.len(),
+        txs_6.len(),
+        txs_7.len(),
+        txs_8.len(),
+        txs_9.len(),
+        txs_10.len(),
+        txs_11.len(),
+        txs_12.len(),
+        txs_13.len(),
+        txs_14.len(),
+        txs_15.len(),
+        txs_16.len(),
+        txs_17.len(),
+        txs_18.len(),
+    );
+
     #[inline]
     fn insert_txs<T: 'static, F: Fn(Vec<T>) -> Result<()>>(txs: Vec<T>, inserter: F) -> Result<()> {
         if !txs.is_empty() {
@@ -349,26 +396,44 @@ fn handle_txs<R: repo::Repo>(
         Ok(())
     }
 
+    debug!("inserting txs1");
     insert_txs(txs_1, |txs| repo.insert_txs_1(txs))?;
+    debug!("inserting txs2");
     insert_txs(txs_2, |txs| repo.insert_txs_2(txs))?;
+    debug!("inserting txs3");
     insert_txs(txs_3, |txs| repo.insert_txs_3(txs))?;
+    debug!("inserting txs4");
     insert_txs(txs_4, |txs| repo.insert_txs_4(txs))?;
+    debug!("inserting txs5");
     insert_txs(txs_5, |txs| repo.insert_txs_5(txs))?;
+    debug!("inserting txs6");
     insert_txs(txs_6, |txs| repo.insert_txs_6(txs))?;
+    debug!("inserting txs7");
     insert_txs(txs_7, |txs| repo.insert_txs_7(txs))?;
+    debug!("inserting txs8");
     insert_txs(txs_8, |txs| repo.insert_txs_8(txs))?;
+    debug!("inserting txs9");
     insert_txs(txs_9, |txs| repo.insert_txs_9(txs))?;
+    debug!("inserting txs10");
     insert_txs(txs_10, |txs| repo.insert_txs_10(txs))?;
+    debug!("inserting txs11");
     insert_txs(txs_11, |txs| repo.insert_txs_11(txs))?;
+    debug!("inserting txs12");
     insert_txs(txs_12, |txs| repo.insert_txs_12(txs))?;
+    debug!("inserting txs13");
     insert_txs(txs_13, |txs| repo.insert_txs_13(txs))?;
+    debug!("inserting txs14");
     insert_txs(txs_14, |txs| repo.insert_txs_14(txs))?;
+    debug!("inserting txs15");
     insert_txs(txs_15, |txs| repo.insert_txs_15(txs))?;
+    debug!("inserting txs16");
     insert_txs(txs_16, |txs| repo.insert_txs_16(txs))?;
+    debug!("inserting txs17");
     insert_txs(txs_17, |txs| repo.insert_txs_17(txs))?;
+    debug!("inserting txs18");
     insert_txs(txs_18, |txs| repo.insert_txs_18(txs))?;
 
-    info!("handled {} transactions", txs_count);
+    info!("all {} txs handled", txs_count);
 
     Ok(())
 }

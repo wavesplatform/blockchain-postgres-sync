@@ -465,7 +465,7 @@ impl
                                 (Some("boolean"), None, Some(v.to_owned()), None, None)
                             }
                             Some(DataValue::BinaryValue(v)) => {
-                                (Some("integer"), None, None, Some(v.to_owned()), None)
+                                (Some("binary"), None, None, Some(v.to_owned()), None)
                             }
                             Some(DataValue::StringValue(v)) => {
                                 (Some("string"), None, None, None, Some(v.to_owned()))

@@ -474,7 +474,7 @@ impl
                         };
                         Tx12Data {
                             tx_uid: uid,
-                            data_key: d.key.clone(),
+                            data_key: sanitize_str(&d.key),
                             data_type: v_type.map(String::from),
                             data_value_integer: v_int,
                             data_value_boolean: v_bool,

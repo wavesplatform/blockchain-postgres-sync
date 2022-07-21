@@ -525,7 +525,7 @@ impl Repo for PgRepoImpl {
                 .map(|_| ())
         })
         .map_err(|err| {
-            let context = format!("Cannot insert DataTransaction data: {err}, data: {data:?}",);
+            let context = format!("Cannot insert DataTransaction data: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
         })
     }

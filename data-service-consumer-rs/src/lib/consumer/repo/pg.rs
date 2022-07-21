@@ -521,6 +521,8 @@ impl Repo for PgRepoImpl {
         chunked(txs_12_data::table, &data, |t| {
             diesel::insert_into(txs_12_data::table)
                 .values(t)
+                .on_conflict((txs_12_data::tx_uid, txs_12_data::position_in_tx))
+                .do_nothing()
                 .execute(&self.conn)
                 .map(|_| ())
         })
@@ -601,6 +603,8 @@ impl Repo for PgRepoImpl {
         chunked(txs_16_args::table, &args, |t| {
             diesel::insert_into(txs_16_args::table)
                 .values(t)
+                .on_conflict((txs_16_args::tx_uid, txs_16_args::position_in_args))
+                .do_nothing()
                 .execute(&self.conn)
                 .map(|_| ())
         })
@@ -612,6 +616,8 @@ impl Repo for PgRepoImpl {
         chunked(txs_16_payment::table, &payments, |t| {
             diesel::insert_into(txs_16_payment::table)
                 .values(t)
+                .on_conflict((txs_16_payment::tx_uid, txs_16_payment::position_in_payment))
+                .do_nothing()
                 .execute(&self.conn)
                 .map(|_| ())
         })
@@ -625,6 +631,8 @@ impl Repo for PgRepoImpl {
         chunked(txs_17::table, &txs, |t| {
             diesel::insert_into(txs_17::table)
                 .values(t)
+                .on_conflict(txs_17::uid)
+                .do_nothing()
                 .execute(&self.conn)
                 .map(|_| ())
         })
@@ -638,6 +646,8 @@ impl Repo for PgRepoImpl {
         chunked(txs_18::table, &txs, |t| {
             diesel::insert_into(txs_18::table)
                 .values(t)
+                .on_conflict(txs_18::uid)
+                .do_nothing()
                 .execute(&self.conn)
                 .map(|_| ())
         })

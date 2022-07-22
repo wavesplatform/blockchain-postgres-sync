@@ -179,14 +179,14 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                     Some((txs, ..)) => txs
                         .into_iter()
                         .enumerate()
-                        .filter_map(|(idx, tx)| {
+                        .map(|(idx, tx)| {
                             let id = transaction_ids.get(idx).unwrap().clone();
-                            Some(Tx {
+                            Tx {
                                 id: bs58::encode(id).into_string(),
                                 data: tx,
                                 meta: transactions_metadata.get(idx).unwrap().clone(),
                                 state_update: transaction_state_updates.get(idx).unwrap().clone(),
-                            })
+                            }
                         })
                         .collect(),
                     None => vec![],

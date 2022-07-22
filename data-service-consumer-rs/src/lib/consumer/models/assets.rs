@@ -25,7 +25,7 @@ pub struct AssetUpdate {
 
 impl PartialEq for AssetUpdate {
     fn eq(&self, other: &AssetUpdate) -> bool {
-        (&self.asset_id) == (&other.asset_id)
+        self.asset_id == other.asset_id
     }
 }
 
@@ -51,7 +51,7 @@ pub struct DeletedAsset {
 
 impl PartialEq for DeletedAsset {
     fn eq(&self, other: &Self) -> bool {
-        (&self.id) == (&other.id)
+        self.id == other.id
     }
 }
 

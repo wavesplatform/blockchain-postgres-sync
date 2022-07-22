@@ -129,7 +129,7 @@ pub struct WavesAssociationKey {
     pub key_without_asset_id: String,
 }
 
-pub const KNOWN_WAVES_ASSOCIATION_ASSET_ATTRIBUTES: &'static [&str] = &[
+pub const KNOWN_WAVES_ASSOCIATION_ASSET_ATTRIBUTES: &[&str] = &[
     "description",
     "link",
     "logo",

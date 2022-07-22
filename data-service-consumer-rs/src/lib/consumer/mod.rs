@@ -115,9 +115,11 @@ where
     loop {
         let mut start = Instant::now();
 
-        let updates_with_height = rx.recv().await.ok_or(Error::new(AppError::StreamClosed(
-            "GRPC Stream was closed by the server".to_string(),
-        )))?;
+        let updates_with_height = rx.recv().await.ok_or_else(|| {
+            Error::new(AppError::StreamClosed(
+                "GRPC Stream was closed by the server".to_string(),
+            ))
+        })?;
 
         let updates_count = updates_with_height.updates.len();
         info!(
@@ -145,7 +147,7 @@ where
     }
 }
 
-fn handle_updates<'a, R>(
+fn handle_updates<R>(
     updates_with_height: BlockchainUpdatesWithLastHeight,
     repo: Arc<R>,
     chain_id: u8,
@@ -156,12 +158,12 @@ where
     updates_with_height
         .updates
         .into_iter()
-        .fold::<&mut Vec<UpdatesItem>, _>(&mut vec![], |acc, cur| match cur {
+        .fold(&mut Vec::<UpdatesItem>::new(), |acc, cur| match cur {
             BlockchainUpdate::Block(b) => {
                 info!("Handle block {}, height = {}", b.id, b.height);
                 let len = acc.len();
-                if acc.len() > 0 {
-                    match acc.iter_mut().nth(len as usize - 1).unwrap() {
+                if len > 0 {
+                    match acc.get_mut(len as usize - 1).unwrap() {
                         UpdatesItem::Blocks(v) => {
                             v.push(b);
                             acc
@@ -191,13 +193,13 @@ where
         .try_fold((), |_, update_item| match update_item {
             UpdatesItem::Blocks(ba) => {
                 squash_microblocks(repo.clone())?;
-                handle_appends(repo.clone(), chain_id, ba.as_ref())
+                handle_appends(repo.clone(), chain_id, ba)
             }
             UpdatesItem::Microblock(mba) => {
                 handle_appends(repo.clone(), chain_id, &vec![mba.to_owned()])
             }
             UpdatesItem::Rollback(sig) => {
-                let block_uid = repo.clone().get_block_uid(&sig)?;
+                let block_uid = repo.clone().get_block_uid(sig)?;
                 rollback(repo.clone(), block_uid)
             }
         })?;
@@ -224,13 +226,13 @@ where
 
     timer!("assets updates handling");
 
-    let base_asset_info_updates_with_block_uids: Vec<(&i64, BaseAssetInfoUpdate)> =
+    let base_asset_info_updates_with_block_uids: Vec<(i64, BaseAssetInfoUpdate)> =
         block_uids_with_appends
             .iter()
             .flat_map(|(block_uid, append)| {
                 extract_base_asset_info_updates(chain_id, append)
                     .into_iter()
-                    .map(|au| (block_uid, au))
+                    .map(|au| (*block_uid, au))
                     .collect_vec()
             })
             .collect();
@@ -470,7 +472,7 @@ fn extract_base_asset_info_updates(
 
 fn handle_base_asset_info_updates<R: repo::Repo>(
     repo: Arc<R>,
-    updates: &[(&i64, BaseAssetInfoUpdate)],
+    updates: &[(i64, BaseAssetInfoUpdate)],
 ) -> Result<Option<Vec<i64>>> {
     if updates.is_empty() {
         return Ok(None);
@@ -486,14 +488,14 @@ fn handle_base_asset_info_updates<R: repo::Repo>(
         .map(|(update_idx, (block_uid, update))| AssetUpdate {
             uid: assets_next_uid + update_idx as i64,
             superseded_by: -1,
-            block_uid: *block_uid.clone(),
+            block_uid: *block_uid,
             asset_id: update.id.clone(),
             name: update.name.clone(),
             description: update.description.clone(),
             nft: update.nft,
             reissuable: update.reissuable,
             decimals: update.precision as i16,
-            script: update.script.clone().map(|s| base64::encode(s)),
+            script: update.script.clone().map(base64::encode),
             sponsorship: update.min_sponsored_fee,
             volume: update.quantity,
         })
@@ -548,7 +550,6 @@ fn handle_base_asset_info_updates<R: repo::Repo>(
     repo.close_assets_superseded_by(&assets_first_uids)?;
 
     let assets_with_uids_superseded_by = &assets_grouped_with_uids_superseded_by
-        .clone()
         .into_iter()
         .flat_map(|(_, v)| v)
         .sorted_by_key(|asset| asset.uid)

@@ -105,7 +105,7 @@ impl
         let into_prefixed_b64 = |b: &[u8]| String::from("base64:") + &base64::encode(b);
         let sanitize_str = |s: &String| s.replace("\x00", "");
         let parse_attachment = |a: &Vec<u8>| {
-            sanitize_str(&String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(&a)))
+            sanitize_str(&String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(a)))
         };
 
         let (tx, proofs) = match tx {
@@ -121,7 +121,7 @@ impl
         };
         let uid = ugen.next() as i64;
         let id = id.to_owned();
-        let proofs = proofs.into_iter().map(|p| into_b58(p)).collect::<Vec<_>>();
+        let proofs = proofs.iter().map(|p| into_b58(p)).collect::<Vec<_>>();
         let signature = proofs.get(0).map(ToOwned::to_owned);
         let proofs = Some(proofs);
 
@@ -169,9 +169,11 @@ impl
                 }));
             }
         };
-        let tx_data = tx.data.as_ref().ok_or(Error::IncosistDataError(format!(
-            "No inner transaction data in id={id}, height={height}",
-        )))?;
+        let tx_data = tx.data.as_ref().ok_or_else(|| {
+            Error::IncosistDataError(format!(
+                "No inner transaction data in id={id}, height={height}",
+            ))
+        })?;
         let time_stamp = NaiveDateTime::from_timestamp(tx.timestamp / 1000, 0);
         let fee = tx.fee.clone();
         let (fee, fee_asset_id) = match fee {
@@ -193,7 +195,7 @@ impl
                 proofs,
                 tx_version,
                 sender,
-                sender_public_key: if sender_public_key.len() > 0 {
+                sender_public_key: if !sender_public_key.is_empty() {
                     Some(sender_public_key)
                 } else {
                     None
@@ -235,13 +237,13 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                asset_id: id.to_owned(),
+                asset_id: id,
                 asset_name: sanitize_str(&t.name),
                 description: sanitize_str(&t.description),
                 quantity: t.amount,
                 decimals: t.decimals as i16,
                 reissuable: t.reissuable,
-                script: if t.script.len() > 0 {
+                script: if !t.script.is_empty() {
                     Some(into_prefixed_b64(&t.script))
                 } else {
                     None
@@ -263,7 +265,7 @@ impl
                     sender,
                     sender_public_key,
                     status,
-                    asset_id: into_b58(&asset_id),
+                    asset_id: into_b58(asset_id),
                     fee_asset_id: into_b58(&fee_asset_id),
                     amount: *amount,
                     attachment: parse_attachment(&t.attachment),
@@ -291,7 +293,7 @@ impl
                     sender,
                     sender_public_key,
                     status,
-                    asset_id: into_b58(&asset_id),
+                    asset_id: into_b58(asset_id),
                     quantity: *amount,
                     reissuable: t.reissuable,
                     block_uid,
@@ -312,7 +314,7 @@ impl
                     sender,
                     sender_public_key,
                     status,
-                    asset_id: into_b58(&asset_id),
+                    asset_id: into_b58(asset_id),
                     amount: *amount,
                     block_uid,
                 })
@@ -376,7 +378,7 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                lease_id: if t.lease_id.len() > 0 {
+                lease_id: if !t.lease_id.is_empty() {
                     Some(into_b58(&t.lease_id))
                 } else {
                     None
@@ -876,7 +878,7 @@ impl From<(&Tx9Partial, Option<i64>)> for Tx9 {
             sender: tx.sender,
             sender_public_key: tx.sender_public_key,
             status: tx.status,
-            lease_tx_uid: tx.lease_id.and_then(|_| lease_tx_uid),
+            lease_tx_uid: tx.lease_id.and(lease_tx_uid),
             block_uid: tx.block_uid,
         }
     }

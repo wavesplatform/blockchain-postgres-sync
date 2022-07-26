@@ -1,6 +1,5 @@
 DROP TABLE IF EXISTS asset_origins;
 DROP TABLE IF EXISTS asset_updates;
-DROP TABLE IF EXISTS blocks_microblocks;
 DROP TABLE IF EXISTS assets_names_map;
 DROP TABLE IF EXISTS assets_metadata;
 DROP TABLE IF EXISTS tickers;
@@ -29,7 +28,8 @@ DROP TABLE IF EXISTS txs_16_payment;
 DROP TABLE IF EXISTS txs_16;
 DROP TABLE IF EXISTS txs_17;
 DROP TABLE IF EXISTS txs_18;
-DROP TABLE IF EXISTS txs CASCADE;
+DROP TABLE IF EXISTS txs;
+DROP TABLE IF EXISTS blocks_microblocks;
 
 DROP INDEX IF EXISTS candles_max_height_index;
 DROP INDEX IF EXISTS candles_amount_price_ids_matcher_time_start_partial_1m_idx;

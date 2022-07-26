@@ -20,6 +20,8 @@ async fn main() -> Result<()> {
 
     let pg_repo = Arc::new(consumer::repo::pg::new(conn));
 
+    panic!("oops");
+
     if let Err(err) = consumer::start(
         config.node.starting_height,
         updates_src,

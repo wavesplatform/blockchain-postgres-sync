@@ -305,8 +305,6 @@ fn handle_txs<R: repo::Repo>(
 
     let mut ugen = TxUidGenerator::new(Some(100000));
 
-    debug!("some dbg msg");
-
     let txs_count = block_uid_data
         .iter()
         .fold(0usize, |txs, (_, block)| txs + block.txs.len());

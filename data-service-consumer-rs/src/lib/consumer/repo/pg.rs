@@ -174,6 +174,8 @@ impl Repo for PgRepoImpl {
         chunked(asset_updates::table, updates, |t| {
             diesel::insert_into(asset_updates::table)
                 .values(t)
+                .on_conflict((asset_updates::superseded_by, asset_updates::asset_id))
+                .do_nothing()
                 .execute(&self.conn)
                 .map(|_| ())
         })
@@ -189,7 +191,7 @@ impl Repo for PgRepoImpl {
             diesel::insert_into(asset_origins::table)
                 .values(t)
                 .on_conflict(asset_origins::asset_id)
-                .do_nothing() // а может и не nothing
+                .do_nothing()
                 .execute(&self.conn)
                 .map(|_| ())
         })
@@ -431,11 +433,11 @@ impl Repo for PgRepoImpl {
 
     fn insert_txs_9(&self, txs: Vec<Tx9Partial>) -> Result<()> {
         use diesel::pg::expression::dsl::any;
+
         let lease_ids = txs
             .iter()
             .filter_map(|tx| tx.lease_id.as_ref())
             .collect::<Vec<_>>();
-        debug!("lease_ids: {:?}", lease_ids);
         let tx_id_uid = chunked(txs::table, &lease_ids, |ids| {
             txs::table
                 .select((txs::id, txs::uid))
@@ -448,7 +450,6 @@ impl Repo for PgRepoImpl {
         })?;
 
         let tx_id_uid_map = HashMap::<String, i64>::from_iter(tx_id_uid);
-
         let txs9 = txs
             .into_iter()
             .map(|tx| {

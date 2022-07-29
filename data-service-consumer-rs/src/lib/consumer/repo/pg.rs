@@ -17,6 +17,7 @@ use crate::consumer::models::{
 use crate::error::Error as AppError;
 use crate::schema::*;
 use crate::tuple_len::TupleLen;
+use std::collections::HashMap;
 
 const MAX_UID: i64 = std::i64::MAX - 1;
 const PG_MAX_INSERT_FIELDS_COUNT: usize = 32767;
@@ -179,7 +180,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert new asset updates: {}", err);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_asset_origins(&self, origins: &Vec<AssetOrigin>) -> Result<()> {
@@ -194,7 +196,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert new assets: {}", err);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn update_assets_block_references(&self, block_uid: &i64) -> Result<()> {
@@ -310,7 +313,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert Genesis transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_2(&self, txs: Vec<Tx2>) -> Result<()> {
@@ -325,7 +329,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert Payment transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_3(&self, txs: Vec<Tx3>) -> Result<()> {
@@ -340,7 +345,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert Issue transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_4(&self, txs: Vec<Tx4>) -> Result<()> {
@@ -355,7 +361,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert Transfer transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_5(&self, txs: Vec<Tx5>) -> Result<()> {
@@ -370,7 +377,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert Reissue transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_6(&self, txs: Vec<Tx6>) -> Result<()> {
@@ -385,7 +393,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert Burn transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_7(&self, txs: Vec<Tx7>) -> Result<()> {
@@ -400,7 +409,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert Exchange transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_8(&self, txs: Vec<Tx8>) -> Result<()> {
@@ -415,27 +425,42 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert Lease transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_9(&self, txs: Vec<Tx9Partial>) -> Result<()> {
-        //TODO: optimize selects
-        let mut txs9 = vec![];
-        for tx in txs.into_iter() {
-            let lease_tx_uid = match tx.lease_id.as_ref() {
-                Some(lid) => txs::table
-                    .select(txs::uid)
-                    .filter(txs::id.eq(lid))
-                    .first(&self.conn)
-                    .optional()
-                    .map_err(|err| {
-                        let context = format!("Cannot find uid for lease_id {lid}: {err}",);
-                        Error::new(AppError::DbDieselError(err)).context(context)
-                    })?,
-                None => None,
-            };
-            txs9.push(Tx9::from((&tx, lease_tx_uid)));
-        }
+        use diesel::pg::expression::dsl::any;
+        let lease_ids = txs
+            .iter()
+            .filter_map(|tx| tx.lease_id.as_ref())
+            .collect::<Vec<_>>();
+        debug!("lease_ids: {:?}", lease_ids);
+        let tx_id_uid = chunked(txs::table, &lease_ids, |ids| {
+            txs::table
+                .select((txs::id, txs::uid))
+                .filter(txs::id.eq(any(ids)))
+                .get_results(&self.conn)
+        })
+        .map_err(|err| {
+            let context = format!("Cannot find uids for lease_ids: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
+
+        let tx_id_uid_map = HashMap::<String, i64>::from_iter(tx_id_uid);
+
+        let txs9 = txs
+            .into_iter()
+            .map(|tx| {
+                Tx9::from((
+                    &tx,
+                    tx.lease_id
+                        .as_ref()
+                        .and_then(|lease_id| tx_id_uid_map.get(lease_id))
+                        .cloned(),
+                ))
+            })
+            .collect::<Vec<_>>();
 
         chunked(txs_9::table, &txs9, |t| {
             diesel::insert_into(txs_9::table)
@@ -448,7 +473,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert LeaseCancel transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_10(&self, txs: Vec<Tx10>) -> Result<()> {
@@ -463,7 +489,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert CreateAlias transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_11(&self, txs: Vec<Tx11Combined>) -> Result<()> {
@@ -497,7 +524,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert MassTransfer transfers: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_12(&self, txs: Vec<Tx12Combined>) -> Result<()> {
@@ -529,7 +557,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert DataTransaction data: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_13(&self, txs: Vec<Tx13>) -> Result<()> {
@@ -544,7 +573,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert SetScript transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_14(&self, txs: Vec<Tx14>) -> Result<()> {
@@ -559,7 +589,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert SponsorFee transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_15(&self, txs: Vec<Tx15>) -> Result<()> {
@@ -574,7 +605,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert SetAssetScript transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_16(&self, txs: Vec<Tx16Combined>) -> Result<()> {
@@ -624,7 +656,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert InvokeScript payments: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_17(&self, txs: Vec<Tx17>) -> Result<()> {
@@ -639,7 +672,8 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert UpdateAssetInfo transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 
     fn insert_txs_18(&self, txs: Vec<Tx18>) -> Result<()> {
@@ -654,15 +688,17 @@ impl Repo for PgRepoImpl {
         .map_err(|err| {
             let context = format!("Cannot insert Ethereum transactions: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
-        })
+        })?;
+        Ok(())
     }
 }
 
-fn chunked<T, F, V>(_: T, values: &Vec<V>, query_fn: F) -> Result<(), DslError>
+fn chunked<T, F, V, R, RV>(_: T, values: &Vec<V>, query_fn: F) -> Result<Vec<R>, DslError>
 where
     T: Table,
     T::AllColumns: TupleLen,
-    F: Fn(&[V]) -> Result<(), DslError>,
+    RV: OneOrMany<R>,
+    F: Fn(&[V]) -> Result<RV, DslError>,
 {
     let columns_count = T::all_columns().len();
     let chunk_size = (PG_MAX_INSERT_FIELDS_COUNT / columns_count) / 10 * 10;
@@ -671,11 +707,30 @@ where
         values.len(),
         chunk_size
     );
+    let mut result = vec![];
     values
         .chunks(chunk_size)
         .into_iter()
         .try_fold((), |_, chunk| {
             debug!("sql_query_chunked");
-            query_fn(chunk)
-        })
+            result.extend(query_fn(chunk)?.anyway_into_iterable());
+            Ok::<_, DslError>(())
+        })?;
+    Ok(result)
+}
+
+trait OneOrMany<T> {
+    fn anyway_into_iterable(self) -> Vec<T>;
+}
+
+impl OneOrMany<()> for () {
+    fn anyway_into_iterable(self) -> Vec<()> {
+        vec![]
+    }
+}
+
+impl<T> OneOrMany<T> for Vec<T> {
+    fn anyway_into_iterable(self) -> Vec<T> {
+        self
+    }
 }

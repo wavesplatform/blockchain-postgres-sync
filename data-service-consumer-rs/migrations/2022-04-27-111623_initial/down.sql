@@ -172,3 +172,4 @@ DROP INDEX IF EXISTS asset_updates_to_tsvector_idx;
 DROP INDEX IF EXISTS tickers_ticker_idx;
 
 DROP EXTENSION IF EXISTS btree_gin;
+DROP EXTENSION IF EXISTS btree_gist;

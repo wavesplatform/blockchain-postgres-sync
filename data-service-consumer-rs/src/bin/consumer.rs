@@ -3,7 +3,7 @@ use app_lib::{config, consumer, db};
 use std::sync::Arc;
 use wavesexchange_log::{error, info};
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let config = config::load_consumer_config()?;
 
@@ -19,8 +19,6 @@ async fn main() -> Result<()> {
         .context("Blockchain connection failed")?;
 
     let pg_repo = Arc::new(consumer::repo::pg::new(conn));
-
-    panic!("oops");
 
     if let Err(err) = consumer::start(
         config.node.starting_height,

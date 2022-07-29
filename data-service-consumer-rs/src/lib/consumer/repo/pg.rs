@@ -20,7 +20,7 @@ use crate::tuple_len::TupleLen;
 use std::collections::HashMap;
 
 const MAX_UID: i64 = std::i64::MAX - 1;
-const PG_MAX_INSERT_FIELDS_COUNT: usize = 32767;
+const PG_MAX_INSERT_FIELDS_COUNT: usize = 65535;
 
 pub struct PgRepoImpl {
     conn: PgConnection,

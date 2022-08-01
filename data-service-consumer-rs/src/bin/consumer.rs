@@ -3,7 +3,7 @@ use app_lib::{config, consumer, db};
 use std::sync::Arc;
 use wavesexchange_log::{error, info};
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> Result<()> {
     let config = config::load_consumer_config()?;
 

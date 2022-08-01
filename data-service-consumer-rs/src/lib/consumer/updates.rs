@@ -61,7 +61,7 @@ impl UpdatesSource for UpdatesSourceImpl {
             .map_err(|e| AppError::StreamError(format!("Subscribe Stream error: {}", e)))?
             .into_inner();
 
-        let (tx, rx) = channel::<BlockchainUpdatesWithLastHeight>(batch_max_size);
+        let (tx, rx) = channel::<BlockchainUpdatesWithLastHeight>(1);
 
         tokio::spawn(async move {
             let r = self

@@ -4,7 +4,6 @@ use diesel::prelude::*;
 use diesel::result::Error as DslError;
 use diesel::sql_types::{Array, BigInt, Integer, Numeric, VarChar};
 use diesel::Table;
-use wavesexchange_log::debug;
 
 use super::super::PrevHandledHeight;
 use super::Repo;
@@ -147,9 +146,8 @@ impl Repo for PgRepoImpl {
             .bind::<Integer, _>(data.height)
             .bind::<Numeric, _>(&data.quantity);
 
-            let dbg_query = diesel::debug_query(&q).to_string();
             q.execute(&self.conn).map(|_| ()).map_err(|err| {
-                let context = format!("Cannot insert waves data {dbg_query:?}: {err}");
+                let context = format!("Cannot insert waves data: {err}");
                 Error::new(AppError::DbDieselError(err)).context(context)
             })?;
         }
@@ -499,7 +497,6 @@ impl Repo for PgRepoImpl {
             txs.into_iter().map(|t| (t.tx, t.transfers)).unzip();
         let transfers = transfers.into_iter().flatten().collect::<Vec<_>>();
 
-        debug!("db_insert_txs11");
         chunked(txs_11::table, &txs11, |t| {
             diesel::insert_into(txs_11::table)
                 .values(t)
@@ -513,7 +510,6 @@ impl Repo for PgRepoImpl {
             Error::new(AppError::DbDieselError(err)).context(context)
         })?;
 
-        debug!("db_insert_txs11_transfers");
         chunked(txs_11_transfers::table, &transfers, |t| {
             diesel::insert_into(txs_11_transfers::table)
                 .values(t)
@@ -703,17 +699,11 @@ where
 {
     let columns_count = T::all_columns().len();
     let chunk_size = (PG_MAX_INSERT_FIELDS_COUNT / columns_count) / 10 * 10;
-    debug!(
-        "chunked insertion of {} elements with chunk_size = {}",
-        values.len(),
-        chunk_size
-    );
     let mut result = vec![];
     values
         .chunks(chunk_size)
         .into_iter()
         .try_fold((), |_, chunk| {
-            debug!("sql_query_chunked");
             result.extend(query_fn(chunk)?.anyway_into_iterable());
             Ok::<_, DslError>(())
         })?;

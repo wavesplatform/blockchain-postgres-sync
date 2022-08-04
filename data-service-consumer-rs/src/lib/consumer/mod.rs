@@ -119,7 +119,7 @@ where
                 "GRPC Stream was closed by the server".to_string(),
             ))
         })?;
-
+        /*
         let updates_count = updates_with_height.updates.len();
         info!(
             "{} updates were received in {:?}",
@@ -143,6 +143,7 @@ where
 
             Ok(())
         })?;
+        */
     }
 }
 

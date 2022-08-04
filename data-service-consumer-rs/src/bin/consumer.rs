@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
         config.node.starting_height,
         updates_src,
         pg_repo,
-        100, //config.node.updates_per_request,
+        config.node.updates_per_request,
         config.node.max_wait_time,
         config.node.chain_id,
     )

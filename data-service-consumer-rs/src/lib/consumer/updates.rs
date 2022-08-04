@@ -99,7 +99,7 @@ impl UpdatesSourceImpl {
             }) = stream
                 .message()
                 .await
-                .map_err(|s| AppError::StreamError(s.to_string()))?
+                .map_err(|s| AppError::StreamError(format!("Updates stream error: {}", s)))?
             {
                 last_height = update.height as u32;
                 match BlockchainUpdate::try_from(update) {
@@ -128,7 +128,7 @@ impl UpdatesSourceImpl {
                     updates: result.drain(..).collect(),
                 })
                 .await
-                .map_err(|e| AppError::StreamError(e.to_string()))?;
+                .map_err(|e| AppError::StreamError(format!("Channel error: {}", e)))?;
                 should_receive_more = true;
                 start = Instant::now();
             }

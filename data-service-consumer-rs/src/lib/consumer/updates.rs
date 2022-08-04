@@ -22,7 +22,7 @@ use waves_protobuf_schemas::waves::{
     Block as BlockPB, SignedMicroBlock as SignedMicroBlockPB,
     SignedTransaction as SignedTransactionPB,
 };
-use wavesexchange_log::{error, warn};
+use wavesexchange_log::error;
 
 use super::{
     BlockMicroblockAppend, BlockchainUpdate, BlockchainUpdatesWithLastHeight, Tx, UpdatesSource,
@@ -94,39 +94,32 @@ impl UpdatesSourceImpl {
         let batch_max_wait_time = batch_max_wait_time.to_std().unwrap();
 
         loop {
-            match stream
+            if let Some(SubscribeEventPB {
+                update: Some(update),
+            }) = stream
                 .message()
                 .await
-                .map_err(|s| AppError::StreamError(format!("Updates stream error: {}", s)))
+                .map_err(|s| AppError::StreamError(format!("Updates stream error: {}", s)))?
             {
-                Ok(Some(SubscribeEventPB {
-                    update: Some(update),
-                })) => {
-                    last_height = update.height as u32;
-                    match BlockchainUpdate::try_from(update) {
-                        Ok(upd) => Ok({
-                            match &upd {
-                                BlockchainUpdate::Block(_) => {
-                                    if result.len() >= batch_max_size
-                                        || start.elapsed().ge(&batch_max_wait_time)
-                                    {
-                                        should_receive_more = false;
-                                    }
-                                }
-                                BlockchainUpdate::Microblock(_) | BlockchainUpdate::Rollback(_) => {
-                                    should_receive_more = false
+                last_height = update.height as u32;
+                match BlockchainUpdate::try_from(update) {
+                    Ok(upd) => Ok({
+                        match &upd {
+                            BlockchainUpdate::Block(_) => {
+                                if result.len() >= batch_max_size
+                                    || start.elapsed().ge(&batch_max_wait_time)
+                                {
+                                    should_receive_more = false;
                                 }
                             }
-                            result.push(upd);
-                        }),
-                        Err(err) => Err(err),
-                    }?;
-                }
-                Err(e) => {
-                    warn!("{}", e);
-                    continue;
-                }
-                o => unreachable!("{o:?}"),
+                            BlockchainUpdate::Microblock(_) | BlockchainUpdate::Rollback(_) => {
+                                should_receive_more = false
+                            }
+                        }
+                        result.push(upd);
+                    }),
+                    Err(err) => Err(err),
+                }?;
             }
 
             if !should_receive_more {

@@ -22,7 +22,7 @@ use waves_protobuf_schemas::waves::{
     Block as BlockPB, SignedMicroBlock as SignedMicroBlockPB,
     SignedTransaction as SignedTransactionPB,
 };
-use wavesexchange_log::error;
+use wavesexchange_log::{error, info};
 
 use super::{
     BlockMicroblockAppend, BlockchainUpdate, BlockchainUpdatesWithLastHeight, Tx, UpdatesSource,
@@ -122,14 +122,15 @@ impl UpdatesSourceImpl {
                 }?;
             }
 
+            info!("Elapsed: {} ms", start.elapsed().as_millis());
+
             if !should_receive_more {
-                result.clear();
-                // tx.send(BlockchainUpdatesWithLastHeight {
-                //     last_height,
-                //     updates: result.drain(..).collect(),
-                // })
-                // .await
-                // .map_err(|e| AppError::StreamError(format!("Channel error: {}", e)))?;
+                tx.send(BlockchainUpdatesWithLastHeight {
+                    last_height,
+                    updates: result.drain(..).collect(),
+                })
+                .await
+                .map_err(|e| AppError::StreamError(format!("Channel error: {}", e)))?;
                 should_receive_more = true;
                 start = Instant::now();
             }

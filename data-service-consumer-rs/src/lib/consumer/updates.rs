@@ -136,7 +136,7 @@ impl UpdatesSourceImpl {
                 start = Instant::now();
             }
 
-            time::sleep(StdDuration::from_micros(500)).await;
+            time::sleep(StdDuration::from_micros(1000)).await;
         }
     }
 }

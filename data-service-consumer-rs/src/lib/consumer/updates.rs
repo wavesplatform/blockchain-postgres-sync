@@ -123,12 +123,13 @@ impl UpdatesSourceImpl {
             }
 
             if !should_receive_more {
-                tx.send(BlockchainUpdatesWithLastHeight {
-                    last_height,
-                    updates: result.drain(..).collect(),
-                })
-                .await
-                .map_err(|e| AppError::StreamError(format!("Channel error: {}", e)))?;
+                result.clear();
+                // tx.send(BlockchainUpdatesWithLastHeight {
+                //     last_height,
+                //     updates: result.drain(..).collect(),
+                // })
+                // .await
+                // .map_err(|e| AppError::StreamError(format!("Channel error: {}", e)))?;
                 should_receive_more = true;
                 start = Instant::now();
             }

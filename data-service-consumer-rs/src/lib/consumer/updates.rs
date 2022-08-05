@@ -105,9 +105,10 @@ impl UpdatesSourceImpl {
                 last_height = update.height as u32;
                 match BlockchainUpdate::try_from(update) {
                     Ok(upd) => Ok({
+                        let current_batch_size = result.len() + 1;
                         match &upd {
                             BlockchainUpdate::Block(_) => {
-                                if result.len() >= batch_max_size
+                                if current_batch_size >= batch_max_size
                                     || start.elapsed().ge(&batch_max_wait_time)
                                 {
                                     should_receive_more = false;

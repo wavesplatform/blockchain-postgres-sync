@@ -3,8 +3,9 @@ use async_trait::async_trait;
 use bs58;
 use chrono::{Duration, NaiveDateTime};
 use std::str;
-use std::time::Instant;
+use std::time::{Duration as StdDuration, Instant};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::time;
 use waves_protobuf_schemas::waves::{
     block::Header as HeaderPB,
     events::{
@@ -122,7 +123,7 @@ impl UpdatesSourceImpl {
                 }?;
             }
 
-            info!("Elapsed: {} ms", start.elapsed().as_millis());
+            //info!("Elapsed: {} ms", start.elapsed().as_millis());
 
             if !should_receive_more {
                 tx.send(BlockchainUpdatesWithLastHeight {
@@ -134,6 +135,8 @@ impl UpdatesSourceImpl {
                 should_receive_more = true;
                 start = Instant::now();
             }
+
+            time::sleep(StdDuration::from_micros(500)).await;
         }
     }
 }

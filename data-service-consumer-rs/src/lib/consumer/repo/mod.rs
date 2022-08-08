@@ -1,6 +1,7 @@
 pub mod pg;
 
 use anyhow::Result;
+use async_trait::async_trait;
 
 use super::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use super::models::block_microblock::BlockMicroblock;
@@ -8,13 +9,20 @@ use super::models::txs::*;
 use super::models::waves_data::WavesData;
 use super::PrevHandledHeight;
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait Repo {
+    type Operations: RepoOperations;
+
+    async fn transaction<F, R>(&self, f: F) -> Result<R>
+        where F: FnOnce(&Self::Operations) -> Result<R>,
+              F: Send + 'static,
+              R: Send + 'static;
+}
+
+pub trait RepoOperations {
     //
     // COMMON
     //
-
-    fn transaction(&self, f: impl FnOnce() -> Result<()>) -> Result<()>;
 
     fn get_prev_handled_height(&self) -> Result<Option<PrevHandledHeight>>;
 

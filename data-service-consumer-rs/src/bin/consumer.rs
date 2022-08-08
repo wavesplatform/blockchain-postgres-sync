@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use app_lib::{config, consumer, db};
-use std::sync::Arc;
 use wavesexchange_log::{error, info};
 
 #[tokio::main]
@@ -18,7 +17,7 @@ async fn main() -> Result<()> {
         .await
         .context("Blockchain connection failed")?;
 
-    let pg_repo = Arc::new(consumer::repo::pg::new(conn));
+    let pg_repo = consumer::repo::pg::new(conn);
 
     if let Err(err) = consumer::start(
         config.node.starting_height,
@@ -28,7 +27,7 @@ async fn main() -> Result<()> {
         config.node.max_wait_time,
         config.node.chain_id,
     )
-    .await
+        .await
     {
         error!("{}", err);
         panic!("data-service consumer panic: {}", err);

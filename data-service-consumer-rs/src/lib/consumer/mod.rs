@@ -8,7 +8,6 @@ use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::str;
-use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc::Receiver;
 use waves_protobuf_schemas::waves::{
@@ -27,6 +26,7 @@ use crate::consumer::models::{
 use crate::error::Error as AppError;
 use crate::models::BaseAssetInfoUpdate;
 use crate::waves::{get_asset_id, Address};
+use self::repo::RepoOperations;
 
 #[derive(Clone, Debug)]
 pub enum BlockchainUpdate {
@@ -85,21 +85,26 @@ pub trait UpdatesSource {
 pub async fn start<T, R>(
     starting_height: u32,
     updates_src: T,
-    repo: Arc<R>,
+    repo: R,
     updates_per_request: usize,
     max_duration: Duration,
     chain_id: u8,
 ) -> Result<()>
-where
-    T: UpdatesSource + Send + Sync + 'static,
-    R: repo::Repo,
+    where
+        T: UpdatesSource + Send + 'static,
+        R: repo::Repo + Clone + Send + 'static,
 {
-    let starting_from_height = match repo.get_prev_handled_height()? {
-        Some(prev_handled_height) => {
-            repo.transaction(|| rollback(repo.clone(), prev_handled_height.uid))?;
-            prev_handled_height.height as u32 + 1
-        }
-        None => starting_height,
+    let starting_from_height = {
+        repo.transaction(move |ops| {
+            match ops.get_prev_handled_height() {
+                Ok(Some(prev_handled_height)) => {
+                    rollback(ops, prev_handled_height.uid)?;
+                    Ok(prev_handled_height.height as u32 + 1)
+                }
+                Ok(None) => Ok(starting_height),
+                Err(e) => Err(e),
+            }
+        }).await?
     };
 
     info!(
@@ -131,28 +136,26 @@ where
 
         start = Instant::now();
 
-        repo.transaction(|| {
-            handle_updates(updates_with_height, repo.clone(), chain_id)?;
+        repo.transaction(move |ops| {
+            handle_updates(updates_with_height, ops, chain_id)?;
 
             info!(
-                "{} updates were handled in {:?} ms. Last updated height is {}.",
-                updates_count,
-                start.elapsed().as_millis(),
-                last_height
-            );
+                    "{} updates were saved to database in {:?}. Last height is {}.",
+                    updates_count,
+                    start.elapsed(),
+                    last_height,
+                );
 
             Ok(())
-        })?;
+        }).await?;
     }
 }
 
-fn handle_updates<R>(
+fn handle_updates<R: RepoOperations>(
     updates_with_height: BlockchainUpdatesWithLastHeight,
-    repo: Arc<R>,
+    repo: &R,
     chain_id: u8,
 ) -> Result<()>
-where
-    R: repo::Repo,
 {
     updates_with_height
         .updates
@@ -191,24 +194,24 @@ where
         .into_iter()
         .try_fold((), |_, update_item| match update_item {
             UpdatesItem::Blocks(ba) => {
-                squash_microblocks(repo.clone())?;
-                handle_appends(repo.clone(), chain_id, ba)
+                squash_microblocks(repo)?;
+                handle_appends(repo, chain_id, ba)
             }
             UpdatesItem::Microblock(mba) => {
-                handle_appends(repo.clone(), chain_id, &vec![mba.to_owned()])
+                handle_appends(repo, chain_id, &vec![mba.to_owned()])
             }
             UpdatesItem::Rollback(sig) => {
-                let block_uid = repo.clone().get_block_uid(sig)?;
-                rollback(repo.clone(), block_uid)
+                let block_uid = repo.get_block_uid(sig)?;
+                rollback(repo, block_uid)
             }
         })?;
 
     Ok(())
 }
 
-fn handle_appends<R>(repo: Arc<R>, chain_id: u8, appends: &Vec<BlockMicroblockAppend>) -> Result<()>
-where
-    R: repo::Repo,
+fn handle_appends<R>(repo: &R, chain_id: u8, appends: &Vec<BlockMicroblockAppend>) -> Result<()>
+    where
+        R: RepoOperations,
 {
     let block_uids = repo.insert_blocks_or_microblocks(
         &appends
@@ -237,7 +240,7 @@ where
             .collect();
 
     let inserted_uids =
-        handle_base_asset_info_updates(repo.clone(), &base_asset_info_updates_with_block_uids)?;
+        handle_base_asset_info_updates(repo, &base_asset_info_updates_with_block_uids)?;
 
     let updates_amount = base_asset_info_updates_with_block_uids.len();
 
@@ -260,7 +263,7 @@ where
 
     info!("handled {} assets updates", updates_amount);
 
-    handle_txs(repo.clone(), &block_uids_with_appends)?;
+    handle_txs(repo, &block_uids_with_appends)?;
 
     let waves_data = appends
         .into_iter()
@@ -279,8 +282,8 @@ where
     Ok(())
 }
 
-fn handle_txs<R: repo::Repo>(
-    repo: Arc<R>,
+fn handle_txs<R: RepoOperations>(
+    repo: &R,
     block_uid_data: &Vec<(i64, &BlockMicroblockAppend)>,
 ) -> Result<(), Error> {
     let mut txs_1 = vec![];
@@ -457,10 +460,7 @@ fn extract_base_asset_info_updates(
     asset_updates
 }
 
-fn handle_base_asset_info_updates<R: repo::Repo>(
-    repo: Arc<R>,
-    updates: &[(i64, BaseAssetInfoUpdate)],
-) -> Result<Option<Vec<i64>>> {
+fn handle_base_asset_info_updates<R: RepoOperations>(repo: &R, updates: &[(i64, BaseAssetInfoUpdate)]) -> Result<Option<Vec<i64>>> {
     if updates.is_empty() {
         return Ok(None);
     }
@@ -553,7 +553,7 @@ fn handle_base_asset_info_updates<R: repo::Repo>(
     ))
 }
 
-fn squash_microblocks<R: repo::Repo>(storage: Arc<R>) -> Result<()> {
+fn squash_microblocks<R: RepoOperations>(storage: &R) -> Result<()> {
     let total_block_id = storage.get_total_block_id()?;
 
     if let Some(tbid) = total_block_id {
@@ -566,20 +566,17 @@ fn squash_microblocks<R: repo::Repo>(storage: Arc<R>) -> Result<()> {
     Ok(())
 }
 
-fn rollback<R>(repo: Arc<R>, block_uid: i64) -> Result<()>
-where
-    R: repo::Repo,
-{
-    debug!("rollbacking to block_uid = {}", block_uid);
+fn rollback<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
+    debug!("rolling back to block_uid = {}", block_uid);
 
-    rollback_assets(repo.clone(), block_uid)?;
+    rollback_assets(repo, block_uid)?;
 
     repo.rollback_blocks_microblocks(&block_uid)?;
 
     Ok(())
 }
 
-fn rollback_assets<R: repo::Repo>(repo: Arc<R>, block_uid: i64) -> Result<()> {
+fn rollback_assets<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
     let deleted = repo.rollback_assets(&block_uid)?;
 
     let mut grouped_deleted: HashMap<DeletedAsset, Vec<DeletedAsset>> = HashMap::new();

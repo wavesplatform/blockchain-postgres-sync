@@ -4,9 +4,13 @@ use diesel::prelude::*;
 use diesel::result::Error as DslError;
 use diesel::sql_types::{Array, BigInt, Integer, Numeric, VarChar};
 use diesel::Table;
+use async_trait::async_trait;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use tokio::task;
 
 use super::super::PrevHandledHeight;
-use super::Repo;
+use super::{Repo, RepoOperations};
 use crate::consumer::models::{
     assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
     block_microblock::BlockMicroblock,
@@ -16,28 +20,54 @@ use crate::consumer::models::{
 use crate::error::Error as AppError;
 use crate::schema::*;
 use crate::tuple_len::TupleLen;
-use std::collections::HashMap;
 
 const MAX_UID: i64 = std::i64::MAX - 1;
 const PG_MAX_INSERT_FIELDS_COUNT: usize = 65535;
 
-pub struct PgRepoImpl {
-    conn: PgConnection,
+#[derive(Clone)]
+pub struct PgRepo {
+    conn: Arc<Mutex<Option<Box<PgConnection>>>>,
 }
 
-pub fn new(conn: PgConnection) -> PgRepoImpl {
-    PgRepoImpl { conn }
+pub fn new(conn: PgConnection) -> PgRepo {
+    PgRepo { conn: Arc::new(Mutex::new(Some(Box::new(conn)))) }
 }
 
-#[async_trait::async_trait]
-impl Repo for PgRepoImpl {
+pub struct PgRepoOperations {
+    conn: Box<PgConnection>,
+}
+
+#[async_trait]
+impl Repo for PgRepo {
+    type Operations = PgRepoOperations;
+
+    async fn transaction<F, R>(&self, f: F) -> Result<R>
+        where F: FnOnce(&Self::Operations) -> Result<R>,
+              F: Send + 'static,
+              R: Send + 'static,
+    {
+        let conn_arc = self.conn.clone();
+        task::spawn_blocking(move || {
+            let mut conn_guard = conn_arc.lock().unwrap();
+            let conn = conn_guard.take().expect("connection is gone");
+            let ops = PgRepoOperations { conn };
+            let result = ops.conn.transaction(|| f(&ops));
+            *conn_guard = Some(ops.conn);
+            result
+        }).await.expect("sync task panicked")
+    }
+}
+
+impl PgRepoOperations {
+    fn conn(&self) -> &PgConnection {
+        &*self.conn
+    }
+}
+
+impl RepoOperations for PgRepoOperations {
     //
     // COMMON
     //
-
-    fn transaction(&self, f: impl FnOnce() -> Result<()>) -> Result<()> {
-        self.conn.transaction(|| f())
-    }
 
     fn get_prev_handled_height(&self) -> Result<Option<PrevHandledHeight>> {
         blocks_microblocks::table
@@ -48,7 +78,7 @@ impl Repo for PgRepoImpl {
                 )),
             )
             .order(blocks_microblocks::uid.asc())
-            .first(&self.conn)
+            .first(self.conn())
             .optional()
             .map_err(|err| Error::new(AppError::DbDieselError(err)))
     }
@@ -57,7 +87,7 @@ impl Repo for PgRepoImpl {
         blocks_microblocks::table
             .select(blocks_microblocks::uid)
             .filter(blocks_microblocks::id.eq(block_id))
-            .get_result(&self.conn)
+            .get_result(self.conn())
             .map_err(|err| {
                 let context = format!("Cannot get block_uid by block id {}: {}", block_id, err);
                 Error::new(AppError::DbDieselError(err)).context(context)
@@ -68,7 +98,7 @@ impl Repo for PgRepoImpl {
         blocks_microblocks::table
             .select(diesel::expression::sql_literal::sql("max(uid)"))
             .filter(blocks_microblocks::time_stamp.is_not_null())
-            .get_result(&self.conn)
+            .get_result(self.conn())
             .map_err(|err| {
                 let context = format!("Cannot get key block uid: {}", err);
                 Error::new(AppError::DbDieselError(err)).context(context)
@@ -80,7 +110,7 @@ impl Repo for PgRepoImpl {
             .select(blocks_microblocks::id)
             .filter(blocks_microblocks::time_stamp.is_null())
             .order(blocks_microblocks::uid.desc())
-            .first(&self.conn)
+            .first(self.conn())
             .optional()
             .map_err(|err| {
                 let context = format!("Cannot get total block id: {}", err);
@@ -92,7 +122,7 @@ impl Repo for PgRepoImpl {
         diesel::insert_into(blocks_microblocks::table)
             .values(blocks)
             .returning(blocks_microblocks::uid)
-            .get_results(&self.conn)
+            .get_results(self.conn())
             .map_err(|err| {
                 let context = format!("Cannot insert blocks/microblocks: {}", err);
                 Error::new(AppError::DbDieselError(err)).context(context)
@@ -103,7 +133,7 @@ impl Repo for PgRepoImpl {
         diesel::update(blocks_microblocks::table)
             .set(blocks_microblocks::id.eq(new_block_id))
             .filter(blocks_microblocks::uid.eq(block_uid))
-            .execute(&self.conn)
+            .execute(self.conn())
             .map(|_| ())
             .map_err(|err| {
                 let context = format!("Cannot change block id: {}", err);
@@ -114,7 +144,7 @@ impl Repo for PgRepoImpl {
     fn delete_microblocks(&self) -> Result<()> {
         diesel::delete(blocks_microblocks::table)
             .filter(blocks_microblocks::time_stamp.is_null())
-            .execute(&self.conn)
+            .execute(self.conn())
             .map(|_| ())
             .map_err(|err| {
                 let context = format!("Cannot delete microblocks: {}", err);
@@ -125,7 +155,7 @@ impl Repo for PgRepoImpl {
     fn rollback_blocks_microblocks(&self, block_uid: &i64) -> Result<()> {
         diesel::delete(blocks_microblocks::table)
             .filter(blocks_microblocks::uid.gt(block_uid))
-            .execute(&self.conn)
+            .execute(self.conn())
             .map(|_| ())
             .map_err(|err| {
                 let context = format!("Cannot rollback blocks/microblocks: {}", err);
@@ -143,10 +173,10 @@ impl Repo for PgRepoImpl {
                 ) + $2::bigint
             )
             ON CONFLICT DO NOTHING;")
-            .bind::<Integer, _>(data.height)
-            .bind::<Numeric, _>(&data.quantity);
+                .bind::<Integer, _>(data.height)
+                .bind::<Numeric, _>(&data.quantity);
 
-            q.execute(&self.conn).map(|_| ()).map_err(|err| {
+            q.execute(self.conn()).map(|_| ()).map_err(|err| {
                 let context = format!("Cannot insert waves data: {err}");
                 Error::new(AppError::DbDieselError(err)).context(context)
             })?;
@@ -161,7 +191,7 @@ impl Repo for PgRepoImpl {
     fn get_next_assets_uid(&self) -> Result<i64> {
         asset_updates_uid_seq::table
             .select(asset_updates_uid_seq::last_value)
-            .first(&self.conn)
+            .first(self.conn())
             .map_err(|err| {
                 let context = format!("Cannot get next assets update uid: {}", err);
                 Error::new(AppError::DbDieselError(err)).context(context)
@@ -174,13 +204,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict((asset_updates::superseded_by, asset_updates::asset_id))
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert new asset updates: {}", err);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert new asset updates: {}", err);
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -190,21 +220,21 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(asset_origins::asset_id)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert new assets: {}", err);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert new assets: {}", err);
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
     fn update_assets_block_references(&self, block_uid: &i64) -> Result<()> {
         diesel::update(asset_updates::table)
-            .set((asset_updates::block_uid.eq(block_uid),))
+            .set((asset_updates::block_uid.eq(block_uid), ))
             .filter(asset_updates::block_uid.gt(block_uid))
-            .execute(&self.conn)
+            .execute(self.conn())
             .map(|_| ())
             .map_err(|err| {
                 let context = format!("Cannot update assets block references: {}", err);
@@ -227,11 +257,11 @@ impl Repo for PgRepoImpl {
             FROM (SELECT UNNEST($1::text[]) as id, UNNEST($2::int8[]) as superseded_by) AS updates
             WHERE asset_updates.asset_id = updates.id AND asset_updates.superseded_by = $3;",
         )
-        .bind::<Array<VarChar>, _>(ids)
-        .bind::<Array<BigInt>, _>(superseded_by_uids)
-        .bind::<BigInt, _>(MAX_UID);
+            .bind::<Array<VarChar>, _>(ids)
+            .bind::<Array<BigInt>, _>(superseded_by_uids)
+            .bind::<BigInt, _>(MAX_UID);
 
-        q.execute(&self.conn).map(|_| ()).map_err(|err| {
+        q.execute(self.conn()).map(|_| ()).map_err(|err| {
             let context = format!("Cannot close assets superseded_by: {}", err);
             Error::new(AppError::DbDieselError(err)).context(context)
         })
@@ -244,14 +274,14 @@ impl Repo for PgRepoImpl {
             FROM (SELECT UNNEST($2) AS superseded_by) AS current 
             WHERE asset_updates.superseded_by = current.superseded_by;",
         )
-        .bind::<BigInt, _>(MAX_UID)
-        .bind::<Array<BigInt>, _>(current_superseded_by)
-        .execute(&self.conn)
-        .map(|_| ())
-        .map_err(|err| {
-            let context = format!("Cannot reopen assets superseded_by: {}", err);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })
+            .bind::<BigInt, _>(MAX_UID)
+            .bind::<Array<BigInt>, _>(current_superseded_by)
+            .execute(self.conn())
+            .map(|_| ())
+            .map_err(|err| {
+                let context = format!("Cannot reopen assets superseded_by: {}", err);
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })
     }
 
     fn set_assets_next_update_uid(&self, new_uid: i64) -> Result<()> {
@@ -259,19 +289,19 @@ impl Repo for PgRepoImpl {
             "select setval('asset_updates_uid_seq', {}, false);", // 3rd param - is called; in case of true, value'll be incremented before returning
             new_uid
         ))
-        .execute(&self.conn)
-        .map(|_| ())
-        .map_err(|err| {
-            let context = format!("Cannot set assets next update uid: {}", err);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })
+            .execute(self.conn())
+            .map(|_| ())
+            .map_err(|err| {
+                let context = format!("Cannot set assets next update uid: {}", err);
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })
     }
 
     fn rollback_assets(&self, block_uid: &i64) -> Result<Vec<DeletedAsset>> {
         diesel::delete(asset_updates::table)
             .filter(asset_updates::block_uid.gt(block_uid))
             .returning((asset_updates::uid, asset_updates::asset_id))
-            .get_results(&self.conn)
+            .get_results(self.conn())
             .map(|bs| {
                 bs.into_iter()
                     .map(|(uid, id)| DeletedAsset { uid, id })
@@ -287,7 +317,7 @@ impl Repo for PgRepoImpl {
         asset_updates::table
             .select(asset_updates::uid)
             .filter(asset_updates::block_uid.gt(block_uid))
-            .get_results(&self.conn)
+            .get_results(self.conn())
             .map_err(|err| {
                 let context = format!(
                     "Cannot get assets greater then block_uid {}: {}",
@@ -307,13 +337,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_1::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert Genesis transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert Genesis transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -323,13 +353,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_2::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert Payment transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert Payment transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -339,13 +369,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_3::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert Issue transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert Issue transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -355,13 +385,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_4::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert Transfer transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert Transfer transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -371,13 +401,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_5::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert Reissue transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert Reissue transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -387,13 +417,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_6::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert Burn transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert Burn transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -403,13 +433,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_7::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert Exchange transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert Exchange transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -419,13 +449,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_8::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert Lease transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert Lease transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -440,12 +470,12 @@ impl Repo for PgRepoImpl {
             txs::table
                 .select((txs::id, txs::uid))
                 .filter(txs::id.eq(any(ids)))
-                .get_results(&self.conn)
+                .get_results(self.conn())
         })
-        .map_err(|err| {
-            let context = format!("Cannot find uids for lease_ids: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot find uids for lease_ids: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
 
         let tx_id_uid_map = HashMap::<String, i64>::from_iter(tx_id_uid);
         let txs9 = txs
@@ -466,13 +496,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_9::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert LeaseCancel transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert LeaseCancel transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -482,13 +512,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_10::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert CreateAlias transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert CreateAlias transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -502,26 +532,26 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_11::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert MassTransfer transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert MassTransfer transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
 
         chunked(txs_11_transfers::table, &transfers, |t| {
             diesel::insert_into(txs_11_transfers::table)
                 .values(t)
                 .on_conflict((txs_11_transfers::tx_uid, txs_11_transfers::position_in_tx))
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert MassTransfer transfers: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert MassTransfer transfers: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -535,26 +565,26 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_12::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert DataTransaction transaction: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert DataTransaction transaction: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
 
         chunked(txs_12_data::table, &data, |t| {
             diesel::insert_into(txs_12_data::table)
                 .values(t)
                 .on_conflict((txs_12_data::tx_uid, txs_12_data::position_in_tx))
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert DataTransaction data: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert DataTransaction data: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -564,13 +594,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_13::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert SetScript transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert SetScript transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -580,13 +610,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_14::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert SponsorFee transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert SponsorFee transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -596,13 +626,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_15::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert SetAssetScript transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert SetAssetScript transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -621,39 +651,39 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_16::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert InvokeScript transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert InvokeScript transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
 
         chunked(txs_16_args::table, &args, |t| {
             diesel::insert_into(txs_16_args::table)
                 .values(t)
                 .on_conflict((txs_16_args::tx_uid, txs_16_args::position_in_args))
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert InvokeScript args: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert InvokeScript args: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
 
         chunked(txs_16_payment::table, &payments, |t| {
             diesel::insert_into(txs_16_payment::table)
                 .values(t)
                 .on_conflict((txs_16_payment::tx_uid, txs_16_payment::position_in_payment))
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert InvokeScript payments: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert InvokeScript payments: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -663,13 +693,13 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_17::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert UpdateAssetInfo transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert UpdateAssetInfo transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 
@@ -679,23 +709,23 @@ impl Repo for PgRepoImpl {
                 .values(t)
                 .on_conflict(txs_18::uid)
                 .do_nothing()
-                .execute(&self.conn)
+                .execute(self.conn())
                 .map(|_| ())
         })
-        .map_err(|err| {
-            let context = format!("Cannot insert Ethereum transactions: {err}",);
-            Error::new(AppError::DbDieselError(err)).context(context)
-        })?;
+            .map_err(|err| {
+                let context = format!("Cannot insert Ethereum transactions: {err}", );
+                Error::new(AppError::DbDieselError(err)).context(context)
+            })?;
         Ok(())
     }
 }
 
 fn chunked<T, F, V, R, RV>(_: T, values: &Vec<V>, query_fn: F) -> Result<Vec<R>, DslError>
-where
-    T: Table,
-    T::AllColumns: TupleLen,
-    RV: OneOrMany<R>,
-    F: Fn(&[V]) -> Result<RV, DslError>,
+    where
+        T: Table,
+        T::AllColumns: TupleLen,
+        RV: OneOrMany<R>,
+        F: Fn(&[V]) -> Result<RV, DslError>,
 {
     let columns_count = T::all_columns().len();
     let chunk_size = (PG_MAX_INSERT_FIELDS_COUNT / columns_count) / 10 * 10;

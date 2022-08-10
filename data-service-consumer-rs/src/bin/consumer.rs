@@ -11,23 +11,23 @@ async fn main() -> Result<()> {
         config.node
     );
 
-    let conn = db::unpooled(&config.postgres).context("DB connection failed")?;
+    //let conn = db::unpooled(&config.postgres).context("DB connection failed")?;
 
     let updates_src = consumer::updates::new(&config.node.blockchain_updates_url)
         .await
         .context("Blockchain connection failed")?;
 
-    let pg_repo = consumer::repo::pg::new(conn);
+    //let pg_repo = consumer::repo::pg::new(conn);
 
     if let Err(err) = consumer::start(
         config.node.starting_height,
         updates_src,
-        pg_repo,
+        //pg_repo,
         config.node.updates_per_request,
         config.node.max_wait_time,
         config.node.chain_id,
     )
-        .await
+    .await
     {
         error!("{}", err);
         panic!("data-service consumer panic: {}", err);

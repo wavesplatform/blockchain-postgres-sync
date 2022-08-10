@@ -19,6 +19,7 @@ use wavesexchange_log::{debug, info, timer, warn};
 
 use self::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use self::models::block_microblock::BlockMicroblock;
+use self::repo::RepoOperations;
 use crate::consumer::models::{
     txs::{Tx as ConvertedTx, TxUidGenerator},
     waves_data::WavesData,
@@ -26,7 +27,6 @@ use crate::consumer::models::{
 use crate::error::Error as AppError;
 use crate::models::BaseAssetInfoUpdate;
 use crate::waves::{get_asset_id, Address};
-use self::repo::RepoOperations;
 
 #[derive(Clone, Debug)]
 pub enum BlockchainUpdate {
@@ -82,38 +82,41 @@ pub trait UpdatesSource {
 }
 
 // TODO: handle shutdown signals -> rollback current transaction
-pub async fn start<T, R>(
+pub async fn start<T>(
     starting_height: u32,
     updates_src: T,
-    repo: R,
+    //repo: R,
     updates_per_request: usize,
     max_duration: Duration,
     chain_id: u8,
 ) -> Result<()>
-    where
-        T: UpdatesSource + Send + 'static,
-        R: repo::Repo + Clone + Send + 'static,
+where
+    T: UpdatesSource + Send + 'static,
+    //R: repo::Repo + Clone + Send + 'static,
 {
-    let starting_from_height = {
-        repo.transaction(move |ops| {
-            match ops.get_prev_handled_height() {
-                Ok(Some(prev_handled_height)) => {
-                    rollback(ops, prev_handled_height.uid)?;
-                    Ok(prev_handled_height.height as u32 + 1)
-                }
-                Ok(None) => Ok(starting_height),
-                Err(e) => Err(e),
-            }
-        }).await?
-    };
+    // let starting_from_height = {
+    //     repo.transaction(move |ops| match ops.get_prev_handled_height() {
+    //         Ok(Some(prev_handled_height)) => {
+    //             rollback(ops, prev_handled_height.uid)?;
+    //             Ok(prev_handled_height.height as u32 + 1)
+    //         }
+    //         Ok(None) => Ok(starting_height),
+    //         Err(e) => Err(e),
+    //     })
+    //     .await?
+    // };
 
     info!(
         "Start fetching updates from height {}",
-        starting_from_height
+        starting_height //starting_from_height
     );
 
     let mut rx = updates_src
-        .stream(starting_from_height, updates_per_request, max_duration)
+        .stream(
+            starting_height, //starting_from_height,
+            updates_per_request,
+            max_duration,
+        )
         .await?;
 
     loop {
@@ -124,7 +127,7 @@ pub async fn start<T, R>(
                 "GRPC Stream was closed by the server".to_string(),
             ))
         })?;
-
+        /*
         let updates_count = updates_with_height.updates.len();
         info!(
             "{} updates were received in {:?}",
@@ -148,6 +151,7 @@ pub async fn start<T, R>(
 
             Ok(())
         }).await?;
+        */
     }
 }
 
@@ -155,8 +159,7 @@ fn handle_updates<R: RepoOperations>(
     updates_with_height: BlockchainUpdatesWithLastHeight,
     repo: &R,
     chain_id: u8,
-) -> Result<()>
-{
+) -> Result<()> {
     updates_with_height
         .updates
         .into_iter()
@@ -197,9 +200,7 @@ fn handle_updates<R: RepoOperations>(
                 squash_microblocks(repo)?;
                 handle_appends(repo, chain_id, ba)
             }
-            UpdatesItem::Microblock(mba) => {
-                handle_appends(repo, chain_id, &vec![mba.to_owned()])
-            }
+            UpdatesItem::Microblock(mba) => handle_appends(repo, chain_id, &vec![mba.to_owned()]),
             UpdatesItem::Rollback(sig) => {
                 let block_uid = repo.get_block_uid(sig)?;
                 rollback(repo, block_uid)
@@ -210,8 +211,8 @@ fn handle_updates<R: RepoOperations>(
 }
 
 fn handle_appends<R>(repo: &R, chain_id: u8, appends: &Vec<BlockMicroblockAppend>) -> Result<()>
-    where
-        R: RepoOperations,
+where
+    R: RepoOperations,
 {
     let block_uids = repo.insert_blocks_or_microblocks(
         &appends
@@ -460,7 +461,10 @@ fn extract_base_asset_info_updates(
     asset_updates
 }
 
-fn handle_base_asset_info_updates<R: RepoOperations>(repo: &R, updates: &[(i64, BaseAssetInfoUpdate)]) -> Result<Option<Vec<i64>>> {
+fn handle_base_asset_info_updates<R: RepoOperations>(
+    repo: &R,
+    updates: &[(i64, BaseAssetInfoUpdate)],
+) -> Result<Option<Vec<i64>>> {
     if updates.is_empty() {
         return Ok(None);
     }

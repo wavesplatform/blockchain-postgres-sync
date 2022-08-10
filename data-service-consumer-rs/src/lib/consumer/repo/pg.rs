@@ -1,10 +1,10 @@
 use anyhow::{Error, Result};
+use async_trait::async_trait;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::result::Error as DslError;
 use diesel::sql_types::{Array, BigInt, Integer, Numeric, VarChar};
 use diesel::Table;
-use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::task;
@@ -30,7 +30,9 @@ pub struct PgRepo {
 }
 
 pub fn new(conn: PgConnection) -> PgRepo {
-    PgRepo { conn: Arc::new(Mutex::new(Some(Box::new(conn)))) }
+    PgRepo {
+        conn: Arc::new(Mutex::new(Some(Box::new(conn)))),
+    }
 }
 
 pub struct PgRepoOperations {
@@ -42,9 +44,10 @@ impl Repo for PgRepo {
     type Operations = PgRepoOperations;
 
     async fn transaction<F, R>(&self, f: F) -> Result<R>
-        where F: FnOnce(&Self::Operations) -> Result<R>,
-              F: Send + 'static,
-              R: Send + 'static,
+    where
+        F: FnOnce(&Self::Operations) -> Result<R>,
+        F: Send + 'static,
+        R: Send + 'static,
     {
         let conn_arc = self.conn.clone();
         task::spawn_blocking(move || {
@@ -54,7 +57,9 @@ impl Repo for PgRepo {
             let result = ops.conn.transaction(|| f(&ops));
             *conn_guard = Some(ops.conn);
             result
-        }).await.expect("sync task panicked")
+        })
+        .await
+        .expect("sync task panicked")
     }
 }
 
@@ -207,10 +212,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert new asset updates: {}", err);
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert new asset updates: {}", err);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -223,16 +228,16 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert new assets: {}", err);
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert new assets: {}", err);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
     fn update_assets_block_references(&self, block_uid: &i64) -> Result<()> {
         diesel::update(asset_updates::table)
-            .set((asset_updates::block_uid.eq(block_uid), ))
+            .set((asset_updates::block_uid.eq(block_uid),))
             .filter(asset_updates::block_uid.gt(block_uid))
             .execute(self.conn())
             .map(|_| ())
@@ -257,9 +262,9 @@ impl RepoOperations for PgRepoOperations {
             FROM (SELECT UNNEST($1::text[]) as id, UNNEST($2::int8[]) as superseded_by) AS updates
             WHERE asset_updates.asset_id = updates.id AND asset_updates.superseded_by = $3;",
         )
-            .bind::<Array<VarChar>, _>(ids)
-            .bind::<Array<BigInt>, _>(superseded_by_uids)
-            .bind::<BigInt, _>(MAX_UID);
+        .bind::<Array<VarChar>, _>(ids)
+        .bind::<Array<BigInt>, _>(superseded_by_uids)
+        .bind::<BigInt, _>(MAX_UID);
 
         q.execute(self.conn()).map(|_| ()).map_err(|err| {
             let context = format!("Cannot close assets superseded_by: {}", err);
@@ -274,14 +279,14 @@ impl RepoOperations for PgRepoOperations {
             FROM (SELECT UNNEST($2) AS superseded_by) AS current 
             WHERE asset_updates.superseded_by = current.superseded_by;",
         )
-            .bind::<BigInt, _>(MAX_UID)
-            .bind::<Array<BigInt>, _>(current_superseded_by)
-            .execute(self.conn())
-            .map(|_| ())
-            .map_err(|err| {
-                let context = format!("Cannot reopen assets superseded_by: {}", err);
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })
+        .bind::<BigInt, _>(MAX_UID)
+        .bind::<Array<BigInt>, _>(current_superseded_by)
+        .execute(self.conn())
+        .map(|_| ())
+        .map_err(|err| {
+            let context = format!("Cannot reopen assets superseded_by: {}", err);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
     }
 
     fn set_assets_next_update_uid(&self, new_uid: i64) -> Result<()> {
@@ -289,12 +294,12 @@ impl RepoOperations for PgRepoOperations {
             "select setval('asset_updates_uid_seq', {}, false);", // 3rd param - is called; in case of true, value'll be incremented before returning
             new_uid
         ))
-            .execute(self.conn())
-            .map(|_| ())
-            .map_err(|err| {
-                let context = format!("Cannot set assets next update uid: {}", err);
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })
+        .execute(self.conn())
+        .map(|_| ())
+        .map_err(|err| {
+            let context = format!("Cannot set assets next update uid: {}", err);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })
     }
 
     fn rollback_assets(&self, block_uid: &i64) -> Result<Vec<DeletedAsset>> {
@@ -340,10 +345,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert Genesis transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert Genesis transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -356,10 +361,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert Payment transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert Payment transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -372,10 +377,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert Issue transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert Issue transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -388,10 +393,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert Transfer transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert Transfer transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -404,10 +409,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert Reissue transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert Reissue transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -420,10 +425,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert Burn transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert Burn transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -436,10 +441,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert Exchange transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert Exchange transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -452,10 +457,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert Lease transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert Lease transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -472,10 +477,10 @@ impl RepoOperations for PgRepoOperations {
                 .filter(txs::id.eq(any(ids)))
                 .get_results(self.conn())
         })
-            .map_err(|err| {
-                let context = format!("Cannot find uids for lease_ids: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot find uids for lease_ids: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
 
         let tx_id_uid_map = HashMap::<String, i64>::from_iter(tx_id_uid);
         let txs9 = txs
@@ -499,10 +504,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert LeaseCancel transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert LeaseCancel transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -515,10 +520,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert CreateAlias transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert CreateAlias transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -535,10 +540,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert MassTransfer transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert MassTransfer transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
 
         chunked(txs_11_transfers::table, &transfers, |t| {
             diesel::insert_into(txs_11_transfers::table)
@@ -548,10 +553,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert MassTransfer transfers: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert MassTransfer transfers: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -568,10 +573,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert DataTransaction transaction: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert DataTransaction transaction: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
 
         chunked(txs_12_data::table, &data, |t| {
             diesel::insert_into(txs_12_data::table)
@@ -581,10 +586,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert DataTransaction data: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert DataTransaction data: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -597,10 +602,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert SetScript transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert SetScript transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -613,10 +618,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert SponsorFee transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert SponsorFee transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -629,10 +634,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert SetAssetScript transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert SetAssetScript transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -654,10 +659,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert InvokeScript transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert InvokeScript transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
 
         chunked(txs_16_args::table, &args, |t| {
             diesel::insert_into(txs_16_args::table)
@@ -667,10 +672,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert InvokeScript args: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert InvokeScript args: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
 
         chunked(txs_16_payment::table, &payments, |t| {
             diesel::insert_into(txs_16_payment::table)
@@ -680,10 +685,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert InvokeScript payments: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert InvokeScript payments: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -696,10 +701,10 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert UpdateAssetInfo transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert UpdateAssetInfo transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 
@@ -712,20 +717,20 @@ impl RepoOperations for PgRepoOperations {
                 .execute(self.conn())
                 .map(|_| ())
         })
-            .map_err(|err| {
-                let context = format!("Cannot insert Ethereum transactions: {err}", );
-                Error::new(AppError::DbDieselError(err)).context(context)
-            })?;
+        .map_err(|err| {
+            let context = format!("Cannot insert Ethereum transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
         Ok(())
     }
 }
 
 fn chunked<T, F, V, R, RV>(_: T, values: &Vec<V>, query_fn: F) -> Result<Vec<R>, DslError>
-    where
-        T: Table,
-        T::AllColumns: TupleLen,
-        RV: OneOrMany<R>,
-        F: Fn(&[V]) -> Result<RV, DslError>,
+where
+    T: Table,
+    T::AllColumns: TupleLen,
+    RV: OneOrMany<R>,
+    F: Fn(&[V]) -> Result<RV, DslError>,
 {
     let columns_count = T::all_columns().len();
     let chunk_size = (PG_MAX_INSERT_FIELDS_COUNT / columns_count) / 10 * 10;

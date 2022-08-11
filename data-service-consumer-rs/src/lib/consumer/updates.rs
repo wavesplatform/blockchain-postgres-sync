@@ -64,14 +64,14 @@ impl UpdatesSource for UpdatesSourceImpl {
 
         let (tx, rx) = channel::<BlockchainUpdatesWithLastHeight>(1);
 
-        tokio::spawn(async move {
-            let r = self
-                .run(stream, tx, from_height, batch_max_size, batch_max_wait_time)
-                .await;
-            if let Err(e) = r {
-                error!("updates source stopped with error: {:?}", e);
-            }
-        });
+        //tokio::spawn(async move {
+        let r = self
+            .run(stream, tx, from_height, batch_max_size, batch_max_wait_time)
+            .await;
+        if let Err(e) = r {
+            error!("updates source stopped with error: {:?}", e);
+        }
+        //});
 
         Ok(rx)
     }
@@ -127,12 +127,13 @@ impl UpdatesSourceImpl {
             //info!("Elapsed: {} ms", start.elapsed().as_millis());
 
             if !should_receive_more {
-                tx.send(BlockchainUpdatesWithLastHeight {
-                    last_height,
-                    updates: result.drain(..).collect(),
-                })
-                .await
-                .map_err(|e| AppError::StreamError(format!("Channel error: {}", e)))?;
+                result.clear();
+                // tx.send(BlockchainUpdatesWithLastHeight {
+                //     last_height,
+                //     updates: result.drain(..).collect(),
+                // })
+                // .await
+                // .map_err(|e| AppError::StreamError(format!("Channel error: {}", e)))?;
                 should_receive_more = true;
                 start = Instant::now();
             }

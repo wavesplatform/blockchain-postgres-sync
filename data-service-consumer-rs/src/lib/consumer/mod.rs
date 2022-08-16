@@ -82,41 +82,37 @@ pub trait UpdatesSource {
 }
 
 // TODO: handle shutdown signals -> rollback current transaction
-pub async fn start<T>(
+pub async fn start<R, T>(
     starting_height: u32,
     updates_src: T,
-    //repo: R,
+    repo: R,
     updates_per_request: usize,
     max_duration: Duration,
     chain_id: u8,
 ) -> Result<()>
 where
     T: UpdatesSource + Send + 'static,
-    //R: repo::Repo + Clone + Send + 'static,
+    R: repo::Repo + Clone + Send + 'static,
 {
-    // let starting_from_height = {
-    //     repo.transaction(move |ops| match ops.get_prev_handled_height() {
-    //         Ok(Some(prev_handled_height)) => {
-    //             rollback(ops, prev_handled_height.uid)?;
-    //             Ok(prev_handled_height.height as u32 + 1)
-    //         }
-    //         Ok(None) => Ok(starting_height),
-    //         Err(e) => Err(e),
-    //     })
-    //     .await?
-    // };
+    let starting_from_height = {
+        repo.transaction(move |ops| match ops.get_prev_handled_height() {
+            Ok(Some(prev_handled_height)) => {
+                rollback(ops, prev_handled_height.uid)?;
+                Ok(prev_handled_height.height as u32 + 1)
+            }
+            Ok(None) => Ok(starting_height),
+            Err(e) => Err(e),
+        })
+        .await?
+    };
 
     info!(
         "Start fetching updates from height {}",
-        starting_height //starting_from_height
+        starting_from_height
     );
 
     let mut rx = updates_src
-        .stream(
-            starting_height, //starting_from_height,
-            updates_per_request,
-            max_duration,
-        )
+        .stream(starting_from_height, updates_per_request, max_duration)
         .await?;
 
     loop {
@@ -127,7 +123,7 @@ where
                 "GRPC Stream was closed by the server".to_string(),
             ))
         })?;
-        /*
+
         let updates_count = updates_with_height.updates.len();
         info!(
             "{} updates were received in {:?}",
@@ -143,15 +139,15 @@ where
             handle_updates(updates_with_height, ops, chain_id)?;
 
             info!(
-                    "{} updates were saved to database in {:?}. Last height is {}.",
-                    updates_count,
-                    start.elapsed(),
-                    last_height,
-                );
+                "{} updates were saved to database in {:?}. Last height is {}.",
+                updates_count,
+                start.elapsed(),
+                last_height,
+            );
 
             Ok(())
-        }).await?;
-        */
+        })
+        .await?;
     }
 }
 

@@ -1,4 +1,5 @@
 use anyhow::{Error, Result};
+use deadpool_diesel::{Manager as DManager, Pool as DPool, Runtime};
 use diesel::pg::PgConnection;
 use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::Connection;
@@ -8,28 +9,28 @@ use crate::config::postgres::Config;
 use crate::error::Error as AppError;
 
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
+pub type PgAsyncPool = DPool<DManager<PgConnection>>;
 
-fn generate_postgres_url(
-    user: &str,
-    password: &str,
-    host: &str,
-    port: &u16,
-    database: &str,
-) -> String {
+fn generate_postgres_url(config: &Config) -> String {
     format!(
         "postgres://{}:{}@{}:{}/{}",
-        user, password, host, port, database
+        config.user, config.password, config.host, config.port, config.database
     )
 }
 
+pub async fn async_pool(config: &Config) -> Result<PgAsyncPool> {
+    let db_url = generate_postgres_url(config);
+
+    let manager = DManager::new(db_url, Runtime::Tokio1);
+    let pool = DPool::builder(manager)
+        .max_size(config.poolsize as usize)
+        .wait_timeout(Some(Duration::from_secs(5 * 60)))
+        .build()?;
+    Ok(pool)
+}
+
 pub fn pool(config: &Config) -> Result<PgPool, AppError> {
-    let db_url = generate_postgres_url(
-        &config.user,
-        &config.password,
-        &config.host,
-        &config.port,
-        &config.database,
-    );
+    let db_url = generate_postgres_url(config);
 
     let manager = ConnectionManager::<PgConnection>::new(db_url);
     Ok(Pool::builder()
@@ -41,13 +42,7 @@ pub fn pool(config: &Config) -> Result<PgPool, AppError> {
 }
 
 pub fn unpooled(config: &Config) -> Result<PgConnection> {
-    let db_url = generate_postgres_url(
-        &config.user,
-        &config.password,
-        &config.host,
-        &config.port,
-        &config.database,
-    );
+    let db_url = generate_postgres_url(config);
 
     PgConnection::establish(&db_url).map_err(|err| Error::new(AppError::ConnectionError(err)))
 }

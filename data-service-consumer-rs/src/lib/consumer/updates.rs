@@ -23,7 +23,7 @@ use waves_protobuf_schemas::waves::{
     Block as BlockPB, SignedMicroBlock as SignedMicroBlockPB,
     SignedTransaction as SignedTransactionPB,
 };
-use wavesexchange_log::{debug, error};
+use wavesexchange_log::{debug, error, info};
 
 use super::{
     BlockMicroblockAppend, BlockchainUpdate, BlockchainUpdatesWithLastHeight, Tx, UpdatesSource,
@@ -64,14 +64,14 @@ impl UpdatesSource for UpdatesSourceImpl {
 
         let (tx, rx) = channel::<BlockchainUpdatesWithLastHeight>(1);
 
-        //tokio::spawn(async move {
-        let r = self
-            .run(stream, tx, from_height, batch_max_size, batch_max_wait_time)
-            .await;
-        if let Err(e) = r {
-            error!("updates source stopped with error: {:?}", e);
-        }
-        //});
+        tokio::spawn(async move {
+            let r = self
+                .run(stream, tx, from_height, batch_max_size, batch_max_wait_time)
+                .await;
+            if let Err(e) = r {
+                error!("updates source stopped with error: {:?}", e);
+            }
+        });
 
         Ok(rx)
     }
@@ -124,17 +124,17 @@ impl UpdatesSourceImpl {
                 }?;
             }
 
-            //info!("Elapsed: {} ms", start.elapsed().as_millis());
+            info!("Elapsed: {} ms", start.elapsed().as_millis());
 
             if !should_receive_more {
                 debug!("updating to height {}", last_height);
                 result.clear();
-                // tx.send(BlockchainUpdatesWithLastHeight {
-                //     last_height,
-                //     updates: result.drain(..).collect(),
-                // })
-                // .await
-                // .map_err(|e| AppError::StreamError(format!("Channel error: {}", e)))?;
+                tx.send(BlockchainUpdatesWithLastHeight {
+                    last_height,
+                    updates: result.drain(..).collect(),
+                })
+                .await
+                .map_err(|e| AppError::StreamError(format!("Channel error: {}", e)))?;
                 should_receive_more = true;
                 start = Instant::now();
             }

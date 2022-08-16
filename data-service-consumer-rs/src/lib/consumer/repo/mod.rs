@@ -14,9 +14,10 @@ pub trait Repo {
     type Operations: RepoOperations;
 
     async fn transaction<F, R>(&self, f: F) -> Result<R>
-        where F: FnOnce(&Self::Operations) -> Result<R>,
-              F: Send + 'static,
-              R: Send + 'static;
+    where
+        F: FnOnce(&Self::Operations) -> Result<R>,
+        F: Send + 'static,
+        R: Send + 'static;
 }
 
 pub trait RepoOperations {

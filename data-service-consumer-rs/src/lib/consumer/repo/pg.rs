@@ -17,6 +17,7 @@ use crate::consumer::models::{
     txs::*,
     waves_data::WavesData,
 };
+use crate::db::PgAsyncPool;
 use crate::error::Error as AppError;
 use crate::schema::*;
 use crate::tuple_len::TupleLen;
@@ -26,17 +27,15 @@ const PG_MAX_INSERT_FIELDS_COUNT: usize = 65535;
 
 #[derive(Clone)]
 pub struct PgRepo {
-    conn: Arc<Mutex<Option<Box<PgConnection>>>>,
+    pool: PgAsyncPool,
 }
 
-pub fn new(conn: PgConnection) -> PgRepo {
-    PgRepo {
-        conn: Arc::new(Mutex::new(Some(Box::new(conn)))),
-    }
+pub fn new(pool: PgAsyncPool) -> PgRepo {
+    PgRepo { pool }
 }
 
 pub struct PgRepoOperations {
-    conn: Box<PgConnection>,
+    conn: PgConnection,
 }
 
 #[async_trait]
@@ -49,23 +48,19 @@ impl Repo for PgRepo {
         F: Send + 'static,
         R: Send + 'static,
     {
-        let conn_arc = self.conn.clone();
-        task::spawn_blocking(move || {
-            let mut conn_guard = conn_arc.lock().unwrap();
-            let conn = conn_guard.take().expect("connection is gone");
-            let ops = PgRepoOperations { conn };
-            let result = ops.conn.transaction(|| f(&ops));
-            *conn_guard = Some(ops.conn);
-            result
-        })
-        .await
-        .expect("sync task panicked")
+        let connection = self.pool.get().await?;
+        Ok(connection
+            .interact(|conn| {
+                let ops = PgRepoOperations { conn };
+                ops.conn.transaction(|| f(&ops))
+            })
+            .await??)
     }
 }
 
 impl PgRepoOperations {
     fn conn(&self) -> &PgConnection {
-        &*self.conn
+        self.conn
     }
 }
 

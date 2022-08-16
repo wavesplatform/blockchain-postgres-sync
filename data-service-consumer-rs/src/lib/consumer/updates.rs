@@ -124,11 +124,8 @@ impl UpdatesSourceImpl {
                 }?;
             }
 
-            info!("Elapsed: {} ms", start.elapsed().as_millis());
-
             if !should_receive_more {
                 debug!("updating to height {}", last_height);
-                result.clear();
                 tx.send(BlockchainUpdatesWithLastHeight {
                     last_height,
                     updates: result.drain(..).collect(),

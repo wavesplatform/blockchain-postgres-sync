@@ -25,6 +25,7 @@ pub async fn async_pool(config: &Config) -> Result<PgAsyncPool> {
     let pool = DPool::builder(manager)
         .max_size(config.poolsize as usize)
         .wait_timeout(Some(Duration::from_secs(5 * 60)))
+        .runtime(Runtime::Tokio1)
         .build()?;
     Ok(pool)
 }

@@ -42,7 +42,7 @@ impl Repo for PgRepo {
 
     async fn transaction<F, R>(&self, f: F) -> Result<R>
     where
-        F: for<'conn> FnOnce(&'conn Self::Operations<'conn>) -> Result<R>,
+        F: for<'conn> FnOnce(&Self::Operations<'conn>) -> Result<R>,
         F: Send + 'static,
         R: Send + 'static,
     {

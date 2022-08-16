@@ -23,7 +23,7 @@ use waves_protobuf_schemas::waves::{
     Block as BlockPB, SignedMicroBlock as SignedMicroBlockPB,
     SignedTransaction as SignedTransactionPB,
 };
-use wavesexchange_log::{debug, error, info};
+use wavesexchange_log::{debug, error};
 
 use super::{
     BlockMicroblockAppend, BlockchainUpdate, BlockchainUpdatesWithLastHeight, Tx, UpdatesSource,
@@ -104,7 +104,7 @@ impl UpdatesSourceImpl {
             {
                 last_height = update.height as u32;
                 match BlockchainUpdate::try_from(update) {
-                    Ok(upd) => Ok({
+                    Ok(upd) => {
                         let current_batch_size = result.len() + 1;
                         match &upd {
                             BlockchainUpdate::Block(_) => {
@@ -119,7 +119,8 @@ impl UpdatesSourceImpl {
                             }
                         }
                         result.push(upd);
-                    }),
+                        Ok(())
+                    }
                     Err(err) => Err(err),
                 }?;
             }

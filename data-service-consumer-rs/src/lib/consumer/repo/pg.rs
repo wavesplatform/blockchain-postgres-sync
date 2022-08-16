@@ -50,16 +50,10 @@ impl Repo for PgRepo {
         connection
             .interact(|conn| {
                 let ops = PgRepoOperations { conn };
-                ops.conn().transaction(|| f(&ops))
+                ops.conn.transaction(|| f(&ops))
             })
             .await
             .expect("deadpool interaction failed")
-    }
-}
-
-impl PgRepoOperations<'_> {
-    fn conn(&self) -> &PgConnection {
-        self.conn
     }
 }
 
@@ -77,7 +71,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 )),
             )
             .order(blocks_microblocks::uid.asc())
-            .first(self.conn())
+            .first(self.conn)
             .optional()
             .map_err(|err| Error::new(AppError::DbDieselError(err)))
     }
@@ -86,7 +80,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         blocks_microblocks::table
             .select(blocks_microblocks::uid)
             .filter(blocks_microblocks::id.eq(block_id))
-            .get_result(self.conn())
+            .get_result(self.conn)
             .map_err(|err| {
                 let context = format!("Cannot get block_uid by block id {}: {}", block_id, err);
                 Error::new(AppError::DbDieselError(err)).context(context)
@@ -97,7 +91,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         blocks_microblocks::table
             .select(diesel::expression::sql_literal::sql("max(uid)"))
             .filter(blocks_microblocks::time_stamp.is_not_null())
-            .get_result(self.conn())
+            .get_result(self.conn)
             .map_err(|err| {
                 let context = format!("Cannot get key block uid: {}", err);
                 Error::new(AppError::DbDieselError(err)).context(context)
@@ -109,7 +103,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .select(blocks_microblocks::id)
             .filter(blocks_microblocks::time_stamp.is_null())
             .order(blocks_microblocks::uid.desc())
-            .first(self.conn())
+            .first(self.conn)
             .optional()
             .map_err(|err| {
                 let context = format!("Cannot get total block id: {}", err);
@@ -121,7 +115,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         diesel::insert_into(blocks_microblocks::table)
             .values(blocks)
             .returning(blocks_microblocks::uid)
-            .get_results(self.conn())
+            .get_results(self.conn)
             .map_err(|err| {
                 let context = format!("Cannot insert blocks/microblocks: {}", err);
                 Error::new(AppError::DbDieselError(err)).context(context)
@@ -132,7 +126,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         diesel::update(blocks_microblocks::table)
             .set(blocks_microblocks::id.eq(new_block_id))
             .filter(blocks_microblocks::uid.eq(block_uid))
-            .execute(self.conn())
+            .execute(self.conn)
             .map(|_| ())
             .map_err(|err| {
                 let context = format!("Cannot change block id: {}", err);
@@ -143,7 +137,7 @@ impl RepoOperations for PgRepoOperations<'_> {
     fn delete_microblocks(&self) -> Result<()> {
         diesel::delete(blocks_microblocks::table)
             .filter(blocks_microblocks::time_stamp.is_null())
-            .execute(self.conn())
+            .execute(self.conn)
             .map(|_| ())
             .map_err(|err| {
                 let context = format!("Cannot delete microblocks: {}", err);
@@ -154,7 +148,7 @@ impl RepoOperations for PgRepoOperations<'_> {
     fn rollback_blocks_microblocks(&self, block_uid: &i64) -> Result<()> {
         diesel::delete(blocks_microblocks::table)
             .filter(blocks_microblocks::uid.gt(block_uid))
-            .execute(self.conn())
+            .execute(self.conn)
             .map(|_| ())
             .map_err(|err| {
                 let context = format!("Cannot rollback blocks/microblocks: {}", err);
@@ -175,7 +169,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .bind::<Integer, _>(data.height)
                 .bind::<Numeric, _>(&data.quantity);
 
-            q.execute(self.conn()).map(|_| ()).map_err(|err| {
+            q.execute(self.conn).map(|_| ()).map_err(|err| {
                 let context = format!("Cannot insert waves data: {err}");
                 Error::new(AppError::DbDieselError(err)).context(context)
             })?;
@@ -190,7 +184,7 @@ impl RepoOperations for PgRepoOperations<'_> {
     fn get_next_assets_uid(&self) -> Result<i64> {
         asset_updates_uid_seq::table
             .select(asset_updates_uid_seq::last_value)
-            .first(self.conn())
+            .first(self.conn)
             .map_err(|err| {
                 let context = format!("Cannot get next assets update uid: {}", err);
                 Error::new(AppError::DbDieselError(err)).context(context)
@@ -203,7 +197,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict((asset_updates::superseded_by, asset_updates::asset_id))
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -219,7 +213,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(asset_origins::asset_id)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -233,7 +227,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         diesel::update(asset_updates::table)
             .set((asset_updates::block_uid.eq(block_uid),))
             .filter(asset_updates::block_uid.gt(block_uid))
-            .execute(self.conn())
+            .execute(self.conn)
             .map(|_| ())
             .map_err(|err| {
                 let context = format!("Cannot update assets block references: {}", err);
@@ -260,7 +254,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .bind::<Array<BigInt>, _>(superseded_by_uids)
         .bind::<BigInt, _>(MAX_UID);
 
-        q.execute(self.conn()).map(|_| ()).map_err(|err| {
+        q.execute(self.conn).map(|_| ()).map_err(|err| {
             let context = format!("Cannot close assets superseded_by: {}", err);
             Error::new(AppError::DbDieselError(err)).context(context)
         })
@@ -275,7 +269,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         )
         .bind::<BigInt, _>(MAX_UID)
         .bind::<Array<BigInt>, _>(current_superseded_by)
-        .execute(self.conn())
+        .execute(self.conn)
         .map(|_| ())
         .map_err(|err| {
             let context = format!("Cannot reopen assets superseded_by: {}", err);
@@ -288,7 +282,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             "select setval('asset_updates_uid_seq', {}, false);", // 3rd param - is called; in case of true, value'll be incremented before returning
             new_uid
         ))
-        .execute(self.conn())
+        .execute(self.conn)
         .map(|_| ())
         .map_err(|err| {
             let context = format!("Cannot set assets next update uid: {}", err);
@@ -300,7 +294,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         diesel::delete(asset_updates::table)
             .filter(asset_updates::block_uid.gt(block_uid))
             .returning((asset_updates::uid, asset_updates::asset_id))
-            .get_results(self.conn())
+            .get_results(self.conn)
             .map(|bs| {
                 bs.into_iter()
                     .map(|(uid, id)| DeletedAsset { uid, id })
@@ -316,7 +310,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         asset_updates::table
             .select(asset_updates::uid)
             .filter(asset_updates::block_uid.gt(block_uid))
-            .get_results(self.conn())
+            .get_results(self.conn)
             .map_err(|err| {
                 let context = format!(
                     "Cannot get assets greater then block_uid {}: {}",
@@ -336,7 +330,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_1::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -352,7 +346,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_2::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -368,7 +362,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_3::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -384,7 +378,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_4::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -400,7 +394,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_5::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -416,7 +410,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_6::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -432,7 +426,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_7::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -448,7 +442,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_8::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -469,7 +463,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             txs::table
                 .select((txs::id, txs::uid))
                 .filter(txs::id.eq(any(ids)))
-                .get_results(self.conn())
+                .get_results(self.conn)
         })
         .map_err(|err| {
             let context = format!("Cannot find uids for lease_ids: {err}",);
@@ -495,7 +489,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_9::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -511,7 +505,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_10::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -531,7 +525,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_11::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -544,7 +538,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict((txs_11_transfers::tx_uid, txs_11_transfers::position_in_tx))
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -564,7 +558,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_12::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -577,7 +571,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict((txs_12_data::tx_uid, txs_12_data::position_in_tx))
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -593,7 +587,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_13::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -609,7 +603,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_14::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -625,7 +619,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_15::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -650,7 +644,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_16::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -663,7 +657,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict((txs_16_args::tx_uid, txs_16_args::position_in_args))
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -676,7 +670,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict((txs_16_payment::tx_uid, txs_16_payment::position_in_payment))
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -692,7 +686,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_17::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -708,7 +702,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .values(t)
                 .on_conflict(txs_18::uid)
                 .do_nothing()
-                .execute(self.conn())
+                .execute(self.conn)
                 .map(|_| ())
         })
         .map_err(|err| {
@@ -733,24 +727,24 @@ where
         .chunks(chunk_size)
         .into_iter()
         .try_fold((), |_, chunk| {
-            result.extend(query_fn(chunk)?.anyway_into_iterable());
+            result.extend(query_fn(chunk)?.anything_into_vec());
             Ok::<_, DslError>(())
         })?;
     Ok(result)
 }
 
 trait OneOrMany<T> {
-    fn anyway_into_iterable(self) -> Vec<T>;
+    fn anything_into_vec(self) -> Vec<T>;
 }
 
 impl OneOrMany<()> for () {
-    fn anyway_into_iterable(self) -> Vec<()> {
+    fn anything_into_vec(self) -> Vec<()> {
         vec![]
     }
 }
 
 impl<T> OneOrMany<T> for Vec<T> {
-    fn anyway_into_iterable(self) -> Vec<T> {
+    fn anything_into_vec(self) -> Vec<T> {
         self
     }
 }

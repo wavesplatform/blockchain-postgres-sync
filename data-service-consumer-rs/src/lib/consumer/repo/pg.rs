@@ -6,8 +6,6 @@ use diesel::result::Error as DslError;
 use diesel::sql_types::{Array, BigInt, Integer, Numeric, VarChar};
 use diesel::Table;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use tokio::task;
 
 use super::super::PrevHandledHeight;
 use super::{Repo, RepoOperations};
@@ -34,37 +32,38 @@ pub fn new(pool: PgAsyncPool) -> PgRepo {
     PgRepo { pool }
 }
 
-pub struct PgRepoOperations {
-    conn: PgConnection,
+pub struct PgRepoOperations<'c> {
+    conn: &'c PgConnection,
 }
 
 #[async_trait]
 impl Repo for PgRepo {
-    type Operations = PgRepoOperations;
+    type Operations<'c> = PgRepoOperations<'c>;
 
     async fn transaction<F, R>(&self, f: F) -> Result<R>
     where
-        F: FnOnce(&Self::Operations) -> Result<R>,
+        F: for<'conn> FnOnce(&'conn Self::Operations<'conn>) -> Result<R>,
         F: Send + 'static,
         R: Send + 'static,
     {
         let connection = self.pool.get().await?;
-        Ok(connection
+        connection
             .interact(|conn| {
                 let ops = PgRepoOperations { conn };
-                ops.conn.transaction(|| f(&ops))
+                ops.conn().transaction(|| f(&ops))
             })
-            .await??)
+            .await
+            .expect("deadpool interaction failed")
     }
 }
 
-impl PgRepoOperations {
+impl PgRepoOperations<'_> {
     fn conn(&self) -> &PgConnection {
         self.conn
     }
 }
 
-impl RepoOperations for PgRepoOperations {
+impl RepoOperations for PgRepoOperations<'_> {
     //
     // COMMON
     //

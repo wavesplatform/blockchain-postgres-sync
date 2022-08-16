@@ -11,11 +11,11 @@ use super::PrevHandledHeight;
 
 #[async_trait]
 pub trait Repo {
-    type Operations: RepoOperations;
+    type Operations<'c>: RepoOperations + 'c;
 
     async fn transaction<F, R>(&self, f: F) -> Result<R>
     where
-        F: FnOnce(&Self::Operations) -> Result<R>,
+        F: for<'conn> FnOnce(&'conn Self::Operations<'conn>) -> Result<R>,
         F: Send + 'static,
         R: Send + 'static;
 }

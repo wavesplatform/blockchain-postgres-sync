@@ -1,6 +1,7 @@
-FROM rust:1.62 AS builder
+FROM rust:1.63 AS builder
 WORKDIR /app
 
+RUN rustup update nightly
 RUN rustup component add rustfmt
 
 COPY Cargo.* ./

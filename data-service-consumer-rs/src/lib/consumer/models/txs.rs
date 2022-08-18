@@ -836,7 +836,7 @@ pub struct Tx5 {
     pub reissuable: bool,
 }
 
-/// Reissue
+/// Burn
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_6"]
 pub struct Tx6 {

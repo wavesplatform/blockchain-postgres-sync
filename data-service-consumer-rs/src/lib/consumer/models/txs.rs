@@ -168,14 +168,14 @@ impl
                     block_uid,
                     function_name: None,
                 };
-                let built_tx = match meta.action.unwrap() {
+                let built_tx = match meta.action.as_ref().unwrap() {
                     EthAction::Transfer(_) => Tx18Combined {
                         tx: eth_tx,
                         args: vec![],
                         payments: vec![],
                     },
                     EthAction::Invoke(imeta) => {
-                        eth_tx.function_name = Some(imeta.function_name);
+                        eth_tx.function_name = Some(imeta.function_name.clone());
                         Tx18Combined {
                             tx: eth_tx,
                             args: imeta

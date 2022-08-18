@@ -696,8 +696,17 @@ impl RepoOperations for PgRepoOperations<'_> {
         Ok(())
     }
 
-    fn insert_txs_18(&self, txs: Vec<Tx18>) -> Result<()> {
-        chunked(txs_18::table, &txs, |t| {
+    fn insert_txs_18(&self, txs: Vec<Tx18Combined>) -> Result<()> {
+        let (txs18, data): (Vec<Tx18>, Vec<(Vec<Tx18Args>, Vec<Tx18Payment>)>) = txs
+            .into_iter()
+            .map(|t| (t.tx, (t.args, t.payments)))
+            .unzip();
+        let (args, payments): (Vec<Vec<Tx18Args>>, Vec<Vec<Tx18Payment>>) =
+            data.into_iter().unzip();
+        let args = args.into_iter().flatten().collect::<Vec<_>>();
+        let payments = payments.into_iter().flatten().collect::<Vec<_>>();
+
+        chunked(txs_18::table, &txs18, |t| {
             diesel::insert_into(txs_18::table)
                 .values(t)
                 .on_conflict(txs_18::uid)
@@ -707,6 +716,32 @@ impl RepoOperations for PgRepoOperations<'_> {
         })
         .map_err(|err| {
             let context = format!("Cannot insert Ethereum transactions: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
+
+        chunked(txs_18_args::table, &args, |t| {
+            diesel::insert_into(txs_18_args::table)
+                .values(t)
+                .on_conflict((txs_18_args::tx_uid, txs_18_args::position_in_args))
+                .do_nothing()
+                .execute(self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert Ethereum InvokeScript args: {err}",);
+            Error::new(AppError::DbDieselError(err)).context(context)
+        })?;
+
+        chunked(txs_18_payment::table, &payments, |t| {
+            diesel::insert_into(txs_18_payment::table)
+                .values(t)
+                .on_conflict((txs_18_payment::tx_uid, txs_18_payment::position_in_payment))
+                .do_nothing()
+                .execute(self.conn)
+                .map(|_| ())
+        })
+        .map_err(|err| {
+            let context = format!("Cannot insert Ethereum InvokeScript payments: {err}",);
             Error::new(AppError::DbDieselError(err)).context(context)
         })?;
         Ok(())

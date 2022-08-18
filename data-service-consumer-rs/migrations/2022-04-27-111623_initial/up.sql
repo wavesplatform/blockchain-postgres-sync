@@ -319,11 +319,36 @@ INHERITS (txs);
 CREATE TABLE IF NOT EXISTS txs_18
 (
     payload BYTEA NOT NULL,
+    function_name VARCHAR, -- null - transfer, not null - invoke
 
     PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
 ) 
 INHERITS (txs);
+
+CREATE TABLE IF NOT EXISTS txs_18_args (
+    arg_type TEXT NOT NULL,
+    arg_value_integer BIGINT,
+    arg_value_boolean BOOLEAN,
+    arg_value_binary TEXT,
+    arg_value_string TEXT,
+    arg_value_list jsonb DEFAULT NULL,
+    position_in_args SMALLINT NOT NULL,
+    tx_uid BIGINT NOT NULL,
+    height INTEGER,
+
+    PRIMARY KEY (tx_uid, position_in_args)
+);
+
+CREATE TABLE IF NOT EXISTS txs_18_payment (
+    tx_uid BIGINT NOT NULL,
+    amount BIGINT NOT NULL,
+    position_in_payment SMALLINT NOT NULL,
+    height INTEGER,
+    asset_id VARCHAR NOT NULL,
+
+    PRIMARY KEY (tx_uid, position_in_payment)
+);
 
 CREATE TABLE IF NOT EXISTS assets_metadata (
     asset_id VARCHAR,

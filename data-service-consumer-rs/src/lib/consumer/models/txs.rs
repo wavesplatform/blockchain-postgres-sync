@@ -47,7 +47,7 @@ pub enum Tx {
     SetAssetScript(Tx15),
     InvokeScript(Tx16Combined),
     UpdateAssetInfo(Tx17),
-    Ethereum(Tx18),
+    Ethereum(Tx18Combined),
 }
 
 pub struct TxUidGenerator {
@@ -144,14 +144,14 @@ impl
         let sender = into_b58(&meta.sender_address);
 
         let tx = match tx {
-            Transaction::WavesTransaction(t) => t,
-            Transaction::EthereumTransaction(t) => {
+            Transaction::WavesTransaction(tx) => tx,
+            Transaction::EthereumTransaction(tx) => {
                 let meta = if let Some(Metadata::Ethereum(ref m)) = meta.metadata {
                     m
                 } else {
-                    unreachable!()
+                    unreachable!("non-eth meta cannot be in EthereumTransaction")
                 };
-                return Ok(Tx::Ethereum(Tx18 {
+                let mut eth_tx = Tx18 {
                     uid,
                     height,
                     tx_type: 18,
@@ -164,9 +164,83 @@ impl
                     sender,
                     sender_public_key: into_b58(&meta.sender_public_key),
                     status,
-                    payload: t.clone(),
+                    payload: tx.clone(),
                     block_uid,
-                }));
+                    function_name: None,
+                };
+                let built_tx = match meta.action.unwrap() {
+                    EthAction::Transfer(_) => Tx18Combined {
+                        tx: eth_tx,
+                        args: vec![],
+                        payments: vec![],
+                    },
+                    EthAction::Invoke(imeta) => {
+                        eth_tx.function_name = Some(imeta.function_name);
+                        Tx18Combined {
+                            tx: eth_tx,
+                            args: imeta
+                                .arguments
+                                .iter()
+                                .filter_map(|arg| arg.value.as_ref())
+                                .enumerate()
+                                .map(|(i, arg)| {
+                                    let (v_type, v_int, v_bool, v_bin, v_str, v_list) = match &arg {
+                                        InvokeScriptArgValue::IntegerValue(v) => {
+                                            ("integer", Some(v.to_owned()), None, None, None, None)
+                                        }
+                                        InvokeScriptArgValue::BooleanValue(v) => {
+                                            ("boolean", None, Some(v.to_owned()), None, None, None)
+                                        }
+                                        InvokeScriptArgValue::BinaryValue(v) => {
+                                            ("binary", None, None, Some(v.to_owned()), None, None)
+                                        }
+                                        InvokeScriptArgValue::StringValue(v) => {
+                                            ("string", None, None, None, Some(v.to_owned()), None)
+                                        }
+                                        InvokeScriptArgValue::List(_) => (
+                                            "list",
+                                            None,
+                                            None,
+                                            None,
+                                            None,
+                                            Some(
+                                                json!(DataEntryTypeValue::from(arg))["value"]
+                                                    .clone(),
+                                            ),
+                                        ),
+                                        InvokeScriptArgValue::CaseObj(_) => {
+                                            ("case", None, None, None, None, None)
+                                        }
+                                    };
+                                    Tx18Args {
+                                        tx_uid: uid,
+                                        arg_type: v_type.to_string(),
+                                        arg_value_integer: v_int,
+                                        arg_value_boolean: v_bool,
+                                        arg_value_binary: v_bin.map(|v| into_prefixed_b64(&v)),
+                                        arg_value_string: v_str,
+                                        arg_value_list: v_list,
+                                        position_in_args: i as i16,
+                                        height,
+                                    }
+                                })
+                                .collect(),
+                            payments: imeta
+                                .payments
+                                .iter()
+                                .enumerate()
+                                .map(|(i, p)| Tx18Payment {
+                                    tx_uid: uid,
+                                    amount: p.amount,
+                                    position_in_payment: i as i16,
+                                    height,
+                                    asset_id: into_b58(&p.asset_id),
+                                })
+                                .collect(),
+                        }
+                    }
+                };
+                return Ok(Tx::Ethereum(built_tx));
             }
         };
         let tx_data = tx.data.as_ref().ok_or_else(|| {
@@ -645,6 +719,7 @@ impl
     }
 }
 
+/// Genesis
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_1"]
 pub struct Tx1 {
@@ -666,6 +741,7 @@ pub struct Tx1 {
     pub amount: i64,
 }
 
+/// Payment
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_2"]
 pub struct Tx2 {
@@ -687,6 +763,7 @@ pub struct Tx2 {
     pub amount: i64,
 }
 
+/// Issue
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_3"]
 pub struct Tx3 {
@@ -712,6 +789,7 @@ pub struct Tx3 {
     pub script: Option<String>,
 }
 
+/// Transfer
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_4"]
 pub struct Tx4 {
@@ -736,6 +814,7 @@ pub struct Tx4 {
     pub attachment: String,
 }
 
+/// Reissue
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_5"]
 pub struct Tx5 {
@@ -757,6 +836,7 @@ pub struct Tx5 {
     pub reissuable: bool,
 }
 
+/// Reissue
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_6"]
 pub struct Tx6 {
@@ -777,6 +857,7 @@ pub struct Tx6 {
     pub amount: i64,
 }
 
+/// Exchange
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_7"]
 pub struct Tx7 {
@@ -804,6 +885,7 @@ pub struct Tx7 {
     pub fee_asset_id: String,
 }
 
+/// Lease
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_8"]
 pub struct Tx8 {
@@ -825,6 +907,7 @@ pub struct Tx8 {
     pub amount: i64,
 }
 
+/// LeaseCancel
 #[derive(Clone, Debug)]
 pub struct Tx9Partial {
     pub uid: Uid,
@@ -843,6 +926,7 @@ pub struct Tx9Partial {
     pub lease_id: Option<String>,
 }
 
+/// LeaseCancel
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_9"]
 pub struct Tx9 {
@@ -884,6 +968,7 @@ impl From<(&Tx9Partial, Option<i64>)> for Tx9 {
     }
 }
 
+/// CreateAlias
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_10"]
 pub struct Tx10 {
@@ -903,6 +988,7 @@ pub struct Tx10 {
     pub alias: String,
 }
 
+/// MassTransfer
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_11"]
 pub struct Tx11 {
@@ -923,6 +1009,7 @@ pub struct Tx11 {
     pub attachment: String,
 }
 
+/// MassTransfer
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_11_transfers"]
 pub struct Tx11Transfers {
@@ -934,12 +1021,14 @@ pub struct Tx11Transfers {
     pub height: i32,
 }
 
+/// MassTransfer
 #[derive(Clone, Debug)]
 pub struct Tx11Combined {
     pub tx: Tx11,
     pub transfers: Vec<Tx11Transfers>,
 }
 
+/// DataTransaction
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_12"]
 pub struct Tx12 {
@@ -958,6 +1047,7 @@ pub struct Tx12 {
     pub status: Status,
 }
 
+/// DataTransaction
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_12_data"]
 pub struct Tx12Data {
@@ -972,12 +1062,14 @@ pub struct Tx12Data {
     pub height: i32,
 }
 
+/// DataTransaction
 #[derive(Clone, Debug)]
 pub struct Tx12Combined {
     pub tx: Tx12,
     pub data: Vec<Tx12Data>,
 }
 
+/// SetScript
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_13"]
 pub struct Tx13 {
@@ -997,6 +1089,7 @@ pub struct Tx13 {
     pub script: String,
 }
 
+/// SponsorFee
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_14"]
 pub struct Tx14 {
@@ -1017,6 +1110,7 @@ pub struct Tx14 {
     pub min_sponsored_asset_fee: Option<i64>,
 }
 
+/// SetAssetScript
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_15"]
 pub struct Tx15 {
@@ -1037,6 +1131,7 @@ pub struct Tx15 {
     pub script: String,
 }
 
+/// InvokeScript
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_16"]
 pub struct Tx16 {
@@ -1059,6 +1154,7 @@ pub struct Tx16 {
     pub fee_asset_id: String,
 }
 
+/// InvokeScript
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_16_args"]
 pub struct Tx16Args {
@@ -1073,6 +1169,7 @@ pub struct Tx16Args {
     pub height: i32,
 }
 
+/// InvokeScript
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_16_payment"]
 pub struct Tx16Payment {
@@ -1083,6 +1180,7 @@ pub struct Tx16Payment {
     pub asset_id: String,
 }
 
+/// InvokeScript
 #[derive(Clone, Debug)]
 pub struct Tx16Combined {
     pub tx: Tx16,
@@ -1090,6 +1188,7 @@ pub struct Tx16Combined {
     pub payments: Vec<Tx16Payment>,
 }
 
+/// UpdateAssetInfo
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_17"]
 pub struct Tx17 {
@@ -1111,6 +1210,7 @@ pub struct Tx17 {
     pub description: String,
 }
 
+/// Ethereum
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_18"]
 pub struct Tx18 {
@@ -1128,4 +1228,38 @@ pub struct Tx18 {
     pub sender_public_key: SenderPubKey,
     pub status: Status,
     pub payload: Vec<u8>,
+    pub function_name: Option<String>,
+}
+
+/// Ethereum InvokeScript
+#[derive(Clone, Debug, Insertable)]
+#[table_name = "txs_18_args"]
+pub struct Tx18Args {
+    pub tx_uid: i64,
+    pub arg_type: String,
+    pub arg_value_integer: Option<i64>,
+    pub arg_value_boolean: Option<bool>,
+    pub arg_value_binary: Option<String>,
+    pub arg_value_string: Option<String>,
+    pub arg_value_list: Option<Value>,
+    pub position_in_args: i16,
+    pub height: i32,
+}
+
+/// Ethereum InvokeScript
+#[derive(Clone, Debug, Insertable)]
+#[table_name = "txs_18_payment"]
+pub struct Tx18Payment {
+    pub tx_uid: i64,
+    pub amount: i64,
+    pub position_in_payment: i16,
+    pub height: i32,
+    pub asset_id: String,
+}
+
+/// Ethereum
+pub struct Tx18Combined {
+    pub tx: Tx18,
+    pub args: Vec<Tx18Args>,
+    pub payments: Vec<Tx18Payment>,
 }

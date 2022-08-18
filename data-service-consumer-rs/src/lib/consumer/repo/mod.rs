@@ -103,5 +103,5 @@ pub trait RepoOperations {
 
     fn insert_txs_17(&self, txs: Vec<Tx17>) -> Result<()>;
 
-    fn insert_txs_18(&self, txs: Vec<Tx18>) -> Result<()>;
+    fn insert_txs_18(&self, txs: Vec<Tx18Combined>) -> Result<()>;
 }

@@ -400,6 +400,35 @@ table! {
         fee -> Int8,
         status -> Varchar,
         payload -> Bytea,
+        function_name -> Nullable<Varchar>,
+    }
+}
+
+table! {
+    use diesel::sql_types::*;
+
+    txs_18_args (tx_uid, position_in_args) {
+        arg_type -> Text,
+        arg_value_integer -> Nullable<Int8>,
+        arg_value_boolean -> Nullable<Bool>,
+        arg_value_binary -> Nullable<Text>,
+        arg_value_string -> Nullable<Text>,
+        arg_value_list -> Nullable<Jsonb>,
+        position_in_args -> Int2,
+        tx_uid -> Int8,
+        height -> Nullable<Int4>,
+    }
+}
+
+table! {
+    use diesel::sql_types::*;
+
+    txs_18_payment (tx_uid, position_in_payment) {
+        tx_uid -> Int8,
+        amount -> Int8,
+        position_in_payment -> Int2,
+        height -> Nullable<Int4>,
+        asset_id -> Varchar,
     }
 }
 
@@ -629,6 +658,8 @@ allow_tables_to_appear_in_same_query!(
     txs_16_payment,
     txs_17,
     txs_18,
+    txs_18_args,
+    txs_18_payment,
     txs_2,
     txs_3,
     txs_4,

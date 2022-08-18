@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
+# nightly crashes with "backtrace" feature
+anyhow = { version = "1.0", default-features = false, features = ["std"] }
 async-trait = "0.1"
 base64 = "0.13"
 bigdecimal = { version = "0.1.2", features = ["serde"] }

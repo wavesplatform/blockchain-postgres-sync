@@ -101,12 +101,29 @@ impl
             i64,
         ),
     ) -> Result<Self, Self::Error> {
-        let into_b58 = |b: &[u8]| bs58::encode(b).into_string();
-        let into_prefixed_b64 = |b: &[u8]| String::from("base64:") + &base64::encode(b);
-        let sanitize_str = |s: &String| s.replace("\x00", "");
-        let parse_attachment = |a: &Vec<u8>| {
+        fn into_b58(b: &[u8]) -> String {
+            bs58::encode(b).into_string()
+        }
+
+        fn into_prefixed_b64(b: &[u8]) -> String {
+            String::from("base64:") + &base64::encode(b)
+        }
+
+        fn sanitize_str(s: &String) -> String {
+            s.replace("\x00", "")
+        }
+
+        fn parse_attachment(a: &Vec<u8>) -> String {
             sanitize_str(&String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(a)))
-        };
+        }
+
+        fn extract_asset_id(amount: &Amount) -> String {
+            if amount.asset_id.is_empty() {
+                String::from("WAVES")
+            } else {
+                into_b58(&amount.asset_id)
+            }
+        }
 
         let (tx, proofs) = match tx {
             SignedTransaction {
@@ -250,10 +267,7 @@ impl
         })?;
         let time_stamp = NaiveDateTime::from_timestamp(tx.timestamp / 1000, 0);
         let fee = tx.fee.clone();
-        let (fee, fee_asset_id) = match fee {
-            Some(f) => (f.amount, f.asset_id.to_vec()),
-            None => (0, b"WAVES".to_vec()),
-        };
+        let (fee, fee_asset_id) = fee.map(|f| (f.amount, extract_asset_id(&f))).unwrap();
         let tx_version = Some(tx.version as i16);
         let sender_public_key = into_b58(tx.sender_public_key.as_ref());
 
@@ -340,7 +354,7 @@ impl
                     sender_public_key,
                     status,
                     asset_id: into_b58(asset_id),
-                    fee_asset_id: into_b58(&fee_asset_id),
+                    fee_asset_id,
                     amount: *amount,
                     attachment: parse_attachment(&t.attachment),
                     recipient_address: if let Some(Metadata::Transfer(ref m)) = meta.metadata {
@@ -414,7 +428,7 @@ impl
                 price: t.price,
                 buy_matcher_fee: t.buy_matcher_fee,
                 sell_matcher_fee: t.sell_matcher_fee,
-                fee_asset_id: into_b58(&fee_asset_id),
+                fee_asset_id,
                 block_uid,
             }),
             Data::Lease(t) => Tx::Lease(Tx8 {
@@ -633,7 +647,7 @@ impl
                         sender_public_key,
                         status,
                         function_name: Some(meta.function_name.clone()),
-                        fee_asset_id: into_b58(&tx.fee.as_ref().unwrap().asset_id.clone()),
+                        fee_asset_id: extract_asset_id(&tx.fee.as_ref().unwrap()),
                         dapp_address: into_b58(&meta.d_app_address),
                         dapp_alias: None,
                         block_uid,

@@ -656,5 +656,8 @@ impl<T> OneOrMany<T> for Vec<T> {
 }
 
 fn build_err_fn(msg: impl AsRef<str>) -> impl Fn(DslError) -> Error {
-    move |err| Error::new(AppError::DbDieselError(err)).context(msg.as_ref().to_owned())
+    move |err| {
+        let ctx = format!("{}: {}", msg.as_ref(), err);
+        Error::new(AppError::DbDieselError(err)).context(ctx)
+    }
 }

@@ -267,7 +267,9 @@ impl
         })?;
         let time_stamp = NaiveDateTime::from_timestamp(tx.timestamp / 1000, 0);
         let fee = tx.fee.clone();
-        let (fee, fee_asset_id) = fee.map(|f| (f.amount, extract_asset_id(&f))).unwrap();
+        let (fee, fee_asset_id) = fee
+            .map(|f| (f.amount, extract_asset_id(&f)))
+            .unwrap_or((0, "WAVES".to_string()));
         let tx_version = Some(tx.version as i16);
         let sender_public_key = into_b58(tx.sender_public_key.as_ref());
 

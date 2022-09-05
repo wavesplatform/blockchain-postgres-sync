@@ -405,8 +405,6 @@ CREATE TABLE IF NOT EXISTS waves_data (
 	quantity numeric NOT NULL PRIMARY KEY -- quantity никогда не может быть одинаковым у двух записей
 );
 
-INSERT INTO waves_data (height, quantity) VALUES (null, 10000000000000000);
-
 CREATE VIEW assets(
     asset_id, 
     ticker, 

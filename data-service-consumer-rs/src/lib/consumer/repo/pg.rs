@@ -142,6 +142,8 @@ impl RepoOperations for PgRepoOperations<'_> {
     fn insert_waves_data(&self, waves_data: &Vec<WavesData>) -> Result<()> {
         diesel::insert_into(waves_data::table)
             .values(waves_data)
+            .on_conflict(waves_data::quantity)
+            .do_nothing()
             .execute(self.conn)
             .map(drop)
             .map_err(build_err_fn("Cannot insert waves data"))

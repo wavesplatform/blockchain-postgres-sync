@@ -32,6 +32,8 @@ DROP TABLE IF EXISTS txs_18_payment;
 DROP TABLE IF EXISTS txs_18;
 DROP TABLE IF EXISTS txs;
 DROP TABLE IF EXISTS blocks_microblocks;
+DROP TABLE IF EXISTS assets;
+DROP FUNCTION IF EXISTS public.text_timestamp_cast;
 
 DROP INDEX IF EXISTS candles_max_height_index;
 DROP INDEX IF EXISTS candles_amount_price_ids_matcher_time_start_partial_1m_idx;

@@ -457,6 +457,14 @@ SELECT 'WAVES'::character varying                         AS asset_id,
        false                                              AS has_script,
        NULL::bigint                                       AS min_sponsored_asset_fee;
 
+CREATE OR REPLACE FUNCTION public.text_timestamp_cast(text) RETURNS timestamp without time zone
+    LANGUAGE plpgsql
+    AS $_$
+begin
+--   raise notice $1;
+  return to_timestamp($1 :: DOUBLE PRECISION / 1000);
+END
+$_$;
 
 CREATE INDEX IF NOT EXISTS candles_max_height_index ON candles USING btree (max_height);
 CREATE INDEX IF NOT EXISTS candles_amount_price_ids_matcher_time_start_partial_1m_idx ON candles (amount_asset_id, price_asset_id, matcher_address, time_start) WHERE (("interval")::text = '1m'::text);

@@ -20,13 +20,16 @@ use wavesexchange_log::{debug, info, timer, warn};
 use self::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use self::models::block_microblock::BlockMicroblock;
 use self::repo::RepoOperations;
-use crate::consumer::models::{
-    txs::{Tx as ConvertedTx, TxUidGenerator},
-    waves_data::WavesData,
-};
 use crate::error::Error as AppError;
 use crate::models::BaseAssetInfoUpdate;
 use crate::waves::{get_asset_id, Address};
+use crate::{
+    consumer::models::{
+        txs::{Tx as ConvertedTx, TxUidGenerator},
+        waves_data::WavesData,
+    },
+    waves::WAVES_ID,
+};
 
 #[derive(Clone, Debug)]
 pub enum BlockchainUpdate {
@@ -539,6 +542,7 @@ fn handle_base_asset_info_updates<R: RepoOperations>(
     let assets_with_uids_superseded_by = &assets_grouped_with_uids_superseded_by
         .into_iter()
         .flat_map(|(_, v)| v)
+        .filter(|au| !(au.asset_id == WAVES_ID && au.superseded_by == 9223372036854775806))
         .sorted_by_key(|asset| asset.uid)
         .collect_vec();
 

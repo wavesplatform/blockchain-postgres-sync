@@ -1,6 +1,7 @@
 use crate::error::Error;
 use crate::models::{DataEntryTypeValue, Order};
 use crate::schema::*;
+use crate::waves::WAVES_ID;
 use chrono::NaiveDateTime;
 use diesel::Insertable;
 use serde_json::{json, Value};
@@ -119,7 +120,7 @@ impl
 
         fn extract_asset_id(amount: &Amount) -> String {
             if amount.asset_id.is_empty() {
-                String::from("WAVES")
+                WAVES_ID.to_string()
             } else {
                 into_b58(&amount.asset_id)
             }
@@ -266,10 +267,11 @@ impl
             ))
         })?;
         let time_stamp = NaiveDateTime::from_timestamp(tx.timestamp / 1000, 0);
-        let fee = tx.fee.clone();
-        let (fee, fee_asset_id) = fee
+        let (fee, fee_asset_id) = tx
+            .fee
+            .as_ref()
             .map(|f| (f.amount, extract_asset_id(&f)))
-            .unwrap_or((0, "WAVES".to_string()));
+            .unwrap_or((0, WAVES_ID.to_string()));
         let tx_version = Some(tx.version as i16);
         let sender_public_key = into_b58(tx.sender_public_key.as_ref());
 

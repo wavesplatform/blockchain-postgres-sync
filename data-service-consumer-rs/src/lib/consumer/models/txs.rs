@@ -12,9 +12,10 @@ use waves_protobuf_schemas::waves::{
         TransactionMetadata,
     },
     invoke_script_result::call::argument::Value as InvokeScriptArgValue,
+    recipient::Recipient as InnerRecipient,
     signed_transaction::Transaction,
     transaction::Data,
-    Amount, SignedTransaction,
+    Amount, Recipient, SignedTransaction,
 };
 
 type Uid = i64;
@@ -102,30 +103,6 @@ impl
             i64,
         ),
     ) -> Result<Self, Self::Error> {
-        fn into_b58(b: &[u8]) -> String {
-            bs58::encode(b).into_string()
-        }
-
-        fn into_prefixed_b64(b: &[u8]) -> String {
-            String::from("base64:") + &base64::encode(b)
-        }
-
-        fn sanitize_str(s: &String) -> String {
-            s.replace("\x00", "")
-        }
-
-        fn parse_attachment(a: &Vec<u8>) -> String {
-            sanitize_str(&String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(a)))
-        }
-
-        fn extract_asset_id(asset_id: &[u8]) -> String {
-            if asset_id.is_empty() {
-                WAVES_ID.to_string()
-            } else {
-                into_b58(asset_id)
-            }
-        }
-
         let (tx, proofs) = match tx {
             SignedTransaction {
                 transaction: Some(tx),
@@ -293,7 +270,7 @@ impl
                     None
                 },
                 status,
-                recipient_address: String::from("TODO"),
+                recipient_address: into_b58(&t.recipient_address),
                 recipient_alias: None,
                 amount: t.amount,
                 block_uid,
@@ -311,7 +288,7 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                recipient_address: String::from("TODO"),
+                recipient_address: into_b58(&t.recipient_address),
                 recipient_alias: None,
                 amount: t.amount,
                 block_uid,
@@ -364,13 +341,13 @@ impl
                     asset_id: extract_asset_id(asset_id),
                     fee_asset_id,
                     amount: *amount,
-                    attachment: parse_attachment(&t.attachment),
+                    attachment: into_b58(&t.attachment),
                     recipient_address: if let Some(Metadata::Transfer(ref m)) = meta.metadata {
                         into_b58(&m.recipient_address)
                     } else {
                         unreachable!()
                     },
-                    recipient_alias: None,
+                    recipient_alias: extract_recipient_alias(&t.recipient),
                     block_uid,
                 })
             }
@@ -461,7 +438,7 @@ impl
                 } else {
                     unreachable!()
                 },
-                recipient_alias: None,
+                recipient_alias: extract_recipient_alias(&t.recipient),
                 block_uid,
             }),
             Data::LeaseCancel(t) => Tx::LeaseCancel(Tx9Partial {
@@ -515,7 +492,7 @@ impl
                     sender_public_key,
                     status,
                     asset_id: extract_asset_id(&t.asset_id),
-                    attachment: parse_attachment(&t.attachment),
+                    attachment: into_b58(&t.attachment),
                     block_uid,
                 },
                 transfers: t
@@ -527,11 +504,11 @@ impl
                         unreachable!()
                     })
                     .enumerate()
-                    .map(|(i, (tr, rcp_addr))| Tx11Transfers {
+                    .map(|(i, (t, rcpt_addr))| Tx11Transfers {
                         tx_uid: uid,
-                        recipient_address: into_b58(rcp_addr),
-                        recipient_alias: None,
-                        amount: tr.amount,
+                        recipient_address: into_b58(rcpt_addr),
+                        recipient_alias: extract_recipient_alias(&t.recipient),
+                        amount: t.amount,
                         position_in_tx: i as i16,
                         height,
                     })
@@ -1287,4 +1264,34 @@ pub struct Tx18Combined {
     pub tx: Tx18,
     pub args: Vec<Tx18Args>,
     pub payments: Vec<Tx18Payment>,
+}
+
+fn into_b58(b: &[u8]) -> String {
+    bs58::encode(b).into_string()
+}
+
+fn into_prefixed_b64(b: &[u8]) -> String {
+    String::from("base64:") + &base64::encode(b)
+}
+
+fn sanitize_str(s: &String) -> String {
+    s.replace("\x00", "")
+}
+
+fn extract_asset_id(asset_id: &[u8]) -> String {
+    if asset_id.is_empty() {
+        WAVES_ID.to_string()
+    } else {
+        into_b58(asset_id)
+    }
+}
+
+fn extract_recipient_alias(rcpt: &Option<Recipient>) -> Option<String> {
+    rcpt.as_ref()
+        .map(|r| r.recipient.as_ref())
+        .flatten()
+        .and_then(|r| match r {
+            InnerRecipient::Alias(alias) if !alias.is_empty() => Some(alias.clone()),
+            _ => None,
+        })
 }

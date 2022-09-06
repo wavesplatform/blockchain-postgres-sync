@@ -118,11 +118,11 @@ impl
             sanitize_str(&String::from_utf8(a.to_owned()).unwrap_or_else(|_| into_b58(a)))
         }
 
-        fn extract_asset_id(amount: &Amount) -> String {
-            if amount.asset_id.is_empty() {
+        fn extract_asset_id(asset_id: &[u8]) -> String {
+            if asset_id.is_empty() {
                 WAVES_ID.to_string()
             } else {
-                into_b58(&amount.asset_id)
+                into_b58(asset_id)
             }
         }
 
@@ -252,7 +252,7 @@ impl
                                     amount: p.amount,
                                     position_in_payment: i as i16,
                                     height,
-                                    asset_id: into_b58(&p.asset_id),
+                                    asset_id: extract_asset_id(&p.asset_id),
                                 })
                                 .collect(),
                         }
@@ -270,7 +270,7 @@ impl
         let (fee, fee_asset_id) = tx
             .fee
             .as_ref()
-            .map(|f| (f.amount, extract_asset_id(&f)))
+            .map(|f| (f.amount, extract_asset_id(&f.asset_id)))
             .unwrap_or((0, WAVES_ID.to_string()));
         let tx_version = Some(tx.version as i16);
         let sender_public_key = into_b58(tx.sender_public_key.as_ref());
@@ -329,7 +329,11 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                asset_id: id,
+                asset_id: if id.is_empty() {
+                    WAVES_ID.to_string()
+                } else {
+                    id
+                },
                 asset_name: sanitize_str(&t.name),
                 description: sanitize_str(&t.description),
                 quantity: t.amount,
@@ -357,7 +361,7 @@ impl
                     sender,
                     sender_public_key,
                     status,
-                    asset_id: into_b58(asset_id),
+                    asset_id: extract_asset_id(asset_id),
                     fee_asset_id,
                     amount: *amount,
                     attachment: parse_attachment(&t.attachment),
@@ -385,7 +389,7 @@ impl
                     sender,
                     sender_public_key,
                     status,
-                    asset_id: into_b58(asset_id),
+                    asset_id: extract_asset_id(asset_id),
                     quantity: *amount,
                     reissuable: t.reissuable,
                     block_uid,
@@ -406,35 +410,38 @@ impl
                     sender,
                     sender_public_key,
                     status,
-                    asset_id: into_b58(asset_id),
+                    asset_id: extract_asset_id(asset_id),
                     amount: *amount,
                     block_uid,
                 })
             }
-            Data::Exchange(t) => Tx::Exchange(Tx7 {
-                uid,
-                height,
-                tx_type: 7,
-                id,
-                time_stamp,
-                signature,
-                fee,
-                proofs,
-                tx_version,
-                sender,
-                sender_public_key,
-                status,
-                order1: serde_json::to_value(Order::from(&t.orders[0])).unwrap(),
-                order2: serde_json::to_value(Order::from(&t.orders[1])).unwrap(),
-                amount_asset_id: into_b58(&t.orders[0].clone().asset_pair.unwrap().amount_asset_id),
-                price_asset_id: into_b58(&t.orders[0].clone().asset_pair.unwrap().price_asset_id),
-                amount: t.amount,
-                price: t.price,
-                buy_matcher_fee: t.buy_matcher_fee,
-                sell_matcher_fee: t.sell_matcher_fee,
-                fee_asset_id,
-                block_uid,
-            }),
+            Data::Exchange(t) => {
+                let first_order_asset_pair = t.orders[0].asset_pair.as_ref().unwrap();
+                Tx::Exchange(Tx7 {
+                    uid,
+                    height,
+                    tx_type: 7,
+                    id,
+                    time_stamp,
+                    signature,
+                    fee,
+                    proofs,
+                    tx_version,
+                    sender,
+                    sender_public_key,
+                    status,
+                    order1: serde_json::to_value(Order::from(&t.orders[0])).unwrap(),
+                    order2: serde_json::to_value(Order::from(&t.orders[1])).unwrap(),
+                    amount_asset_id: extract_asset_id(&first_order_asset_pair.amount_asset_id),
+                    price_asset_id: extract_asset_id(&first_order_asset_pair.price_asset_id),
+                    amount: t.amount,
+                    price: t.price,
+                    buy_matcher_fee: t.buy_matcher_fee,
+                    sell_matcher_fee: t.sell_matcher_fee,
+                    fee_asset_id,
+                    block_uid,
+                })
+            }
             Data::Lease(t) => Tx::Lease(Tx8 {
                 uid,
                 height,
@@ -507,7 +514,7 @@ impl
                     sender,
                     sender_public_key,
                     status,
-                    asset_id: into_b58(&t.asset_id),
+                    asset_id: extract_asset_id(&t.asset_id),
                     attachment: parse_attachment(&t.attachment),
                     block_uid,
                 },
@@ -609,7 +616,7 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                asset_id: into_b58(&t.min_fee.as_ref().unwrap().asset_id.clone()),
+                asset_id: extract_asset_id(&t.min_fee.as_ref().unwrap().asset_id),
                 min_sponsored_asset_fee: t.min_fee.as_ref().map(|f| f.amount),
                 block_uid,
             }),
@@ -626,7 +633,7 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                asset_id: into_b58(&t.asset_id),
+                asset_id: extract_asset_id(&t.asset_id),
                 script: into_prefixed_b64(&t.script),
                 block_uid,
             }),
@@ -651,7 +658,7 @@ impl
                         sender_public_key,
                         status,
                         function_name: Some(meta.function_name.clone()),
-                        fee_asset_id: extract_asset_id(&tx.fee.as_ref().unwrap()),
+                        fee_asset_id: extract_asset_id(&tx.fee.as_ref().unwrap().asset_id),
                         dapp_address: into_b58(&meta.d_app_address),
                         dapp_alias: None,
                         block_uid,
@@ -709,7 +716,7 @@ impl
                             amount: p.amount,
                             position_in_payment: i as i16,
                             height,
-                            asset_id: into_b58(&p.asset_id),
+                            asset_id: extract_asset_id(&p.asset_id),
                         })
                         .collect(),
                 })
@@ -727,7 +734,7 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                asset_id: into_b58(&t.asset_id),
+                asset_id: extract_asset_id(&t.asset_id),
                 asset_name: sanitize_str(&t.name),
                 description: sanitize_str(&t.description),
                 block_uid,

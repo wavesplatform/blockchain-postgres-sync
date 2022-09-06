@@ -97,7 +97,7 @@ pub struct Order {
     pub expiration: i64,
     pub matcher_fee: Option<Amount>,
     pub version: i32,
-    pub proofs: Vec<Vec<u8>>,
+    pub proofs: Vec<String>,
     pub price_mode: i32,
     pub sender: Option<Sender>,
 }
@@ -122,7 +122,11 @@ impl From<&OrderPb> for Order {
                 amount: f.amount,
             }),
             version: o.version,
-            proofs: o.proofs,
+            proofs: o
+                .proofs
+                .into_iter()
+                .map(|p| bs58::encode(p).into_string())
+                .collect(),
             price_mode: o.price_mode,
             sender: o.sender.map(|s| match s {
                 SenderPb::Eip712Signature(v) => Sender::Eip712Signature(v),

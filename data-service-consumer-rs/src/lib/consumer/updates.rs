@@ -1,7 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use bs58;
-use chrono::{Duration, NaiveDateTime};
+use chrono::Duration;
 use std::str;
 use std::time::{Duration as StdDuration, Instant};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -26,7 +26,8 @@ use waves_protobuf_schemas::waves::{
 use wavesexchange_log::{debug, error};
 
 use super::{
-    BlockMicroblockAppend, BlockchainUpdate, BlockchainUpdatesWithLastHeight, Tx, UpdatesSource,
+    epoch_ms_to_naivedatetime, BlockMicroblockAppend, BlockchainUpdate,
+    BlockchainUpdatesWithLastHeight, Tx, UpdatesSource,
 };
 use crate::error::Error as AppError;
 
@@ -208,7 +209,7 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                         updated_waves_amount,
                     })) => Ok(Block(BlockMicroblockAppend {
                         id: bs58::encode(&value.id).into_string(),
-                        time_stamp: Some(NaiveDateTime::from_timestamp(*timestamp / 1000, 0)),
+                        time_stamp: Some(epoch_ms_to_naivedatetime(*timestamp)),
                         height,
                         updated_waves_amount: if *updated_waves_amount > 0 {
                             Some(*updated_waves_amount)

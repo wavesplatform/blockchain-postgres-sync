@@ -1,3 +1,4 @@
+use crate::consumer::epoch_ms_to_naivedatetime;
 use crate::error::Error;
 use crate::models::{DataEntryTypeValue, Order};
 use crate::schema::*;
@@ -119,8 +120,8 @@ impl
         let proofs = proofs.iter().map(|p| into_b58(p)).collect::<Vec<_>>();
         let signature = proofs.get(0).map(ToOwned::to_owned);
         let proofs = Some(proofs);
-
         let mut status = String::from("succeeded");
+
         if let Some(
             Metadata::Ethereum(EthereumMetadata {
                 action: Some(EthAction::Invoke(ref m)),
@@ -130,8 +131,8 @@ impl
         ) = meta.metadata
         {
             if let Some(ref result) = m.result {
-                if let Some(ref err) = result.error_message {
-                    status = err.text.clone();
+                if let Some(_) = result.error_message {
+                    status = String::from("script_execution_failed");
                 }
             }
         }
@@ -151,7 +152,7 @@ impl
                     height,
                     tx_type: 18,
                     id,
-                    time_stamp: NaiveDateTime::from_timestamp(meta.timestamp / 1000, 0),
+                    time_stamp: epoch_ms_to_naivedatetime(meta.timestamp),
                     signature,
                     fee: meta.fee,
                     proofs,
@@ -243,7 +244,7 @@ impl
                 "No inner transaction data in id={id}, height={height}",
             ))
         })?;
-        let time_stamp = NaiveDateTime::from_timestamp(tx.timestamp / 1000, 0);
+        let time_stamp = epoch_ms_to_naivedatetime(tx.timestamp);
         let (fee, fee_asset_id) = tx
             .fee
             .as_ref()
@@ -577,7 +578,7 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                script: into_b58(&t.script),
+                script: into_prefixed_b64(&t.script),
                 block_uid,
             }),
             Data::SponsorFee(t) => Tx::SponsorFee(Tx14 {
@@ -637,7 +638,7 @@ impl
                         function_name: Some(meta.function_name.clone()),
                         fee_asset_id: extract_asset_id(&tx.fee.as_ref().unwrap().asset_id),
                         dapp_address: into_b58(&meta.d_app_address),
-                        dapp_alias: None,
+                        dapp_alias: extract_recipient_alias(&t.d_app),
                         block_uid,
                     },
                     args: meta

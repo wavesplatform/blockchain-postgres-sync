@@ -413,13 +413,7 @@ fn extract_base_asset_info_updates(
                         let time_stamp = match tx.data.transaction.as_ref() {
                             Some(stx) => match stx {
                                 Transaction::WavesTransaction(WavesTx { timestamp, .. }) => {
-                                    DateTime::from_utc(
-                                        NaiveDateTime::from_timestamp(
-                                            timestamp / 1000,
-                                            *timestamp as u32 % 1000 * 1000,
-                                        ),
-                                        Utc,
-                                    )
+                                    DateTime::from_utc(epoch_ms_to_naivedatetime(*timestamp), Utc)
                                 }
                                 Transaction::EthereumTransaction(_) => return None,
                             },
@@ -600,4 +594,8 @@ fn rollback_assets<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
 
 fn escape_unicode_null(s: &str) -> String {
     s.replace("\0", "\\0")
+}
+
+fn epoch_ms_to_naivedatetime(ts: i64) -> NaiveDateTime {
+    NaiveDateTime::from_timestamp(ts / 1000, ts as u32 % 1000 * 1_000_000)
 }

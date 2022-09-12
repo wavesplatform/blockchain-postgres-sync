@@ -1,3 +1,4 @@
+DROP VIEW IF EXISTS assets;
 DROP TABLE IF EXISTS asset_origins;
 DROP TABLE IF EXISTS asset_updates;
 DROP TABLE IF EXISTS assets_names_map;
@@ -32,7 +33,6 @@ DROP TABLE IF EXISTS txs_18_payment;
 DROP TABLE IF EXISTS txs_18;
 DROP TABLE IF EXISTS txs;
 DROP TABLE IF EXISTS blocks_microblocks;
-DROP TABLE IF EXISTS assets;
 DROP FUNCTION IF EXISTS public.text_timestamp_cast;
 
 DROP INDEX IF EXISTS candles_max_height_index;

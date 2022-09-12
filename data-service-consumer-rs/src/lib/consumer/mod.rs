@@ -22,12 +22,13 @@ use self::models::block_microblock::BlockMicroblock;
 use self::repo::RepoOperations;
 use crate::error::Error as AppError;
 use crate::models::BaseAssetInfoUpdate;
-use crate::waves::{get_asset_id, Address};
+use crate::waves::{extract_asset_id, Address};
 use crate::{
     consumer::models::{
         txs::{Tx as ConvertedTx, TxUidGenerator},
         waves_data::WavesData,
     },
+    utils::epoch_ms_to_naivedatetime,
     waves::WAVES_ID,
 };
 
@@ -263,7 +264,7 @@ where
 
     info!("handled {} assets updates", updates_amount);
 
-    handle_txs(repo, &block_uids_with_appends)?;
+    handle_txs(repo, &block_uids_with_appends, chain_id)?;
 
     let waves_data = appends
         .into_iter()
@@ -285,6 +286,7 @@ where
 fn handle_txs<R: RepoOperations>(
     repo: &R,
     block_uid_data: &Vec<(i64, &BlockMicroblockAppend)>,
+    chain_id: u8,
 ) -> Result<(), Error> {
     let mut txs_1 = vec![];
     let mut txs_2 = vec![];
@@ -316,7 +318,7 @@ fn handle_txs<R: RepoOperations>(
         for tx in &bm.txs {
             ugen.maybe_update_height(bm.height as usize);
             let result_tx = match ConvertedTx::try_from((
-                &tx.data, &tx.id, bm.height, &tx.meta, &mut ugen, *block_uid,
+                &tx.data, &tx.id, bm.height, &tx.meta, &mut ugen, *block_uid, chain_id,
             )) {
                 Ok(r) => r,
                 Err(e) => match e {
@@ -420,7 +422,7 @@ fn extract_base_asset_info_updates(
                             _ => Utc::now(),
                         };
 
-                        let asset_id = get_asset_id(&asset_details.asset_id);
+                        let asset_id = extract_asset_id(&asset_details.asset_id);
                         let issuer =
                             Address::from((asset_details.issuer.as_slice(), chain_id)).into();
                         Some(BaseAssetInfoUpdate {
@@ -536,7 +538,7 @@ fn handle_base_asset_info_updates<R: RepoOperations>(
     let assets_with_uids_superseded_by = &assets_grouped_with_uids_superseded_by
         .into_iter()
         .flat_map(|(_, v)| v)
-        .filter(|au| !(au.asset_id == WAVES_ID && au.superseded_by == 9223372036854775806))
+        .filter(|au| !(au.asset_id == WAVES_ID))
         .sorted_by_key(|asset| asset.uid)
         .collect_vec();
 
@@ -568,7 +570,6 @@ fn rollback<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
     debug!("rolling back to block_uid = {}", block_uid);
 
     rollback_assets(repo, block_uid)?;
-
     repo.rollback_blocks_microblocks(&block_uid)?;
 
     Ok(())
@@ -594,8 +595,4 @@ fn rollback_assets<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
 
 fn escape_unicode_null(s: &str) -> String {
     s.replace("\0", "\\0")
-}
-
-fn epoch_ms_to_naivedatetime(ts: i64) -> NaiveDateTime {
-    NaiveDateTime::from_timestamp(ts / 1000, ts as u32 % 1000 * 1_000_000)
 }

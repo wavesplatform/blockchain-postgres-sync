@@ -1,8 +1,8 @@
-use crate::consumer::epoch_ms_to_naivedatetime;
 use crate::error::Error;
-use crate::models::{DataEntryTypeValue, Order};
+use crate::models::{DataEntryTypeValue, Order, OrderMeta};
 use crate::schema::*;
-use crate::waves::WAVES_ID;
+use crate::utils::{epoch_ms_to_naivedatetime, into_b58, into_prefixed_b64};
+use crate::waves::{extract_asset_id, Address, WAVES_ID};
 use chrono::NaiveDateTime;
 use diesel::Insertable;
 use serde_json::{json, Value};
@@ -90,18 +90,20 @@ impl
         &TransactionMetadata,
         &mut TxUidGenerator,
         i64,
+        u8,
     )> for Tx
 {
     type Error = Error;
 
     fn try_from(
-        (tx, id, height, meta, ugen, block_uid): (
+        (tx, id, height, meta, ugen, block_uid, chain_id): (
             &SignedTransaction,
             &Id,
             Height,
             &TransactionMetadata,
             &mut TxUidGenerator,
             i64,
+            u8,
         ),
     ) -> Result<Self, Self::Error> {
         let (tx, proofs) = match tx {
@@ -145,7 +147,7 @@ impl
                 let meta = if let Some(Metadata::Ethereum(ref m)) = meta.metadata {
                     m
                 } else {
-                    unreachable!("non-eth meta cannot be in EthereumTransaction")
+                    unreachable!("wrong meta variant")
                 };
                 let mut eth_tx = Tx18 {
                     uid,
@@ -251,7 +253,7 @@ impl
             .map(|f| (f.amount, extract_asset_id(&f.asset_id)))
             .unwrap_or((0, WAVES_ID.to_string()));
         let tx_version = Some(tx.version as i16);
-        let sender_public_key = into_b58(tx.sender_public_key.as_ref());
+        let sender_public_key = into_b58(&tx.sender_public_key);
 
         Ok(match tx_data {
             Data::Genesis(t) => Tx::Genesis(Tx1 {
@@ -271,7 +273,7 @@ impl
                     None
                 },
                 status,
-                recipient_address: into_b58(&t.recipient_address),
+                recipient_address: Address::from((t.recipient_address.as_ref(), chain_id)).into(),
                 recipient_alias: None,
                 amount: t.amount,
                 block_uid,
@@ -289,7 +291,7 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                recipient_address: into_b58(&t.recipient_address),
+                recipient_address: Address::from((t.recipient_address.as_ref(), chain_id)).into(),
                 recipient_alias: None,
                 amount: t.amount,
                 block_uid,
@@ -346,7 +348,7 @@ impl
                     recipient_address: if let Some(Metadata::Transfer(ref m)) = meta.metadata {
                         into_b58(&m.recipient_address)
                     } else {
-                        unreachable!()
+                        unreachable!("wrong meta variant")
                     },
                     recipient_alias: extract_recipient_alias(&t.recipient),
                     block_uid,
@@ -394,6 +396,24 @@ impl
                 })
             }
             Data::Exchange(t) => {
+                let order_to_val = |o| serde_json::to_value(Order::from(o)).unwrap();
+                let meta = if let Some(Metadata::Exchange(m)) = &meta.metadata {
+                    m
+                } else {
+                    unreachable!("wrong meta variant")
+                };
+                let order_1 = OrderMeta {
+                    order: &t.orders[0],
+                    id: &meta.order_ids[0],
+                    sender_address: &meta.order_sender_addresses[0],
+                    sender_public_key: &meta.order_sender_public_keys[0],
+                };
+                let order_2 = OrderMeta {
+                    order: &t.orders[1],
+                    id: &meta.order_ids[1],
+                    sender_address: &meta.order_sender_addresses[1],
+                    sender_public_key: &meta.order_sender_public_keys[1],
+                };
                 let first_order_asset_pair = t.orders[0].asset_pair.as_ref().unwrap();
                 Tx::Exchange(Tx7 {
                     uid,
@@ -408,8 +428,8 @@ impl
                     sender,
                     sender_public_key,
                     status,
-                    order1: serde_json::to_value(Order::from(&t.orders[0])).unwrap(),
-                    order2: serde_json::to_value(Order::from(&t.orders[1])).unwrap(),
+                    order1: order_to_val(order_1),
+                    order2: order_to_val(order_2),
                     amount_asset_id: extract_asset_id(&first_order_asset_pair.amount_asset_id),
                     price_asset_id: extract_asset_id(&first_order_asset_pair.price_asset_id),
                     amount: t.amount,
@@ -437,7 +457,7 @@ impl
                 recipient_address: if let Some(Metadata::Lease(ref m)) = meta.metadata {
                     into_b58(&m.recipient_address)
                 } else {
-                    unreachable!()
+                    unreachable!("wrong meta variant")
                 },
                 recipient_alias: extract_recipient_alias(&t.recipient),
                 block_uid,
@@ -502,7 +522,7 @@ impl
                     .zip(if let Some(Metadata::MassTransfer(ref m)) = meta.metadata {
                         &m.recipients_addresses
                     } else {
-                        unreachable!()
+                        unreachable!("wrong meta variant")
                     })
                     .enumerate()
                     .map(|(i, (t, rcpt_addr))| Tx11Transfers {
@@ -619,7 +639,7 @@ impl
                 let meta = if let Some(Metadata::InvokeScript(ref m)) = meta.metadata {
                     m
                 } else {
-                    unreachable!()
+                    unreachable!("wrong meta variant")
                 };
                 Tx::InvokeScript(Tx16Combined {
                     tx: Tx16 {
@@ -1267,24 +1287,8 @@ pub struct Tx18Combined {
     pub payments: Vec<Tx18Payment>,
 }
 
-fn into_b58(b: &[u8]) -> String {
-    bs58::encode(b).into_string()
-}
-
-fn into_prefixed_b64(b: &[u8]) -> String {
-    String::from("base64:") + &base64::encode(b)
-}
-
 fn sanitize_str(s: &String) -> String {
     s.replace("\x00", "")
-}
-
-fn extract_asset_id(asset_id: &[u8]) -> String {
-    if asset_id.is_empty() {
-        WAVES_ID.to_string()
-    } else {
-        into_b58(asset_id)
-    }
 }
 
 fn extract_recipient_alias(rcpt: &Option<Recipient>) -> Option<String> {

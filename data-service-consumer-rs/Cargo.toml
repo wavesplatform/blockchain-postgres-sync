@@ -44,6 +44,7 @@ wavesexchange_warp = { git = "https://github.com/waves-exchange/wavesexchange-rs
 diesel_full_text_search = "1.0.1"
 waves-protobuf-schemas = { git = "https://github.com/wavesplatform/protobuf-schemas", tag = "v1.4.3" }
 deadpool-diesel = "0.3.1"
+hex = "0.4.3"
 
 [lib]
 name = "app_lib"

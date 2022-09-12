@@ -1,3 +1,4 @@
+use crate::utils::into_b58;
 use crate::waves::{WAVES_ID, WAVES_NAME, WAVES_PRECISION};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -85,73 +86,93 @@ impl From<&ListPb> for ArgList {
     }
 }
 
-#[derive(Serialize)]
+pub struct OrderMeta<'o> {
+    pub order: &'o OrderPb,
+    pub id: &'o [u8],
+    pub sender_address: &'o [u8],
+    pub sender_public_key: &'o [u8],
+}
+
+#[derive(Debug, Serialize)]
 pub struct Order {
-    pub chain_id: i32,
-    pub matcher_public_key: Vec<u8>,
-    pub asset_pair: Option<AssetPair>,
-    pub order_side: i32,
+    pub id: String,
+    pub version: i32,
+    pub sender: String,
+    pub sender_public_key: String,
+    pub matcher_public_key: String,
+    pub asset_pair: AssetPair,
+    pub order_type: OrderType,
     pub amount: i64,
     pub price: i64,
     pub timestamp: i64,
     pub expiration: i64,
-    pub matcher_fee: Option<Amount>,
-    pub version: i32,
+    pub matcher_fee: i64,
+    pub matcher_fee_asset_id: Option<String>,
     pub proofs: Vec<String>,
-    pub price_mode: i32,
-    pub sender: Option<Sender>,
+    pub signature: Option<String>,
 }
 
-impl From<&OrderPb> for Order {
-    fn from(o: &OrderPb) -> Self {
-        let o = o.clone();
+impl From<OrderMeta<'_>> for Order {
+    fn from(o: OrderMeta) -> Self {
+        let OrderMeta {
+            order,
+            id,
+            sender_address,
+            sender_public_key,
+        } = o;
         Self {
-            chain_id: o.chain_id,
-            matcher_public_key: o.matcher_public_key,
-            asset_pair: o.asset_pair.map(|p| AssetPair {
-                amount_asset_id: p.amount_asset_id,
-                price_asset_id: p.price_asset_id,
-            }),
-            order_side: o.order_side,
-            amount: o.amount,
-            price: o.price,
-            timestamp: o.timestamp,
-            expiration: o.expiration,
-            matcher_fee: o.matcher_fee.map(|f| Amount {
-                asset_id: f.asset_id,
-                amount: f.amount,
-            }),
-            version: o.version,
-            proofs: o
-                .proofs
-                .into_iter()
-                .map(|p| bs58::encode(p).into_string())
-                .collect(),
-            price_mode: o.price_mode,
-            sender: o.sender.map(|s| match s {
-                SenderPb::Eip712Signature(v) => Sender::Eip712Signature(v),
-                SenderPb::SenderPublicKey(v) => Sender::SenderPublicKey(v),
-            }),
+            matcher_public_key: into_b58(&order.matcher_public_key),
+            asset_pair: AssetPair {
+                amount_asset_id: order
+                    .asset_pair
+                    .as_ref()
+                    .map(|p| into_b58(&p.amount_asset_id)),
+                price_asset_id: order
+                    .asset_pair
+                    .as_ref()
+                    .map(|p| into_b58(&p.price_asset_id)),
+            },
+            order_type: OrderType::from(order.order_side),
+            amount: order.amount,
+            price: order.price,
+            timestamp: order.timestamp,
+            expiration: order.expiration,
+            matcher_fee: order.matcher_fee.as_ref().map(|f| f.amount).unwrap_or(0),
+            matcher_fee_asset_id: order.matcher_fee.as_ref().map(|f| into_b58(&f.asset_id)),
+            version: order.version,
+            proofs: order.proofs.iter().map(into_b58).collect(),
+            sender: into_b58(sender_address),
+            id: into_b58(&id),
+            sender_public_key: into_b58(&sender_public_key),
+            signature: match order.sender {
+                Some(SenderPb::SenderPublicKey(_)) | None => None,
+                Some(SenderPb::Eip712Signature(ref sig)) => Some(format!("0x{}", hex::encode(sig))),
+            },
         }
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct AssetPair {
-    pub amount_asset_id: Vec<u8>,
-    pub price_asset_id: Vec<u8>,
+    pub amount_asset_id: Option<String>,
+    pub price_asset_id: Option<String>,
 }
 
-#[derive(Serialize)]
-pub struct Amount {
-    pub asset_id: Vec<u8>,
-    pub amount: i64,
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum OrderType {
+    Buy = 0,
+    Sell = 1,
 }
 
-#[derive(Serialize)]
-pub enum Sender {
-    SenderPublicKey(Vec<u8>),
-    Eip712Signature(Vec<u8>),
+impl From<i32> for OrderType {
+    fn from(n: i32) -> Self {
+        match n {
+            0 => OrderType::Buy,
+            1 => OrderType::Sell,
+            r => panic!("unknown OrderType {r}"),
+        }
+    }
 }
 
 #[cfg(test)]

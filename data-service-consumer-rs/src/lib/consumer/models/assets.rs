@@ -1,7 +1,6 @@
 use crate::schema::*;
 use chrono::NaiveDateTime;
 use diesel::{Insertable, Queryable};
-//use diesel_full_text_search::TsVector;
 use std::hash::{Hash, Hasher};
 
 pub type BlockUid = i64;

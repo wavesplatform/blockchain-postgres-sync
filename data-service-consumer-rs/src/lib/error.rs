@@ -34,8 +34,6 @@ pub enum Error {
     CursorDecodeError(#[from] base64::DecodeError),
     #[error("DataEntryValueParseError: {0}")]
     DataEntryValueParseError(String),
-    #[error("RedisError: {0}")]
-    RedisError(#[from] redis::RedisError),
     #[error("InvalidDataEntryUpdate: {0}")]
     InvalidDataEntryUpdate(String),
     #[error("Unauthorized: {0}")]
@@ -48,8 +46,6 @@ pub enum Error {
     InvalidateCacheError(String),
     #[error("IncosistDataError: {0}")]
     IncosistDataError(String),
-    #[error("NotImplementedYetError: {0}")]
-    NotImplementedYetError(String),
 }
 
 impl Reject for Error {}

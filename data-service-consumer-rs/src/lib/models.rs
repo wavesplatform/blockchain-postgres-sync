@@ -94,6 +94,7 @@ pub struct OrderMeta<'o> {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Order {
     pub id: String,
     pub version: i32,
@@ -126,11 +127,13 @@ impl From<OrderMeta<'_>> for Order {
                 amount_asset_id: order
                     .asset_pair
                     .as_ref()
-                    .map(|p| into_b58(&p.amount_asset_id)),
+                    .map(|p| &p.amount_asset_id)
+                    .and_then(|asset| (asset.len() > 0).then(|| into_b58(asset))),
                 price_asset_id: order
                     .asset_pair
                     .as_ref()
-                    .map(|p| into_b58(&p.price_asset_id)),
+                    .map(|p| &p.price_asset_id)
+                    .and_then(|asset| (asset.len() > 0).then(|| into_b58(asset))),
             },
             order_type: OrderType::from(order.order_side),
             amount: order.amount,
@@ -138,15 +141,19 @@ impl From<OrderMeta<'_>> for Order {
             timestamp: order.timestamp,
             expiration: order.expiration,
             matcher_fee: order.matcher_fee.as_ref().map(|f| f.amount).unwrap_or(0),
-            matcher_fee_asset_id: order.matcher_fee.as_ref().map(|f| into_b58(&f.asset_id)),
+            matcher_fee_asset_id: order
+                .matcher_fee
+                .as_ref()
+                .map(|f| &f.asset_id)
+                .and_then(|asset| (asset.len() > 0).then(|| into_b58(asset))),
             version: order.version,
             proofs: order.proofs.iter().map(into_b58).collect(),
             sender: into_b58(sender_address),
             id: into_b58(&id),
             sender_public_key: into_b58(&sender_public_key),
             signature: match order.sender {
-                Some(SenderPb::SenderPublicKey(_)) | None => None,
                 Some(SenderPb::Eip712Signature(ref sig)) => Some(format!("0x{}", hex::encode(sig))),
+                _ => None,
             },
         }
     }
@@ -154,7 +161,9 @@ impl From<OrderMeta<'_>> for Order {
 
 #[derive(Serialize, Debug)]
 pub struct AssetPair {
+    #[serde(rename = "amountAsset")]
     pub amount_asset_id: Option<String>,
+    #[serde(rename = "priceAsset")]
     pub price_asset_id: Option<String>,
 }
 

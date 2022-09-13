@@ -15,7 +15,7 @@ use waves_protobuf_schemas::waves::{
     signed_transaction::Transaction,
     SignedTransaction, Transaction as WavesTx,
 };
-use wavesexchange_log::{debug, info, timer, warn};
+use wavesexchange_log::{debug, info, timer};
 
 use self::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use self::models::block_microblock::BlockMicroblock;
@@ -317,18 +317,9 @@ fn handle_txs<R: RepoOperations>(
     for (block_uid, bm) in block_uid_data {
         for tx in &bm.txs {
             ugen.maybe_update_height(bm.height as usize);
-            let result_tx = match ConvertedTx::try_from((
+            let result_tx = ConvertedTx::try_from((
                 &tx.data, &tx.id, bm.height, &tx.meta, &mut ugen, *block_uid, chain_id,
-            )) {
-                Ok(r) => r,
-                Err(e) => match e {
-                    AppError::NotImplementedYetError(e) => {
-                        warn!("{}", e);
-                        continue;
-                    }
-                    o => return Err(o.into()),
-                },
-            };
+            ))?;
             match result_tx {
                 ConvertedTx::Genesis(t) => txs_1.push(t),
                 ConvertedTx::Payment(t) => txs_2.push(t),
@@ -353,7 +344,11 @@ fn handle_txs<R: RepoOperations>(
     }
 
     #[inline]
-    fn insert_txs<T: 'static, F: Fn(Vec<T>) -> Result<()>>(txs: Vec<T>, inserter: F) -> Result<()> {
+    fn insert_txs<T, F>(txs: Vec<T>, inserter: F) -> Result<()>
+    where
+        T: 'static,
+        F: Fn(Vec<T>) -> Result<()>,
+    {
         if !txs.is_empty() {
             inserter(txs)?;
         }

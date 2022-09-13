@@ -167,9 +167,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict((asset_updates::superseded_by, asset_updates::asset_id))
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert new asset updates"))
     }
 
@@ -180,9 +178,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(asset_origins::asset_id)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert new assets"))
     }
 
@@ -279,9 +275,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_1::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert Genesis transactions"))
     }
 
@@ -292,9 +286,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_2::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert Payment transactions"))
     }
 
@@ -305,9 +297,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_3::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert Issue transactions"))
     }
 
@@ -318,9 +308,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_4::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert Transfer transactions"))
     }
 
@@ -331,9 +319,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_5::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert Reissue transactions"))
     }
 
@@ -344,9 +330,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_6::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert Burn transactions"))
     }
 
@@ -357,9 +341,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_7::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert Exchange transactions"))
     }
 
@@ -370,9 +352,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_8::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert Lease transactions"))
     }
 
@@ -383,7 +363,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .iter()
             .filter_map(|tx| tx.lease_id.as_ref())
             .collect::<Vec<_>>();
-        let tx_id_uid = chunked(txs::table, &lease_ids, |ids| {
+        let tx_id_uid = chunked_with_result(txs::table, &lease_ids, |ids| {
             txs::table
                 .select((txs::id, txs::uid))
                 .filter(txs::id.eq(any(ids)))
@@ -411,9 +391,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_9::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert LeaseCancel transactions"))
     }
 
@@ -424,9 +402,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_10::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert CreateAlias transactions"))
     }
 
@@ -441,7 +417,6 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_11::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
         .map_err(build_err_fn("Cannot insert MassTransfer transactions"))?;
 
@@ -451,9 +426,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict((txs_11_transfers::tx_uid, txs_11_transfers::position_in_tx))
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert MassTransfer transfers"))
     }
 
@@ -468,7 +441,6 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_12::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
         .map_err(build_err_fn("Cannot insert DataTransaction transaction"))?;
 
@@ -478,9 +450,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict((txs_12_data::tx_uid, txs_12_data::position_in_tx))
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert DataTransaction data"))
     }
 
@@ -491,9 +461,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_13::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert SetScript transactions"))
     }
 
@@ -504,9 +472,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_14::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert SponsorFee transactions"))
     }
 
@@ -517,9 +483,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_15::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert SetAssetScript transactions"))
     }
 
@@ -539,7 +503,6 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_16::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
         .map_err(build_err_fn("Cannot insert InvokeScript transactions"))?;
 
@@ -549,7 +512,6 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict((txs_16_args::tx_uid, txs_16_args::position_in_args))
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
         .map_err(build_err_fn("Cannot insert InvokeScript args"))?;
 
@@ -559,9 +521,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict((txs_16_payment::tx_uid, txs_16_payment::position_in_payment))
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert InvokeScript payments"))
     }
 
@@ -572,9 +532,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_17::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert UpdateAssetInfo transactions"))
     }
 
@@ -594,7 +552,6 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict(txs_18::uid)
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
         .map_err(build_err_fn("Cannot insert Ethereum transactions"))?;
 
@@ -604,7 +561,6 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict((txs_18_args::tx_uid, txs_18_args::position_in_args))
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
         .map_err(build_err_fn("Cannot insert Ethereum InvokeScript args"))?;
 
@@ -614,19 +570,16 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .on_conflict((txs_18_payment::tx_uid, txs_18_payment::position_in_payment))
                 .do_nothing()
                 .execute(self.conn)
-                .map(drop)
         })
-        .map(drop)
         .map_err(build_err_fn("Cannot insert Ethereum InvokeScript payments"))
     }
 }
 
-fn chunked<T, F, V, R, RV>(_: T, values: &Vec<V>, query_fn: F) -> Result<Vec<R>, DslError>
+fn chunked_with_result<T, F, V, R>(_: T, values: &Vec<V>, query_fn: F) -> Result<Vec<R>, DslError>
 where
     T: Table,
     T::AllColumns: TupleLen,
-    RV: OneOrMany<R>,
-    F: Fn(&[V]) -> Result<RV, DslError>,
+    F: Fn(&[V]) -> Result<Vec<R>, DslError>,
 {
     let columns_count = T::all_columns().len();
     let chunk_size = (PG_MAX_INSERT_FIELDS_COUNT / columns_count) / 10 * 10;
@@ -635,26 +588,20 @@ where
         .chunks(chunk_size)
         .into_iter()
         .try_fold((), |_, chunk| {
-            result.extend(query_fn(chunk)?.anything_into_vec());
+            result.extend(query_fn(chunk)?);
             Ok::<_, DslError>(())
         })?;
     Ok(result)
 }
 
-trait OneOrMany<T> {
-    fn anything_into_vec(self) -> Vec<T>;
-}
-
-impl OneOrMany<()> for () {
-    fn anything_into_vec(self) -> Vec<()> {
-        vec![]
-    }
-}
-
-impl<T> OneOrMany<T> for Vec<T> {
-    fn anything_into_vec(self) -> Vec<T> {
-        self
-    }
+#[inline]
+fn chunked<T, F, V>(table: T, values: &Vec<V>, query_fn: F) -> Result<(), DslError>
+where
+    T: Table,
+    T::AllColumns: TupleLen,
+    F: Fn(&[V]) -> Result<usize, DslError>, //allows only dsl_query.execute()
+{
+    chunked_with_result(table, values, |v| query_fn(v).map(|_| Vec::<()>::new())).map(drop)
 }
 
 fn build_err_fn(msg: impl AsRef<str>) -> impl Fn(DslError) -> Error {

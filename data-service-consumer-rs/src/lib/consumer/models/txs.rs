@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::models::{DataEntryTypeValue, Order, OrderMeta};
 use crate::schema::*;
 use crate::utils::{epoch_ms_to_naivedatetime, into_b58, into_prefixed_b64};
-use crate::waves::{extract_asset_id, Address, WAVES_ID};
+use crate::waves::{extract_asset_id, Address, PublicKeyHash, WAVES_ID};
 use chrono::NaiveDateTime;
 use diesel::Insertable;
 use serde_json::{json, Value};
@@ -265,15 +265,15 @@ impl
                 signature,
                 fee,
                 proofs,
-                tx_version,
-                sender,
-                sender_public_key: if !sender_public_key.is_empty() {
-                    Some(sender_public_key)
-                } else {
-                    None
-                },
+                tx_version: tx_version.and_then(|v| (v != 1).then_some(v)),
+                sender: (sender.len() > 0).then_some(sender),
+                sender_public_key: (sender_public_key.len() > 0).then_some(sender_public_key),
                 status,
-                recipient_address: Address::from((t.recipient_address.as_ref(), chain_id)).into(),
+                recipient_address: Address::from((
+                    PublicKeyHash(t.recipient_address.as_ref()),
+                    chain_id,
+                ))
+                .into(),
                 recipient_alias: None,
                 amount: t.amount,
                 block_uid,
@@ -287,11 +287,15 @@ impl
                 signature,
                 fee,
                 proofs,
-                tx_version,
+                tx_version: tx_version.and_then(|v| (v != 1).then_some(v)),
                 sender,
                 sender_public_key,
                 status,
-                recipient_address: Address::from((t.recipient_address.as_ref(), chain_id)).into(),
+                recipient_address: Address::from((
+                    PublicKeyHash(t.recipient_address.as_ref()),
+                    chain_id,
+                ))
+                .into(),
                 recipient_alias: None,
                 amount: t.amount,
                 block_uid,
@@ -615,7 +619,10 @@ impl
                 sender_public_key,
                 status,
                 asset_id: extract_asset_id(&t.min_fee.as_ref().unwrap().asset_id),
-                min_sponsored_asset_fee: t.min_fee.as_ref().map(|f| f.amount),
+                min_sponsored_asset_fee: t
+                    .min_fee
+                    .as_ref()
+                    .and_then(|f| (f.amount != 0).then_some(f.amount)),
                 block_uid,
             }),
             Data::SetAssetScript(t) => Tx::SetAssetScript(Tx15 {
@@ -756,7 +763,7 @@ pub struct Tx1 {
     pub proofs: Proofs,
     pub tx_version: TxVersion,
     pub block_uid: i64,
-    pub sender: Sender,
+    pub sender: Option<Sender>,
     pub sender_public_key: Option<SenderPubKey>,
     pub status: Status,
     pub recipient_address: String,

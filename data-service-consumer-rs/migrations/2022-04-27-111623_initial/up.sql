@@ -47,15 +47,15 @@ CREATE TABLE IF NOT EXISTS txs (
     tx_type SMALLINT NOT NULL,
     sender VARCHAR,
     sender_public_key VARCHAR,
-    id VARCHAR NOT NULL,
     time_stamp TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     height INTEGER NOT NULL,
+    id VARCHAR NOT NULL,
     signature VARCHAR,
     proofs TEXT[],
     tx_version SMALLINT,
-    block_uid BIGINT NOT NULL,
     fee BIGINT NOT NULL,
     status VARCHAR DEFAULT 'succeeded' NOT NULL,
+    block_uid BIGINT NOT NULL,
 
     CONSTRAINT txs_pk PRIMARY KEY (uid, id, time_stamp),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid) ON DELETE CASCADE
@@ -466,147 +466,187 @@ begin
 END
 $_$;
 
-CREATE INDEX IF NOT EXISTS candles_max_height_index ON candles USING btree (max_height);
-CREATE INDEX IF NOT EXISTS candles_amount_price_ids_matcher_time_start_partial_1m_idx ON candles (amount_asset_id, price_asset_id, matcher_address, time_start) WHERE (("interval")::text = '1m'::text);
-CREATE INDEX IF NOT EXISTS txs_height_idx ON txs USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_id_idx ON txs USING hash (id);
-CREATE INDEX IF NOT EXISTS txs_sender_uid_idx ON txs USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_time_stamp_uid_idx ON txs USING btree (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_tx_type_idx ON txs USING btree (tx_type);
-CREATE INDEX IF NOT EXISTS txs_10_alias_sender_idx ON txs_10 USING btree (alias, sender);
-CREATE INDEX IF NOT EXISTS txs_10_alias_uid_idx ON txs_10 USING btree (alias, uid);
+CREATE UNIQUE INDEX IF NOT EXISTS txs_1_uid_time_stamp_unique_idx  ON txs_1  (uid, time_stamp);
+CREATE UNIQUE INDEX IF NOT EXISTS txs_2_uid_time_stamp_unique_idx  ON txs_2  (uid, time_stamp);
+CREATE UNIQUE INDEX IF NOT EXISTS txs_3_uid_time_stamp_unique_idx  ON txs_3  (uid, time_stamp);
+CREATE UNIQUE INDEX IF NOT EXISTS txs_4_uid_time_stamp_unique_idx  ON txs_4  (uid, time_stamp);
+CREATE UNIQUE INDEX IF NOT EXISTS txs_5_uid_time_stamp_unique_idx  ON txs_5  (uid, time_stamp);
+CREATE UNIQUE INDEX IF NOT EXISTS txs_6_uid_time_stamp_unique_idx  ON txs_6  (uid, time_stamp);
+CREATE UNIQUE INDEX IF NOT EXISTS txs_7_uid_time_stamp_unique_idx  ON txs_7  (uid, time_stamp);
+CREATE UNIQUE INDEX IF NOT EXISTS txs_8_uid_time_stamp_unique_idx  ON txs_8  (uid, time_stamp);
+CREATE UNIQUE INDEX IF NOT EXISTS txs_9_uid_time_stamp_unique_idx  ON txs_9  (uid, time_stamp);
 CREATE UNIQUE INDEX IF NOT EXISTS txs_10_uid_time_stamp_unique_idx ON txs_10 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_10_height_idx ON txs_10 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_10_sender_uid_idx ON txs_10 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_10_id_idx ON txs_10 USING hash (id);
-CREATE INDEX IF NOT EXISTS txs_11_asset_id_uid_idx ON txs_11 USING btree (asset_id, uid);
 CREATE UNIQUE INDEX IF NOT EXISTS txs_11_uid_time_stamp_unique_idx ON txs_11 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_11_height_idx ON txs_11 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_11_sender_uid_idx ON txs_11 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_11_id_idx ON txs_11 USING hash (id);
-CREATE INDEX IF NOT EXISTS txs_11_transfers_height_idx ON txs_11_transfers USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_11_transfers_recipient_address_idx ON txs_11_transfers USING btree (recipient_address);
-CREATE INDEX IF NOT EXISTS txs_12_data_data_value_binary_tx_uid_partial_idx ON txs_12_data USING hash (data_value_binary) WHERE (data_type = 'binary'::text);
-CREATE INDEX IF NOT EXISTS txs_12_data_data_value_boolean_tx_uid_partial_idx ON txs_12_data USING btree (data_value_boolean, tx_uid) WHERE (data_type = 'boolean'::text);
-CREATE INDEX IF NOT EXISTS txs_12_data_data_value_integer_tx_uid_partial_idx ON txs_12_data USING btree (data_value_integer, tx_uid) WHERE (data_type = 'integer'::text);
-CREATE INDEX IF NOT EXISTS txs_12_data_data_value_string_tx_uid_partial_idx ON txs_12_data USING hash (data_value_string) WHERE (data_type = 'string'::text);
-CREATE INDEX IF NOT EXISTS txs_12_data_height_idx ON txs_12_data USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_12_data_tx_uid_idx ON txs_12_data USING btree (tx_uid);
 CREATE UNIQUE INDEX IF NOT EXISTS txs_12_uid_time_stamp_unique_idx ON txs_12 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_12_height_idx ON txs_12 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_12_sender_uid_idx ON txs_12 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_12_id_idx ON txs_12 USING hash (id);
-CREATE INDEX IF NOT EXISTS txs_12_data_data_key_tx_uid_idx ON txs_12_data USING btree (data_key, tx_uid);
-CREATE INDEX IF NOT EXISTS txs_12_data_data_type_tx_uid_idx ON txs_12_data USING btree (data_type, tx_uid);
 CREATE UNIQUE INDEX IF NOT EXISTS txs_13_uid_time_stamp_unique_idx ON txs_13 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_13_height_idx ON txs_13 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_13_md5_script_idx ON txs_13 USING btree (md5((script)::text));
-CREATE INDEX IF NOT EXISTS txs_13_sender_uid_idx ON txs_13 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_13_id_idx ON txs_13 USING hash (id);
 CREATE UNIQUE INDEX IF NOT EXISTS txs_14_uid_time_stamp_unique_idx ON txs_14 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_14_height_idx ON txs_14 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_14_sender_uid_idx ON txs_14 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_14_id_idx ON txs_14 USING hash (id);
 CREATE UNIQUE INDEX IF NOT EXISTS txs_15_uid_time_stamp_unique_idx ON txs_15 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_15_height_idx ON txs_15 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_15_md5_script_idx ON txs_15 USING btree (md5((script)::text));
-CREATE INDEX IF NOT EXISTS txs_15_sender_uid_idx ON txs_15 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_15_id_idx ON txs_15 USING hash (id);
-CREATE INDEX IF NOT EXISTS txs_16_dapp_address_uid_idx ON txs_16 USING btree (dapp_address, uid);
 CREATE UNIQUE INDEX IF NOT EXISTS txs_16_uid_time_stamp_unique_idx ON txs_16 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_16_height_idx ON txs_16 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_16_sender_uid_idx ON txs_16 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_16_id_idx ON txs_16 USING hash (id);
-CREATE INDEX IF NOT EXISTS txs_16_function_name_uid_idx ON txs_16 (function_name, uid);
-CREATE INDEX IF NOT EXISTS txs_16_args_height_idx ON txs_16_args USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_16_payment_asset_id_idx ON txs_16_payment USING btree (asset_id);
-CREATE INDEX IF NOT EXISTS txs_16_payment_height_idx ON txs_16_payment USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_16_dapp_address_function_name_uid_idx ON txs_16 (dapp_address, function_name, uid);
-CREATE INDEX IF NOT EXISTS txs_16_sender_time_stamp_uid_idx ON txs_16 (sender, time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_17_height_idx on txs_17 USING btree (height);
 CREATE UNIQUE INDEX IF NOT EXISTS txs_17_uid_time_stamp_unique_idx ON txs_17 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_17_sender_time_stamp_id_idx on txs_17 (sender, time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_17_asset_id_uid_idx on txs_17 (asset_id, uid);
-CREATE INDEX IF NOT EXISTS txs_18_function_name_uid_idx ON txs_18 (function_name, uid);
-CREATE INDEX IF NOT EXISTS txs_18_args_height_idx ON txs_18_args USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_18_payment_asset_id_idx ON txs_18_payment USING btree (asset_id);
-CREATE INDEX IF NOT EXISTS txs_18_payment_height_idx ON txs_18_payment USING btree (height);
-CREATE UNIQUE INDEX IF NOT EXISTS txs_1_uid_time_stamp_unique_idx ON txs_1 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_1_height_idx ON txs_1 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_1_sender_uid_idx ON txs_1 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_1_id_idx ON txs_1 USING hash (id);
-CREATE UNIQUE INDEX IF NOT EXISTS txs_2_uid_time_stamp_unique_idx ON txs_2 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_2_height_idx ON txs_2 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_2_sender_uid_idx ON txs_2 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_2_id_idx ON txs_2 USING hash (id);
-CREATE INDEX IF NOT EXISTS txs_3_asset_id_uid_idx ON txs_3 USING btree (asset_id, uid);
-CREATE UNIQUE INDEX IF NOT EXISTS txs_3_uid_time_stamp_unique_idx ON txs_3 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_3_height_idx ON txs_3 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_3_md5_script_idx ON txs_3 USING btree (md5((script)::text));
-CREATE INDEX IF NOT EXISTS txs_3_sender_uid_idx ON txs_3 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_3_id_idx ON txs_3 USING hash (id);
-CREATE INDEX IF NOT EXISTS txs_4_asset_id_uid_idx ON txs_4 USING btree (asset_id, uid);
-CREATE UNIQUE INDEX IF NOT EXISTS txs_4_uid_time_stamp_unique_idx ON txs_4 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_4_height_uid_idx ON txs_4 USING btree (height, uid);
-CREATE INDEX IF NOT EXISTS txs_4_id_idx ON txs_4 USING hash (id);
-CREATE INDEX IF NOT EXISTS txs_4_recipient_address_uid_idx ON txs_4 (recipient_address, uid);
-CREATE INDEX IF NOT EXISTS txs_4_sender_uid_idx ON txs_4 (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_5_asset_id_uid_idx ON txs_5 USING btree (asset_id, uid);
-CREATE UNIQUE INDEX IF NOT EXISTS txs_5_uid_time_stamp_unique_idx ON txs_5 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_5_height_idx ON txs_5 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_5_sender_uid_idx ON txs_5 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_5_id_idx ON txs_5 USING hash (id);
-CREATE INDEX IF NOT EXISTS txs_6_asset_id_uid_idx ON txs_6 USING btree (asset_id, uid);
-CREATE UNIQUE INDEX IF NOT EXISTS txs_6_uid_time_stamp_unique_idx ON txs_6 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_6_height_idx ON txs_6 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_6_sender_uid_idx ON txs_6 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_6_id_idx ON txs_6 USING hash (id);
-CREATE UNIQUE INDEX IF NOT EXISTS txs_7_uid_time_stamp_unique_idx ON txs_7 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_7_height_idx ON txs_7 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_7_sender_uid_idx ON txs_7 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_7_order_ids_uid_idx ON txs_7 USING gin ((ARRAY[order1->>'id', order2->>'id']), uid);
-CREATE INDEX IF NOT EXISTS txs_7_id_idx ON txs_7 USING hash (id);
-CREATE INDEX IF NOT EXISTS txs_7_order_senders_uid_idx ON txs_7 USING gin ((ARRAY[order1->>'sender', order2->>'sender']), uid);
-CREATE INDEX IF NOT EXISTS txs_7_amount_asset_id_price_asset_id_uid_idx ON txs_7 (amount_asset_id, price_asset_id, uid);
-CREATE INDEX IF NOT EXISTS txs_7_price_asset_id_uid_idx ON txs_7 (price_asset_id, uid);
-CREATE UNIQUE INDEX IF NOT EXISTS txs_8_uid_time_stamp_unique_idx ON txs_8 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_8_height_idx ON txs_8 USING btree (height);
+CREATE UNIQUE INDEX IF NOT EXISTS txs_18_uid_time_stamp_unique_idx ON txs_18 (uid, time_stamp);
+
+CREATE INDEX IF NOT EXISTS txs_height_idx    ON txs    USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_1_height_idx  ON txs_1  USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_2_height_idx  ON txs_2  USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_3_height_idx  ON txs_3  USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_5_height_idx  ON txs_5  USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_6_height_idx  ON txs_6  USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_7_height_idx  ON txs_7  USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_8_height_idx  ON txs_8  USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_9_height_idx  ON txs_9  USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_10_height_idx ON txs_10 USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_11_height_idx ON txs_11 USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_11_transfers_height_idx ON txs_11_transfers USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_12_height_idx ON txs_12 USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_12_data_height_idx      ON txs_12_data      USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_13_height_idx ON txs_13 USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_14_height_idx ON txs_14 USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_15_height_idx ON txs_15 USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_16_height_idx ON txs_16 USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_16_args_height_idx      ON txs_16_args      USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_16_payment_height_idx   ON txs_16_payment   USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_17_height_idx ON txs_17 USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_18_height_idx ON txs_18 USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_18_args_height_idx      ON txs_18_args      USING btree (height);
+CREATE INDEX IF NOT EXISTS txs_18_payment_height_idx   ON txs_18_payment   USING btree (height);
+
+CREATE INDEX IF NOT EXISTS txs_sender_uid_idx    ON txs    USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_1_sender_uid_idx  ON txs_1  USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_2_sender_uid_idx  ON txs_2  USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_3_sender_uid_idx  ON txs_3  USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_5_sender_uid_idx  ON txs_5  USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_6_sender_uid_idx  ON txs_6  USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_7_sender_uid_idx  ON txs_7  USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_8_sender_uid_idx  ON txs_8  USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_9_sender_uid_idx  ON txs_9  USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_10_sender_uid_idx ON txs_10 USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_11_sender_uid_idx ON txs_11 USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_12_sender_uid_idx ON txs_12 USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_13_sender_uid_idx ON txs_13 USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_14_sender_uid_idx ON txs_14 USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_15_sender_uid_idx ON txs_15 USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_16_sender_uid_idx ON txs_16 USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_17_sender_uid_idx ON txs_17 USING btree (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_18_sender_uid_idx ON txs_18 USING btree (sender, uid);
+
+CREATE INDEX IF NOT EXISTS txs_id_idx    ON txs    USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_1_id_idx  ON txs_1  USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_2_id_idx  ON txs_2  USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_3_id_idx  ON txs_3  USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_4_id_idx  ON txs_4  USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_5_id_idx  ON txs_5  USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_6_id_idx  ON txs_6  USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_7_id_idx  ON txs_7  USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_8_id_idx  ON txs_8  USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_9_id_idx  ON txs_9  USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_10_id_idx ON txs_10 USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_11_id_idx ON txs_11 USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_12_id_idx ON txs_12 USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_13_id_idx ON txs_13 USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_14_id_idx ON txs_14 USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_15_id_idx ON txs_15 USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_16_id_idx ON txs_16 USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_17_id_idx ON txs_17 USING hash (id);
+CREATE INDEX IF NOT EXISTS txs_18_id_idx ON txs_18 USING hash (id);
+
+CREATE INDEX IF NOT EXISTS txs_time_stamp_uid_gist_idx    ON txs    USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_1_time_stamp_uid_gist_idx  ON txs_1  USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_2_time_stamp_uid_gist_idx  ON txs_2  USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_3_time_stamp_uid_gist_idx  ON txs_3  USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_4_time_stamp_uid_gist_idx  ON txs_4  USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_5_time_stamp_uid_gist_idx  ON txs_5  USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_6_time_stamp_uid_gist_idx  ON txs_6  USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_7_time_stamp_uid_gist_idx  ON txs_7  USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_8_time_stamp_uid_gist_idx  ON txs_8  USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_9_time_stamp_uid_gist_idx  ON txs_9  USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_10_time_stamp_uid_gist_idx ON txs_10 USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_11_time_stamp_uid_gist_idx ON txs_11 USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_12_time_stamp_uid_gist_idx ON txs_12 USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_13_time_stamp_uid_gist_idx ON txs_13 USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_14_time_stamp_uid_gist_idx ON txs_14 USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_15_time_stamp_uid_gist_idx ON txs_15 USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_16_time_stamp_uid_gist_idx ON txs_16 USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_17_time_stamp_uid_gist_idx ON txs_17 USING gist (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_18_time_stamp_uid_gist_idx ON txs_18 USING gist (time_stamp, uid);
+
+CREATE INDEX IF NOT EXISTS txs_1_block_uid_idx  ON txs_1  (block_uid);
+CREATE INDEX IF NOT EXISTS txs_2_block_uid_idx  ON txs_2  (block_uid);
+CREATE INDEX IF NOT EXISTS txs_3_block_uid_idx  ON txs_3  (block_uid);
+CREATE INDEX IF NOT EXISTS txs_4_block_uid_idx  ON txs_4  (block_uid);
+CREATE INDEX IF NOT EXISTS txs_5_block_uid_idx  ON txs_5  (block_uid);
+CREATE INDEX IF NOT EXISTS txs_6_block_uid_idx  ON txs_6  (block_uid);
+CREATE INDEX IF NOT EXISTS txs_7_block_uid_idx  ON txs_7  (block_uid);
+CREATE INDEX IF NOT EXISTS txs_8_block_uid_idx  ON txs_8  (block_uid);
+CREATE INDEX IF NOT EXISTS txs_9_block_uid_idx  ON txs_9  (block_uid);
+CREATE INDEX IF NOT EXISTS txs_10_block_uid_idx ON txs_10 (block_uid);
+CREATE INDEX IF NOT EXISTS txs_11_block_uid_idx ON txs_11 (block_uid);
+CREATE INDEX IF NOT EXISTS txs_12_block_uid_idx ON txs_12 (block_uid);
+CREATE INDEX IF NOT EXISTS txs_13_block_uid_idx ON txs_13 (block_uid);
+CREATE INDEX IF NOT EXISTS txs_14_block_uid_idx ON txs_14 (block_uid);
+CREATE INDEX IF NOT EXISTS txs_15_block_uid_idx ON txs_15 (block_uid);
+CREATE INDEX IF NOT EXISTS txs_16_block_uid_idx ON txs_16 (block_uid);
+CREATE INDEX IF NOT EXISTS txs_17_block_uid_idx ON txs_17 (block_uid);
+CREATE INDEX IF NOT EXISTS txs_18_block_uid_idx ON txs_18 (block_uid);
+
+CREATE INDEX IF NOT EXISTS txs_3_asset_id_uid_idx  ON txs_3  USING btree (asset_id, uid);
+CREATE INDEX IF NOT EXISTS txs_4_asset_id_uid_idx  ON txs_4  USING btree (asset_id, uid);
+CREATE INDEX IF NOT EXISTS txs_5_asset_id_uid_idx  ON txs_5  USING btree (asset_id, uid);
+CREATE INDEX IF NOT EXISTS txs_6_asset_id_uid_idx  ON txs_6  USING btree (asset_id, uid);
+CREATE INDEX IF NOT EXISTS txs_11_asset_id_uid_idx ON txs_11 USING btree (asset_id, uid);
+
+CREATE INDEX IF NOT EXISTS txs_3_md5_script_idx  ON txs_3  USING btree (md5((script)::text));
+CREATE INDEX IF NOT EXISTS txs_13_md5_script_idx ON txs_13 USING btree (md5((script)::text));
+CREATE INDEX IF NOT EXISTS txs_15_md5_script_idx ON txs_15 USING btree (md5((script)::text));
+
 CREATE INDEX IF NOT EXISTS txs_8_recipient_idx ON txs_8 USING btree (recipient_address);
-CREATE INDEX IF NOT EXISTS txs_8_recipient_address_uid_idx ON txs_8 USING btree (recipient_address, uid);
-CREATE INDEX IF NOT EXISTS txs_8_sender_uid_idx ON txs_8 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_8_id_idx ON txs_8 USING hash (id);
-CREATE UNIQUE INDEX IF NOT EXISTS txs_9_uid_time_stamp_unique_idx ON txs_9 (uid, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_9_height_idx ON txs_9 USING btree (height);
-CREATE INDEX IF NOT EXISTS txs_9_sender_uid_idx ON txs_9 USING btree (sender, uid);
-CREATE INDEX IF NOT EXISTS txs_9_id_idx ON txs_9 USING hash (id);
-CREATE INDEX IF NOT EXISTS waves_data_height_desc_quantity_idx ON waves_data (height DESC NULLS LAST, quantity);
-CREATE INDEX IF NOT EXISTS txs_time_stamp_uid_gist_idx ON txs using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_1_time_stamp_uid_gist_idx ON txs_1 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_10_time_stamp_uid_gist_idx ON txs_10 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_11_time_stamp_uid_gist_idx ON txs_11 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_12_time_stamp_uid_gist_idx ON txs_12 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_13_time_stamp_uid_gist_idx ON txs_13 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_14_time_stamp_uid_gist_idx ON txs_14 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_15_time_stamp_uid_gist_idx ON txs_15 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_16_time_stamp_uid_gist_idx ON txs_16 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_17_time_stamp_uid_gist_idx ON txs_17 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_2_time_stamp_uid_gist_idx ON txs_2 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_3_time_stamp_uid_gist_idx ON txs_3 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_4_time_stamp_uid_gist_idx ON txs_4 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_5_time_stamp_uid_gist_idx ON txs_5 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_6_time_stamp_uid_gist_idx ON txs_6 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_7_amount_asset_id_uid_idx ON txs_7 (amount_asset_id, uid);
+CREATE INDEX IF NOT EXISTS txs_11_transfers_recipient_address_idx ON txs_11_transfers USING btree (recipient_address);
+
+CREATE INDEX IF NOT EXISTS txs_tx_type_idx                   ON txs USING btree (tx_type);
+CREATE INDEX IF NOT EXISTS txs_time_stamp_uid_idx            ON txs USING btree (time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_4_height_uid_idx              ON txs_4 USING btree (height, uid);
+CREATE INDEX IF NOT EXISTS txs_4_recipient_address_uid_idx   ON txs_4 (recipient_address, uid);
+CREATE INDEX IF NOT EXISTS txs_4_sender_uid_idx              ON txs_4 (sender, uid);
+CREATE INDEX IF NOT EXISTS txs_7_order_ids_uid_idx           ON txs_7 USING gin ((ARRAY[order1->>'id', order2->>'id']), uid);
+CREATE INDEX IF NOT EXISTS txs_7_order_senders_uid_idx       ON txs_7 USING gin ((ARRAY[order1->>'sender', order2->>'sender']), uid);
+CREATE INDEX IF NOT EXISTS txs_7_price_asset_id_uid_idx      ON txs_7 (price_asset_id, uid);
+CREATE INDEX IF NOT EXISTS txs_7_time_stamp_gist_idx         ON txs_7 USING gist (time_stamp);
+CREATE INDEX IF NOT EXISTS txs_7_amount_asset_id_uid_idx     ON txs_7 (amount_asset_id, uid);
 CREATE INDEX IF NOT EXISTS txs_7_order_sender_1_uid_desc_idx ON txs_7 ((order1 ->> 'sender'::text) asc, uid desc);
 CREATE INDEX IF NOT EXISTS txs_7_order_sender_2_uid_desc_idx ON txs_7 ((order2 ->> 'sender'::text) asc, uid desc);
-CREATE INDEX IF NOT EXISTS txs_7_time_stamp_gist_idx ON txs_7 using gist (time_stamp);
-CREATE INDEX IF NOT EXISTS txs_7_time_stamp_uid_gist_idx ON txs_7 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_7_uid_height_time_stamp_idx ON txs_7 (uid, height, time_stamp);
-CREATE INDEX IF NOT EXISTS txs_8_time_stamp_uid_gist_idx ON txs_8 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS txs_9_time_stamp_uid_gist_idx ON txs_9 using gist (time_stamp, uid);
-CREATE INDEX IF NOT EXISTS blocks_microblocks_id_idx ON blocks_microblocks (id);
-CREATE INDEX IF NOT EXISTS blocks_microblocks_time_stamp_uid_idx ON blocks_microblocks (time_stamp DESC, uid DESC);
-CREATE INDEX IF NOT EXISTS asset_updates_block_uid_idx ON asset_updates (block_uid);
+CREATE INDEX IF NOT EXISTS txs_7_uid_height_time_stamp_idx   ON txs_7 (uid, height, time_stamp);
+CREATE INDEX IF NOT EXISTS txs_7_amount_asset_id_price_asset_id_uid_idx ON txs_7 (amount_asset_id, price_asset_id, uid);
+CREATE INDEX IF NOT EXISTS txs_8_recipient_address_uid_idx   ON txs_8 USING btree (recipient_address, uid);
+CREATE INDEX IF NOT EXISTS txs_10_alias_sender_idx           ON txs_10 USING btree (alias, sender);
+CREATE INDEX IF NOT EXISTS txs_10_alias_uid_idx              ON txs_10 USING btree (alias, uid);
+CREATE INDEX IF NOT EXISTS txs_12_data_data_value_binary_tx_uid_partial_idx 
+    ON txs_12_data USING hash (data_value_binary) WHERE (data_type = 'binary'::text);
+CREATE INDEX IF NOT EXISTS txs_12_data_data_value_boolean_tx_uid_partial_idx 
+    ON txs_12_data USING btree (data_value_boolean, tx_uid) WHERE (data_type = 'boolean'::text);
+CREATE INDEX IF NOT EXISTS txs_12_data_data_value_integer_tx_uid_partial_idx 
+    ON txs_12_data USING btree (data_value_integer, tx_uid) WHERE (data_type = 'integer'::text);
+CREATE INDEX IF NOT EXISTS txs_12_data_data_value_string_tx_uid_partial_idx 
+    ON txs_12_data USING hash (data_value_string) WHERE (data_type = 'string'::text);
+CREATE INDEX IF NOT EXISTS txs_12_data_tx_uid_idx            ON txs_12_data USING btree (tx_uid);
+CREATE INDEX IF NOT EXISTS txs_12_data_data_key_tx_uid_idx   ON txs_12_data USING btree (data_key, tx_uid);
+CREATE INDEX IF NOT EXISTS txs_12_data_data_type_tx_uid_idx  ON txs_12_data USING btree (data_type, tx_uid);
+CREATE INDEX IF NOT EXISTS txs_16_dapp_address_uid_idx       ON txs_16 USING btree (dapp_address, uid);
+CREATE INDEX IF NOT EXISTS txs_16_function_name_uid_idx      ON txs_16 (function_name, uid);
+CREATE INDEX IF NOT EXISTS txs_16_payment_asset_id_idx       ON txs_16_payment USING btree (asset_id);
+CREATE INDEX IF NOT EXISTS txs_16_sender_time_stamp_uid_idx  ON txs_16 (sender, time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_16_dapp_address_function_name_uid_idx ON txs_16 (dapp_address, function_name, uid);
+CREATE INDEX IF NOT EXISTS txs_17_sender_time_stamp_id_idx   ON txs_17 (sender, time_stamp, uid);
+CREATE INDEX IF NOT EXISTS txs_17_asset_id_uid_idx           ON txs_17 (asset_id, uid);
+CREATE INDEX IF NOT EXISTS txs_18_function_name_uid_idx      ON txs_18 (function_name, uid);
+CREATE INDEX IF NOT EXISTS txs_18_payment_asset_id_idx       ON txs_18_payment USING btree (asset_id);
+
 CREATE INDEX IF NOT EXISTS asset_updates_to_tsvector_idx
     ON asset_updates USING gin (to_tsvector('simple'::regconfig, name::TEXT))
     WHERE (superseded_by = '9223372036854775806'::BIGINT);
-CREATE UNIQUE INDEX IF NOT EXISTS tickers_ticker_idx ON tickers (ticker);
+CREATE INDEX IF NOT EXISTS asset_updates_block_uid_idx  ON asset_updates (block_uid);
+CREATE INDEX IF NOT EXISTS blocks_microblocks_time_stamp_uid_idx ON blocks_microblocks (time_stamp DESC, uid DESC);
+CREATE INDEX IF NOT EXISTS blocks_microblocks_id_idx    ON blocks_microblocks (id);
+CREATE INDEX IF NOT EXISTS candles_max_height_index     ON candles USING btree (max_height);
+CREATE INDEX IF NOT EXISTS candles_amount_price_ids_matcher_time_start_partial_1m_idx
+    ON candles (amount_asset_id, price_asset_id, matcher_address, time_start) WHERE (("interval")::text = '1m'::text);
+CREATE INDEX IF NOT EXISTS waves_data_height_desc_quantity_idx ON waves_data (height DESC NULLS LAST, quantity);
+CREATE UNIQUE INDEX IF NOT EXISTS tickers_ticker_idx    ON tickers (ticker);

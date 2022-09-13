@@ -405,7 +405,7 @@ CREATE TABLE IF NOT EXISTS waves_data (
 	quantity numeric NOT NULL PRIMARY KEY -- quantity никогда не может быть одинаковым у двух записей
 );
 
-CREATE VIEW assets(
+CREATE VIEW if not exists assets(
     asset_id, 
     ticker, 
     asset_name, 

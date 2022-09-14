@@ -238,6 +238,7 @@ where
                     .map(|au| (*block_uid, au))
                     .collect_vec()
             })
+            .filter(|(_, au)| au.id != WAVES_ID)
             .collect();
 
     let inserted_uids =
@@ -533,7 +534,6 @@ fn handle_base_asset_info_updates<R: RepoOperations>(
     let assets_with_uids_superseded_by = &assets_grouped_with_uids_superseded_by
         .into_iter()
         .flat_map(|(_, v)| v)
-        .filter(|au| !(au.asset_id == WAVES_ID))
         .sorted_by_key(|asset| asset.uid)
         .collect_vec();
 

@@ -247,6 +247,7 @@ where
     let updates_amount = base_asset_info_updates_with_block_uids.len();
 
     if let Some(uids) = inserted_uids {
+        assert_eq!(uids.len(), base_asset_info_updates_with_block_uids.len());
         let asset_origins = uids
             .into_iter()
             .zip(base_asset_info_updates_with_block_uids)
@@ -260,6 +261,7 @@ where
             })
             .collect_vec();
 
+        assert_eq!(asset_origins.len(), updates_amount);
         repo.insert_asset_origins(&asset_origins)?;
     }
 
@@ -461,9 +463,7 @@ fn handle_base_asset_info_updates<R: RepoOperations>(
     }
 
     let updates_count = updates.len();
-
     let assets_next_uid = repo.get_next_assets_uid()?;
-
     let asset_updates = updates
         .iter()
         .enumerate()

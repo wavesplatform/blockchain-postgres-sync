@@ -208,7 +208,8 @@ CREATE TABLE IF NOT EXISTS txs_11_transfers (
     position_in_tx smallint NOT NULL,
     height integer NOT NULL,
 
-    PRIMARY KEY (tx_uid, position_in_tx)
+    PRIMARY KEY (tx_uid, position_in_tx),
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_11(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_12 (
@@ -231,7 +232,8 @@ CREATE TABLE IF NOT EXISTS txs_12_data (
     position_in_tx SMALLINT NOT NULL,
     height INTEGER NOT NULL,
 
-    PRIMARY KEY (tx_uid, position_in_tx)
+    PRIMARY KEY (tx_uid, position_in_tx),
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_12(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_13 (
@@ -290,7 +292,8 @@ CREATE TABLE IF NOT EXISTS txs_16_args (
     tx_uid BIGINT NOT NULL,
     height INTEGER,
 
-    PRIMARY KEY (tx_uid, position_in_args)
+    PRIMARY KEY (tx_uid, position_in_args),
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_16(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_16_payment (
@@ -300,7 +303,8 @@ CREATE TABLE IF NOT EXISTS txs_16_payment (
     height INTEGER,
     asset_id VARCHAR NOT NULL,
 
-    PRIMARY KEY (tx_uid, position_in_payment)
+    PRIMARY KEY (tx_uid, position_in_payment),
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_16(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_17
@@ -337,7 +341,8 @@ CREATE TABLE IF NOT EXISTS txs_18_args (
     tx_uid BIGINT NOT NULL,
     height INTEGER,
 
-    PRIMARY KEY (tx_uid, position_in_args)
+    PRIMARY KEY (tx_uid, position_in_args),
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_18(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_18_payment (
@@ -347,7 +352,8 @@ CREATE TABLE IF NOT EXISTS txs_18_payment (
     height INTEGER,
     asset_id VARCHAR NOT NULL,
 
-    PRIMARY KEY (tx_uid, position_in_payment)
+    PRIMARY KEY (tx_uid, position_in_payment),
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_18(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS assets_metadata (

@@ -1,5 +1,4 @@
 use crate::utils::into_b58;
-use crate::waves::{WAVES_ID, WAVES_NAME, WAVES_PRECISION};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -24,26 +23,6 @@ pub struct BaseAssetInfoUpdate {
     pub reissuable: bool,
     pub min_sponsored_fee: Option<i64>,
     pub tx_id: String,
-}
-
-impl BaseAssetInfoUpdate {
-    pub fn waves_update(height: i32, time_stamp: DateTime<Utc>, quantity: i64) -> Self {
-        Self {
-            id: WAVES_ID.to_owned(),
-            issuer: "".to_owned(),
-            precision: WAVES_PRECISION.to_owned(),
-            nft: false,
-            updated_at: time_stamp,
-            update_height: height,
-            name: WAVES_NAME.to_owned(),
-            description: "".to_owned(),
-            script: None,
-            quantity,
-            reissuable: false,
-            min_sponsored_fee: None,
-            tx_id: String::new(),
-        }
-    }
 }
 
 #[derive(Debug, Serialize)]
@@ -110,7 +89,8 @@ pub struct Order {
     pub matcher_fee: i64,
     pub matcher_fee_asset_id: Option<String>,
     pub proofs: Vec<String>,
-    pub signature: Option<String>,
+    pub signature: String,
+    pub eip712_signature: Option<String>,
 }
 
 impl From<OrderMeta<'_>> for Order {
@@ -121,6 +101,8 @@ impl From<OrderMeta<'_>> for Order {
             sender_address,
             sender_public_key,
         } = o;
+        let proofs: Vec<String> = order.proofs.iter().map(into_b58).collect();
+        let signature = proofs.get(0).cloned().unwrap_or_else(|| String::new());
         Self {
             matcher_public_key: into_b58(&order.matcher_public_key),
             asset_pair: AssetPair {
@@ -147,12 +129,15 @@ impl From<OrderMeta<'_>> for Order {
                 .map(|f| &f.asset_id)
                 .and_then(|asset| (asset.len() > 0).then(|| into_b58(asset))),
             version: order.version,
-            proofs: order.proofs.iter().map(into_b58).collect(),
+            proofs,
             sender: into_b58(sender_address),
             id: into_b58(&id),
             sender_public_key: into_b58(&sender_public_key),
-            signature: match order.sender {
-                Some(SenderPb::Eip712Signature(ref sig)) => Some(format!("0x{}", hex::encode(sig))),
+            signature,
+            eip712_signature: match order.sender {
+                Some(SenderPb::Eip712Signature(ref sig)) if order.version >= 4 => {
+                    Some(format!("0x{}", hex::encode(sig)))
+                }
                 _ => None,
             },
         }

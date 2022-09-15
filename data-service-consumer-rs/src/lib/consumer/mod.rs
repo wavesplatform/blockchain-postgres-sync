@@ -247,7 +247,6 @@ where
                     .map(|au| (*block_uid, au))
                     .collect_vec()
             })
-            .filter(|(_, au)| au.id != WAVES_ID)
             .collect();
 
     let inserted_uids =
@@ -399,19 +398,6 @@ fn extract_base_asset_info_updates(
 ) -> Vec<BaseAssetInfoUpdate> {
     let mut asset_updates = vec![];
 
-    let update_time_stamp = match append.time_stamp {
-        Some(time_stamp) => DateTime::from_utc(time_stamp, Utc),
-        None => Utc::now(),
-    };
-
-    if let Some(updated_waves_amount) = append.updated_waves_amount {
-        asset_updates.push(BaseAssetInfoUpdate::waves_update(
-            append.height as i32,
-            update_time_stamp,
-            updated_waves_amount,
-        ));
-    }
-
     let mut updates_from_txs = append
         .txs
         .iter()
@@ -421,6 +407,12 @@ fn extract_base_asset_info_updates(
                 .iter()
                 .filter_map(|asset_update| {
                     if let Some(asset_details) = &asset_update.after {
+                        let asset_id = extract_asset_id(&asset_details.asset_id);
+
+                        if asset_id == WAVES_ID {
+                            return None;
+                        }
+
                         let time_stamp = match tx.data.transaction.as_ref() {
                             Some(stx) => match stx {
                                 Transaction::WavesTransaction(WavesTx { timestamp, .. }) => {
@@ -431,7 +423,6 @@ fn extract_base_asset_info_updates(
                             _ => Utc::now(),
                         };
 
-                        let asset_id = extract_asset_id(&asset_details.asset_id);
                         let issuer =
                             Address::from((asset_details.issuer.as_slice(), chain_id)).into();
                         Some(BaseAssetInfoUpdate {

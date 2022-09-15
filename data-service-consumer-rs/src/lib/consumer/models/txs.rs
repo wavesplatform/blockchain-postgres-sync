@@ -120,7 +120,9 @@ impl
         let uid = ugen.next() as i64;
         let id = id.to_owned();
         let proofs = proofs.iter().map(|p| into_b58(p)).collect::<Vec<_>>();
-        let signature = proofs.get(0).map(ToOwned::to_owned);
+        let signature = proofs
+            .get(0)
+            .and_then(|p| (p.len() > 0).then_some(p.to_owned()));
         let proofs = Some(proofs);
         let mut status = String::from("succeeded");
 

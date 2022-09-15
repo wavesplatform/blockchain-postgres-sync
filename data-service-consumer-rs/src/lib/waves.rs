@@ -9,6 +9,8 @@ lazy_static! {
         Regex::new(r"^(.*)_<([a-zA-Z\d]+)>$").unwrap();
 }
 
+pub const WAVES_ID: &str = "WAVES";
+
 pub fn keccak256(message: &[u8]) -> [u8; 32] {
     use sha3::{Digest, Keccak256};
 
@@ -80,10 +82,6 @@ impl From<Address> for String {
 pub fn is_valid_base58(src: &str) -> bool {
     bs58::decode(src).into_vec().is_ok()
 }
-
-pub const WAVES_ID: &str = "WAVES";
-pub const WAVES_NAME: &str = "Waves";
-pub const WAVES_PRECISION: i32 = 8;
 
 pub fn extract_asset_id(asset_id: impl AsRef<[u8]>) -> String {
     if asset_id.as_ref().is_empty() {

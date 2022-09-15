@@ -71,6 +71,8 @@ impl UpdatesSource for UpdatesSourceImpl {
                 .await;
             if let Err(e) = r {
                 error!("updates source stopped with error: {:?}", e);
+            } else {
+                error!("updates source stopped without an error")
             }
         });
 

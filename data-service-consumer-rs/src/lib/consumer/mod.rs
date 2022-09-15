@@ -11,7 +11,7 @@ use std::str;
 use std::time::Instant;
 use tokio::sync::mpsc::Receiver;
 use waves_protobuf_schemas::waves::{
-    events::{StateUpdate, TransactionMetadata},
+    events::{transaction_metadata::Metadata, StateUpdate, TransactionMetadata},
     signed_transaction::Transaction,
     SignedTransaction, Transaction as WavesTx,
 };
@@ -401,7 +401,7 @@ fn extract_base_asset_info_updates(
     let mut updates_from_txs = append
         .txs
         .iter()
-        .flat_map(|tx| {
+        .flat_map(|tx: &Tx| {
             tx.state_update
                 .assets
                 .iter()
@@ -418,7 +418,16 @@ fn extract_base_asset_info_updates(
                                 Transaction::WavesTransaction(WavesTx { timestamp, .. }) => {
                                     DateTime::from_utc(epoch_ms_to_naivedatetime(*timestamp), Utc)
                                 }
-                                Transaction::EthereumTransaction(_) => return None,
+                                Transaction::EthereumTransaction(_) => {
+                                    if let Some(Metadata::Ethereum(meta)) = &tx.meta.metadata {
+                                        DateTime::from_utc(
+                                            epoch_ms_to_naivedatetime(meta.timestamp),
+                                            Utc,
+                                        )
+                                    } else {
+                                        unreachable!("wrong meta variant")
+                                    }
+                                }
                             },
                             _ => Utc::now(),
                         };

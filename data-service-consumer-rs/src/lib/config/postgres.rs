@@ -1,6 +1,5 @@
-use serde::Deserialize;
-
 use crate::error::Error;
+use serde::Deserialize;
 
 fn default_port() -> u16 {
     5432

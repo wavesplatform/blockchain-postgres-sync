@@ -1,8 +1,6 @@
-use chrono::Duration;
-
-use serde::Deserialize;
-
 use crate::error::Error;
+use chrono::Duration;
+use serde::Deserialize;
 
 fn default_updates_per_request() -> usize {
     256

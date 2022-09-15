@@ -7,8 +7,8 @@ async fn main() -> Result<()> {
     let config = config::load_consumer_config()?;
 
     info!(
-        "Starting data-service consumer with config: {:?}",
-        config.node
+        "Starting data-service consumer with config: {:?}, {:?}",
+        config.node, config.consumer
     );
 
     let conn = db::async_pool(&config.postgres)
@@ -28,6 +28,7 @@ async fn main() -> Result<()> {
         config.node.updates_per_request,
         config.node.max_wait_time,
         config.node.chain_id,
+        config.consumer.assets_only,
     )
     .await
     {

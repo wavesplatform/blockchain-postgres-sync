@@ -93,6 +93,7 @@ pub async fn start<R, T>(
     updates_per_request: usize,
     max_duration: Duration,
     chain_id: u8,
+    assets_only: bool,
 ) -> Result<()>
 where
     T: UpdatesSource + Send + 'static,
@@ -140,7 +141,7 @@ where
         start = Instant::now();
 
         repo.transaction(move |ops| {
-            handle_updates(updates_with_height, ops, chain_id)?;
+            handle_updates(updates_with_height, ops, chain_id, assets_only)?;
 
             info!(
                 "{} updates were saved to database in {:?}. Last height is {}.",
@@ -159,6 +160,7 @@ fn handle_updates<R: RepoOperations>(
     updates_with_height: BlockchainUpdatesWithLastHeight,
     repo: &R,
     chain_id: u8,
+    assets_only: bool,
 ) -> Result<()> {
     updates_with_height
         .updates
@@ -198,9 +200,11 @@ fn handle_updates<R: RepoOperations>(
         .try_fold((), |_, update_item| match update_item {
             UpdatesItem::Blocks(ba) => {
                 squash_microblocks(repo)?;
-                handle_appends(repo, chain_id, ba)
+                handle_appends(repo, chain_id, ba, assets_only)
             }
-            UpdatesItem::Microblock(mba) => handle_appends(repo, chain_id, &vec![mba.to_owned()]),
+            UpdatesItem::Microblock(mba) => {
+                handle_appends(repo, chain_id, &vec![mba.to_owned()], assets_only)
+            }
             UpdatesItem::Rollback(sig) => {
                 let block_uid = repo.get_block_uid(sig)?;
                 rollback(repo, block_uid)
@@ -210,7 +214,12 @@ fn handle_updates<R: RepoOperations>(
     Ok(())
 }
 
-fn handle_appends<R>(repo: &R, chain_id: u8, appends: &Vec<BlockMicroblockAppend>) -> Result<()>
+fn handle_appends<R>(
+    repo: &R,
+    chain_id: u8,
+    appends: &Vec<BlockMicroblockAppend>,
+    assets_only: bool,
+) -> Result<()>
 where
     R: RepoOperations,
 {
@@ -267,20 +276,22 @@ where
 
     info!("handled {} assets updates", updates_amount);
 
-    handle_txs(repo, &block_uids_with_appends, chain_id)?;
+    if !assets_only {
+        handle_txs(repo, &block_uids_with_appends, chain_id)?;
 
-    let waves_data = appends
-        .into_iter()
-        .filter_map(|append| {
-            append.updated_waves_amount.map(|reward| WavesData {
-                height: append.height,
-                quantity: BigDecimal::from(reward),
+        let waves_data = appends
+            .into_iter()
+            .filter_map(|append| {
+                append.updated_waves_amount.map(|reward| WavesData {
+                    height: append.height,
+                    quantity: BigDecimal::from(reward),
+                })
             })
-        })
-        .collect_vec();
+            .collect_vec();
 
-    if waves_data.len() > 0 {
-        repo.insert_waves_data(&waves_data)?;
+        if waves_data.len() > 0 {
+            repo.insert_waves_data(&waves_data)?;
+        }
     }
 
     Ok(())

@@ -654,5 +654,7 @@ CREATE INDEX IF NOT EXISTS blocks_microblocks_id_idx    ON blocks_microblocks (i
 CREATE INDEX IF NOT EXISTS candles_max_height_index     ON candles USING btree (max_height);
 CREATE INDEX IF NOT EXISTS candles_amount_price_ids_matcher_time_start_partial_1m_idx
     ON candles (amount_asset_id, price_asset_id, matcher_address, time_start) WHERE (("interval")::text = '1m'::text);
+CREATE INDEX IF NOT EXISTS candles_assets_id_idx ON public.candles USING btree (amount_asset_id, price_asset_id) WHERE ((("interval")::text = '1d'::text) AND ((matcher_address)::text = '3PEjHv3JGjcWNpYEEkif2w8NXV4kbhnoGgu'::text));
 CREATE INDEX IF NOT EXISTS waves_data_height_desc_quantity_idx ON waves_data (height DESC NULLS LAST, quantity);
 CREATE UNIQUE INDEX IF NOT EXISTS tickers_ticker_idx    ON tickers (ticker);
+

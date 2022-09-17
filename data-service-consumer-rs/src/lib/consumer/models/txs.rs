@@ -106,16 +106,13 @@ impl
             u8,
         ),
     ) -> Result<Self, Self::Error> {
-        let (tx, proofs) = match tx {
-            SignedTransaction {
-                transaction: Some(tx),
-                proofs,
-            } => (tx, proofs),
-            _ => {
-                return Err(Error::IncosistDataError(format!(
-                    "No transaction data in id={id}, height={height}",
-                )))
-            }
+        let SignedTransaction {
+            transaction: Some(tx),
+            proofs,
+        } = tx else {
+            return Err(Error::IncosistDataError(format!(
+                "No transaction data in id={id}, height={height}",
+            )))
         };
         let uid = ugen.next() as i64;
         let id = id.to_owned();
@@ -146,9 +143,7 @@ impl
         let tx = match tx {
             Transaction::WavesTransaction(tx) => tx,
             Transaction::EthereumTransaction(tx) => {
-                let meta = if let Some(Metadata::Ethereum(ref m)) = meta.metadata {
-                    m
-                } else {
+                let Some(Metadata::Ethereum(meta)) = &meta.metadata else {
                     unreachable!("wrong meta variant")
                 };
                 let mut eth_tx = Tx18 {
@@ -403,9 +398,7 @@ impl
             }
             Data::Exchange(t) => {
                 let order_to_val = |o| serde_json::to_value(Order::from(o)).unwrap();
-                let meta = if let Some(Metadata::Exchange(m)) = &meta.metadata {
-                    m
-                } else {
+                let Some(Metadata::Exchange(meta)) = &meta.metadata else {
                     unreachable!("wrong meta variant")
                 };
                 let order_1 = OrderMeta {
@@ -645,9 +638,7 @@ impl
                 block_uid,
             }),
             Data::InvokeScript(t) => {
-                let meta = if let Some(Metadata::InvokeScript(ref m)) = meta.metadata {
-                    m
-                } else {
+                let Some(Metadata::InvokeScript(meta)) = &meta.metadata else {
                     unreachable!("wrong meta variant")
                 };
                 Tx::InvokeScript(Tx16Combined {

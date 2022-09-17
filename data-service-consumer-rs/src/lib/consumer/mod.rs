@@ -236,7 +236,7 @@ where
 
     let block_uids_with_appends = block_uids.into_iter().zip(appends).collect_vec();
 
-    timer!("assets updates handling");
+    timer!("blockchain updates handling");
 
     let base_asset_info_updates_with_block_uids: Vec<(i64, BaseAssetInfoUpdate)> =
         block_uids_with_appends

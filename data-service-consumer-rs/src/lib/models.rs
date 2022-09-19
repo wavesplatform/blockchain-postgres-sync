@@ -1,5 +1,6 @@
 use crate::utils::into_b58;
 use chrono::{DateTime, Utc};
+use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
 use serde_json::{json, Value};
 use waves_protobuf_schemas::waves::{
@@ -72,8 +73,7 @@ pub struct OrderMeta<'o> {
     pub sender_public_key: &'o [u8],
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug)]
 pub struct Order {
     pub id: String,
     pub version: i32,
@@ -91,6 +91,42 @@ pub struct Order {
     pub proofs: Vec<String>,
     pub signature: String,
     pub eip712_signature: Option<String>,
+    pub price_mode: String,
+}
+
+impl Serialize for Order {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let fields_count = match self.version {
+            1..=3 => 15,
+            4.. => 17, // + eip712_signature, price_mode
+            v => unreachable!("unknown order version {v}"),
+        };
+        let mut state = serializer.serialize_struct("Order", fields_count)?;
+        state.serialize_field("id", &self.id)?;
+        state.serialize_field("version", &self.version)?;
+        state.serialize_field("sender", &self.sender)?;
+        state.serialize_field("senderPublicKey", &self.sender_public_key)?;
+        state.serialize_field("matcherPublicKey", &self.matcher_public_key)?;
+        state.serialize_field("assetPair", &self.asset_pair)?;
+        state.serialize_field("orderType", &self.order_type)?;
+        state.serialize_field("amount", &self.amount)?;
+        state.serialize_field("price", &self.price)?;
+        state.serialize_field("timestamp", &self.timestamp)?;
+        state.serialize_field("expiration", &self.expiration)?;
+        state.serialize_field("matcherFee", &self.matcher_fee)?;
+        state.serialize_field("matcherFeeAssetId", &self.matcher_fee_asset_id)?;
+        state.serialize_field("proofs", &self.proofs)?;
+        state.serialize_field("signature", &self.signature)?;
+
+        if self.version >= 4 {
+            state.serialize_field("eip712Signature", &self.eip712_signature)?;
+            state.serialize_field("priceMode", &self.price_mode)?;
+        }
+        state.end()
+    }
 }
 
 impl From<OrderMeta<'_>> for Order {
@@ -140,6 +176,12 @@ impl From<OrderMeta<'_>> for Order {
                 }
                 _ => None,
             },
+            price_mode: String::from(match order.price_mode {
+                0 => "default",
+                1 => "fixedDecimals",
+                2 => "assetDecimals",
+                m => unreachable!("unknown order price_mode {m}"),
+            }),
         }
     }
 }

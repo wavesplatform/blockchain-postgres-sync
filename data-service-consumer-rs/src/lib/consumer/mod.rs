@@ -559,14 +559,14 @@ fn handle_base_asset_info_updates<R: RepoOperations>(
     ))
 }
 
-fn squash_microblocks<R: RepoOperations>(storage: &R) -> Result<()> {
-    let total_block_id = storage.get_total_block_id()?;
+fn squash_microblocks<R: RepoOperations>(repo: &R) -> Result<()> {
+    let total_block_id = repo.get_total_block_id()?;
 
     if let Some(tbid) = total_block_id {
-        let key_block_uid = storage.get_key_block_uid()?;
-        storage.update_assets_block_references(&key_block_uid)?;
-        storage.delete_microblocks()?;
-        storage.change_block_id(&key_block_uid, &tbid)?;
+        let key_block_uid = repo.get_key_block_uid()?;
+        repo.update_assets_block_references(&key_block_uid)?;
+        repo.delete_microblocks()?;
+        repo.change_block_id(&key_block_uid, &tbid)?;
     }
 
     Ok(())

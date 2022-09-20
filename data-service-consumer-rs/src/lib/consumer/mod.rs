@@ -387,7 +387,7 @@ fn handle_txs<R: RepoOperations>(
     insert_txs(txs_17, |txs| repo.insert_txs_17(txs))?;
     insert_txs(txs_18, |txs| repo.insert_txs_18(txs))?;
 
-    info!("all {} txs handled", txs_count);
+    info!("{} transactions handled", txs_count);
 
     Ok(())
 }

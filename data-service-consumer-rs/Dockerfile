@@ -2,7 +2,7 @@ FROM rust:1.63 AS builder
 WORKDIR /app
 
 RUN rustup update nightly
-RUN rustup default nightly-2022-09-17
+RUN rustup default nightly-2022-09-19
 RUN rustup component add rustfmt
 
 COPY Cargo.* ./

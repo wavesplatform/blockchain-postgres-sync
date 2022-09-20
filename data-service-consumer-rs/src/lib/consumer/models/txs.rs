@@ -19,6 +19,8 @@ use waves_protobuf_schemas::waves::{
     Amount, Recipient, SignedTransaction,
 };
 
+const WRONG_META_VAR: &str = "wrong meta variant";
+
 type Uid = i64;
 type Height = i32;
 type TxType = i16;
@@ -144,7 +146,7 @@ impl
             Transaction::WavesTransaction(tx) => tx,
             Transaction::EthereumTransaction(tx) => {
                 let Some(Metadata::Ethereum(meta)) = &meta.metadata else {
-                    unreachable!("wrong meta variant")
+                    unreachable!("{WRONG_META_VAR}")
                 };
                 let mut eth_tx = Tx18 {
                     uid,
@@ -262,7 +264,7 @@ impl
                 signature,
                 fee,
                 proofs,
-                tx_version: tx_version.and_then(|v| (v != 1).then_some(v)),
+                tx_version: None,
                 sender: (sender.len() > 0).then_some(sender),
                 sender_public_key: (sender_public_key.len() > 0).then_some(sender_public_key),
                 status,
@@ -320,14 +322,13 @@ impl
                 quantity: t.amount,
                 decimals: t.decimals as i16,
                 reissuable: t.reissuable,
-                script: if !t.script.is_empty() {
-                    Some(into_prefixed_b64(&t.script))
-                } else {
-                    None
-                },
+                script: extract_script(&t.script),
                 block_uid,
             }),
             Data::Transfer(t) => {
+                let Some(Metadata::Transfer(meta)) = &meta.metadata else {
+                    unreachable!("{WRONG_META_VAR}")
+                };
                 let Amount { asset_id, amount } = t.amount.as_ref().unwrap();
                 Tx::Transfer(Tx4 {
                     uid,
@@ -346,11 +347,7 @@ impl
                     fee_asset_id,
                     amount: *amount,
                     attachment: into_b58(&t.attachment),
-                    recipient_address: if let Some(Metadata::Transfer(ref m)) = meta.metadata {
-                        into_b58(&m.recipient_address)
-                    } else {
-                        unreachable!("wrong meta variant")
-                    },
+                    recipient_address: into_b58(&meta.recipient_address),
                     recipient_alias: extract_recipient_alias(&t.recipient),
                     block_uid,
                 })
@@ -399,7 +396,7 @@ impl
             Data::Exchange(t) => {
                 let order_to_val = |o| serde_json::to_value(Order::from(o)).unwrap();
                 let Some(Metadata::Exchange(meta)) = &meta.metadata else {
-                    unreachable!("wrong meta variant")
+                    unreachable!("{WRONG_META_VAR}")
                 };
                 let order_1 = OrderMeta {
                     order: &t.orders[0],
@@ -439,28 +436,29 @@ impl
                     block_uid,
                 })
             }
-            Data::Lease(t) => Tx::Lease(Tx8 {
-                uid,
-                height,
-                tx_type: 8,
-                id,
-                time_stamp,
-                signature,
-                fee,
-                proofs,
-                tx_version,
-                sender,
-                sender_public_key,
-                status,
-                amount: t.amount,
-                recipient_address: if let Some(Metadata::Lease(ref m)) = meta.metadata {
-                    into_b58(&m.recipient_address)
-                } else {
-                    unreachable!("wrong meta variant")
-                },
-                recipient_alias: extract_recipient_alias(&t.recipient),
-                block_uid,
-            }),
+            Data::Lease(t) => {
+                let Some(Metadata::Lease(meta)) = &meta.metadata else {
+                    unreachable!("{WRONG_META_VAR}")
+                };
+                Tx::Lease(Tx8 {
+                    uid,
+                    height,
+                    tx_type: 8,
+                    id,
+                    time_stamp,
+                    signature,
+                    fee,
+                    proofs,
+                    tx_version,
+                    sender,
+                    sender_public_key,
+                    status,
+                    amount: t.amount,
+                    recipient_address: into_b58(&meta.recipient_address),
+                    recipient_alias: extract_recipient_alias(&t.recipient),
+                    block_uid,
+                })
+            }
             Data::LeaseCancel(t) => Tx::LeaseCancel(Tx9Partial {
                 uid,
                 height,
@@ -497,43 +495,44 @@ impl
                 alias: t.alias.clone(),
                 block_uid,
             }),
-            Data::MassTransfer(t) => Tx::MassTransfer(Tx11Combined {
-                tx: Tx11 {
-                    uid,
-                    height,
-                    tx_type: 11,
-                    id,
-                    time_stamp,
-                    signature,
-                    fee,
-                    proofs,
-                    tx_version,
-                    sender,
-                    sender_public_key,
-                    status,
-                    asset_id: extract_asset_id(&t.asset_id),
-                    attachment: into_b58(&t.attachment),
-                    block_uid,
-                },
-                transfers: t
-                    .transfers
-                    .iter()
-                    .zip(if let Some(Metadata::MassTransfer(ref m)) = meta.metadata {
-                        &m.recipients_addresses
-                    } else {
-                        unreachable!("wrong meta variant")
-                    })
-                    .enumerate()
-                    .map(|(i, (t, rcpt_addr))| Tx11Transfers {
-                        tx_uid: uid,
-                        recipient_address: into_b58(rcpt_addr),
-                        recipient_alias: extract_recipient_alias(&t.recipient),
-                        amount: t.amount,
-                        position_in_tx: i as i16,
+            Data::MassTransfer(t) => {
+                let Some(Metadata::MassTransfer(meta)) = &meta.metadata else {
+                    unreachable!("{WRONG_META_VAR}")
+                };
+                Tx::MassTransfer(Tx11Combined {
+                    tx: Tx11 {
+                        uid,
                         height,
-                    })
-                    .collect(),
-            }),
+                        tx_type: 11,
+                        id,
+                        time_stamp,
+                        signature,
+                        fee,
+                        proofs,
+                        tx_version,
+                        sender,
+                        sender_public_key,
+                        status,
+                        asset_id: extract_asset_id(&t.asset_id),
+                        attachment: into_b58(&t.attachment),
+                        block_uid,
+                    },
+                    transfers: t
+                        .transfers
+                        .iter()
+                        .zip(&meta.recipients_addresses)
+                        .enumerate()
+                        .map(|(i, (t, rcpt_addr))| Tx11Transfers {
+                            tx_uid: uid,
+                            recipient_address: into_b58(rcpt_addr),
+                            recipient_alias: extract_recipient_alias(&t.recipient),
+                            amount: t.amount,
+                            position_in_tx: i as i16,
+                            height,
+                        })
+                        .collect(),
+                })
+            }
             Data::DataTransaction(t) => Tx::DataTransaction(Tx12Combined {
                 tx: Tx12 {
                     uid,
@@ -597,7 +596,7 @@ impl
                 sender,
                 sender_public_key,
                 status,
-                script: into_prefixed_b64(&t.script),
+                script: extract_script(&t.script),
                 block_uid,
             }),
             Data::SponsorFee(t) => Tx::SponsorFee(Tx14 {
@@ -634,12 +633,12 @@ impl
                 sender_public_key,
                 status,
                 asset_id: extract_asset_id(&t.asset_id),
-                script: into_prefixed_b64(&t.script),
+                script: extract_script(&t.script),
                 block_uid,
             }),
             Data::InvokeScript(t) => {
                 let Some(Metadata::InvokeScript(meta)) = &meta.metadata else {
-                    unreachable!("wrong meta variant")
+                    unreachable!("{WRONG_META_VAR}")
                 };
                 Tx::InvokeScript(Tx16Combined {
                     tx: Tx16 {
@@ -1109,7 +1108,7 @@ pub struct Tx13 {
     pub sender: Sender,
     pub sender_public_key: SenderPubKey,
     pub status: Status,
-    pub script: String,
+    pub script: Option<String>,
 }
 
 /// SponsorFee
@@ -1151,7 +1150,7 @@ pub struct Tx15 {
     pub sender_public_key: SenderPubKey,
     pub status: Status,
     pub asset_id: String,
-    pub script: String,
+    pub script: Option<String>,
 }
 
 /// InvokeScript
@@ -1299,4 +1298,12 @@ fn extract_recipient_alias(rcpt: &Option<Recipient>) -> Option<String> {
             InnerRecipient::Alias(alias) if !alias.is_empty() => Some(alias.clone()),
             _ => None,
         })
+}
+
+fn extract_script(script: &Vec<u8>) -> Option<String> {
+    if !script.is_empty() {
+        Some(into_prefixed_b64(script))
+    } else {
+        None
+    }
 }

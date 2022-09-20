@@ -1,5 +1,3 @@
-#![feature(let_else)]
-
 #[macro_use]
 extern crate diesel;
 

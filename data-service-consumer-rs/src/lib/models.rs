@@ -100,7 +100,8 @@ impl Serialize for Order {
         S: Serializer,
     {
         let fields_count = match self.version {
-            1..=3 => 15,
+            1..=2 => 15,
+            3 => 16,   // + matcher_fee_asset_id
             4.. => 17, // + eip712_signature, price_mode
             v => unreachable!("unknown order version {v}"),
         };
@@ -117,9 +118,12 @@ impl Serialize for Order {
         state.serialize_field("timestamp", &self.timestamp)?;
         state.serialize_field("expiration", &self.expiration)?;
         state.serialize_field("matcherFee", &self.matcher_fee)?;
-        state.serialize_field("matcherFeeAssetId", &self.matcher_fee_asset_id)?;
         state.serialize_field("proofs", &self.proofs)?;
         state.serialize_field("signature", &self.signature)?;
+
+        if self.version >= 3 {
+            state.serialize_field("matcherFeeAssetId", &self.matcher_fee_asset_id)?;
+        }
 
         if self.version >= 4 {
             state.serialize_field("eip712Signature", &self.eip712_signature)?;

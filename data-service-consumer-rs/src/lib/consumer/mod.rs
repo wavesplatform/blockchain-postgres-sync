@@ -564,9 +564,10 @@ fn squash_microblocks<R: RepoOperations>(repo: &R) -> Result<()> {
 
     if let Some(tbid) = total_block_id {
         let key_block_uid = repo.get_key_block_uid()?;
-        repo.update_assets_block_references(&key_block_uid)?;
+        repo.update_assets_block_references(key_block_uid)?;
+        repo.update_transactions_references(key_block_uid)?;
         repo.delete_microblocks()?;
-        repo.change_block_id(&key_block_uid, &tbid)?;
+        repo.change_block_id(key_block_uid, &tbid)?;
     }
 
     Ok(())
@@ -576,13 +577,14 @@ fn rollback<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
     debug!("rolling back to block_uid = {}", block_uid);
 
     rollback_assets(repo, block_uid)?;
-    repo.rollback_blocks_microblocks(&block_uid)?;
+    repo.rollback_transactions(block_uid)?;
+    repo.rollback_blocks_microblocks(block_uid)?;
 
     Ok(())
 }
 
 fn rollback_assets<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
-    let deleted = repo.rollback_assets(&block_uid)?;
+    let deleted = repo.rollback_assets(block_uid)?;
 
     let mut grouped_deleted: HashMap<DeletedAsset, Vec<DeletedAsset>> = HashMap::new();
 

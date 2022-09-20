@@ -1,5 +1,6 @@
 use anyhow::{Error, Result};
 use async_trait::async_trait;
+use diesel::expression::sql_literal::sql;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::result::Error as DslError;
@@ -67,9 +68,8 @@ impl RepoOperations for PgRepoOperations<'_> {
         blocks_microblocks::table
             .select((blocks_microblocks::uid, blocks_microblocks::height))
             .filter(
-                blocks_microblocks::height.eq(diesel::expression::sql_literal::sql(
-                    "(select max(height) - 1 from blocks_microblocks)",
-                )),
+                blocks_microblocks::height
+                    .eq(sql("(select max(height) - 1 from blocks_microblocks)")),
             )
             .order(blocks_microblocks::uid.asc())
             .first(self.conn)
@@ -90,7 +90,7 @@ impl RepoOperations for PgRepoOperations<'_> {
 
     fn get_key_block_uid(&self) -> Result<i64> {
         blocks_microblocks::table
-            .select(diesel::expression::sql_literal::sql("max(uid)"))
+            .select(sql("max(uid)"))
             .filter(blocks_microblocks::time_stamp.is_not_null())
             .get_result(self.conn)
             .map_err(build_err_fn("Cannot get key block uid"))
@@ -114,7 +114,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot insert blocks/microblocks"))
     }
 
-    fn change_block_id(&self, block_uid: &i64, new_block_id: &str) -> Result<()> {
+    fn change_block_id(&self, block_uid: i64, new_block_id: &str) -> Result<()> {
         diesel::update(blocks_microblocks::table)
             .set(blocks_microblocks::id.eq(new_block_id))
             .filter(blocks_microblocks::uid.eq(block_uid))
@@ -131,7 +131,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot delete microblocks"))
     }
 
-    fn rollback_blocks_microblocks(&self, block_uid: &i64) -> Result<()> {
+    fn rollback_blocks_microblocks(&self, block_uid: i64) -> Result<()> {
         diesel::delete(blocks_microblocks::table)
             .filter(blocks_microblocks::uid.gt(block_uid))
             .execute(self.conn)
@@ -182,7 +182,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert new assets"))
     }
 
-    fn update_assets_block_references(&self, block_uid: &i64) -> Result<()> {
+    fn update_assets_block_references(&self, block_uid: i64) -> Result<()> {
         diesel::update(asset_updates::table)
             .set((asset_updates::block_uid.eq(block_uid),))
             .filter(asset_updates::block_uid.gt(block_uid))
@@ -240,7 +240,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot set assets next update uid"))
     }
 
-    fn rollback_assets(&self, block_uid: &i64) -> Result<Vec<DeletedAsset>> {
+    fn rollback_assets(&self, block_uid: i64) -> Result<Vec<DeletedAsset>> {
         diesel::delete(asset_updates::table)
             .filter(asset_updates::block_uid.gt(block_uid))
             .returning((asset_updates::uid, asset_updates::asset_id))
@@ -253,7 +253,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot rollback assets"))
     }
 
-    fn assets_gt_block_uid(&self, block_uid: &i64) -> Result<Vec<i64>> {
+    fn assets_gt_block_uid(&self, block_uid: i64) -> Result<Vec<i64>> {
         asset_updates::table
             .select(asset_updates::uid)
             .filter(asset_updates::block_uid.gt(block_uid))
@@ -267,6 +267,23 @@ impl RepoOperations for PgRepoOperations<'_> {
     //
     // TRANSACTIONS
     //
+
+    fn update_transactions_references(&self, block_uid: i64) -> Result<()> {
+        diesel::update(txs::table)
+            .set((txs::block_uid.eq(block_uid),))
+            .filter(txs::block_uid.gt(block_uid))
+            .execute(self.conn)
+            .map(drop)
+            .map_err(build_err_fn("Cannot update transactions references"))
+    }
+
+    fn rollback_transactions(&self, block_uid: i64) -> Result<()> {
+        diesel::delete(txs::table)
+            .filter(txs::block_uid.gt(block_uid))
+            .execute(self.conn)
+            .map(drop)
+            .map_err(build_err_fn("Cannot rollback transactions"))
+    }
 
     fn insert_txs_1(&self, txs: Vec<Tx1>) -> Result<()> {
         chunked(txs_1::table, &txs, |t| {
@@ -606,7 +623,7 @@ where
 
 fn build_err_fn(msg: impl AsRef<str>) -> impl Fn(DslError) -> Error {
     move |err| {
-        let ctx = format!("{}: {}", msg.as_ref(), err);
+        let ctx = format!("{}", msg.as_ref());
         Error::new(AppError::DbDieselError(err)).context(ctx)
     }
 }

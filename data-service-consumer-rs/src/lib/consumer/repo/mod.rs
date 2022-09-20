@@ -35,11 +35,11 @@ pub trait RepoOperations {
 
     fn insert_blocks_or_microblocks(&self, blocks: &Vec<BlockMicroblock>) -> Result<Vec<i64>>;
 
-    fn change_block_id(&self, block_uid: &i64, new_block_id: &str) -> Result<()>;
+    fn change_block_id(&self, block_uid: i64, new_block_id: &str) -> Result<()>;
 
     fn delete_microblocks(&self) -> Result<()>;
 
-    fn rollback_blocks_microblocks(&self, block_uid: &i64) -> Result<()>;
+    fn rollback_blocks_microblocks(&self, block_uid: i64) -> Result<()>;
 
     fn insert_waves_data(&self, waves_data: &Vec<WavesData>) -> Result<()>;
 
@@ -53,7 +53,7 @@ pub trait RepoOperations {
 
     fn insert_asset_origins(&self, origins: &Vec<AssetOrigin>) -> Result<()>;
 
-    fn update_assets_block_references(&self, block_uid: &i64) -> Result<()>;
+    fn update_assets_block_references(&self, block_uid: i64) -> Result<()>;
 
     fn close_assets_superseded_by(&self, updates: &Vec<AssetOverride>) -> Result<()>;
 
@@ -61,13 +61,16 @@ pub trait RepoOperations {
 
     fn set_assets_next_update_uid(&self, new_uid: i64) -> Result<()>;
 
-    fn rollback_assets(&self, block_uid: &i64) -> Result<Vec<DeletedAsset>>;
+    fn rollback_assets(&self, block_uid: i64) -> Result<Vec<DeletedAsset>>;
 
-    fn assets_gt_block_uid(&self, block_uid: &i64) -> Result<Vec<i64>>;
+    fn assets_gt_block_uid(&self, block_uid: i64) -> Result<Vec<i64>>;
 
     //
     // TRANSACTIONS
     //
+    fn update_transactions_references(&self, block_uid: i64) -> Result<()>;
+
+    fn rollback_transactions(&self, block_uid: i64) -> Result<()>;
 
     fn insert_txs_1(&self, txs: Vec<Tx1>) -> Result<()>;
 

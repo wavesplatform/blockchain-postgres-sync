@@ -95,10 +95,7 @@ pub struct Order {
 }
 
 impl Serialize for Order {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let fields_count = match self.version {
             1..=2 => 15,
             3 => 16,   // + matcher_fee_asset_id

@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
 
     let pg_repo = consumer::repo::pg::new(conn);
 
-    if let Err(err) = consumer::start(
+    let result = consumer::start(
         config.node.starting_height,
         updates_src,
         pg_repo,
@@ -30,10 +30,10 @@ async fn main() -> Result<()> {
         config.node.chain_id,
         config.consumer.assets_only,
     )
-    .await
-    {
+    .await;
+
+    if let Err(ref err) = result {
         error!("{}", err);
-        panic!("data-service consumer panic: {}", err);
     }
-    Ok(())
+    result
 }

@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS txs_11_transfers (
     height integer NOT NULL,
 
     PRIMARY KEY (tx_uid, position_in_tx),
-    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_11(uid)
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_11(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_12 (
@@ -233,7 +233,7 @@ CREATE TABLE IF NOT EXISTS txs_12_data (
     height INTEGER NOT NULL,
 
     PRIMARY KEY (tx_uid, position_in_tx),
-    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_12(uid)
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_12(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_13 (
@@ -293,7 +293,7 @@ CREATE TABLE IF NOT EXISTS txs_16_args (
     height INTEGER,
 
     PRIMARY KEY (tx_uid, position_in_args),
-    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_16(uid)
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_16(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_16_payment (
@@ -304,7 +304,7 @@ CREATE TABLE IF NOT EXISTS txs_16_payment (
     asset_id VARCHAR NOT NULL,
 
     PRIMARY KEY (tx_uid, position_in_payment),
-    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_16(uid)
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_16(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_17
@@ -342,7 +342,7 @@ CREATE TABLE IF NOT EXISTS txs_18_args (
     height INTEGER,
 
     PRIMARY KEY (tx_uid, position_in_args),
-    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_18(uid)
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_18(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS txs_18_payment (
@@ -353,7 +353,7 @@ CREATE TABLE IF NOT EXISTS txs_18_payment (
     asset_id VARCHAR NOT NULL,
 
     PRIMARY KEY (tx_uid, position_in_payment),
-    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_18(uid)
+    CONSTRAINT fk_tx_uid FOREIGN KEY (tx_uid) REFERENCES txs_18(uid) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS assets_metadata (

@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS asset_updates (
 
 CREATE TABLE IF NOT EXISTS asset_origins (
     asset_id VARCHAR NOT NULL PRIMARY KEY,
-    first_asset_update_uid BIGINT NOT NULL REFERENCES asset_updates(uid),
+    first_asset_update_uid BIGINT NOT NULL REFERENCES asset_updates(uid) ON DELETE CASCADE,
     origin_transaction_id VARCHAR NOT NULL,
     issuer VARCHAR NOT NULL,
     issue_height INTEGER NOT NULL,

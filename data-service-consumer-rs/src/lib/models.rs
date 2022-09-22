@@ -46,6 +46,7 @@ impl From<&InvokeScriptArgValue> for DataEntryTypeValue {
             }
             InvokeScriptArgValue::StringValue(v) => DataEntryTypeValue::String(v.to_owned()),
             InvokeScriptArgValue::BooleanValue(v) => DataEntryTypeValue::Boolean(*v),
+            // deep conversion of List
             InvokeScriptArgValue::List(v) => DataEntryTypeValue::List(json!(ArgList::from(v))),
             InvokeScriptArgValue::CaseObj(_) => todo!(),
         }
@@ -91,7 +92,7 @@ pub struct Order {
     pub proofs: Vec<String>,
     pub signature: String,
     pub eip712_signature: Option<String>,
-    pub price_mode: String,
+    pub price_mode: Option<String>,
 }
 
 impl Serialize for Order {
@@ -177,12 +178,12 @@ impl From<OrderMeta<'_>> for Order {
                 }
                 _ => None,
             },
-            price_mode: String::from(match order.price_mode {
-                0 => "default",
-                1 => "fixedDecimals",
-                2 => "assetDecimals",
+            price_mode: match order.price_mode {
+                0 => None,
+                1 => Some("fixedDecimals".to_string()),
+                2 => Some("assetDecimals".to_string()),
                 m => unreachable!("unknown order price_mode {m}"),
-            }),
+            },
         }
     }
 }

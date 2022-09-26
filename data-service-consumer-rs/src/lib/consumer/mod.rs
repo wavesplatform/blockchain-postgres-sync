@@ -102,7 +102,7 @@ where
     let starting_from_height = {
         repo.transaction(move |ops| match ops.get_prev_handled_height() {
             Ok(Some(prev_handled_height)) => {
-                rollback(ops, prev_handled_height.uid)?;
+                rollback(ops, prev_handled_height.uid, assets_only)?;
                 Ok(prev_handled_height.height as u32 + 1)
             }
             Ok(None) => Ok(starting_height),
@@ -207,7 +207,7 @@ fn handle_updates<R: RepoOperations>(
             }
             UpdatesItem::Rollback(sig) => {
                 let block_uid = repo.get_block_uid(sig)?;
-                rollback(repo, block_uid)
+                rollback(repo, block_uid, assets_only)
             }
         })?;
 
@@ -573,11 +573,13 @@ fn squash_microblocks<R: RepoOperations>(repo: &R) -> Result<()> {
     Ok(())
 }
 
-fn rollback<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
+fn rollback<R: RepoOperations>(repo: &R, block_uid: i64, assets_only: bool) -> Result<()> {
     debug!("rolling back to block_uid = {}", block_uid);
 
     rollback_assets(repo, block_uid)?;
-    repo.rollback_transactions(block_uid)?;
+    if !assets_only {
+        repo.rollback_transactions(block_uid)?;
+    }
     repo.rollback_blocks_microblocks(block_uid)?;
 
     Ok(())

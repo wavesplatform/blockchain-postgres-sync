@@ -199,7 +199,7 @@ fn handle_updates<R: RepoOperations>(
         .into_iter()
         .try_fold((), |_, update_item| match update_item {
             UpdatesItem::Blocks(ba) => {
-                squash_microblocks(repo)?;
+                squash_microblocks(repo, assets_only)?;
                 handle_appends(repo, chain_id, ba, assets_only)
             }
             UpdatesItem::Microblock(mba) => {
@@ -559,13 +559,17 @@ fn handle_base_asset_info_updates<R: RepoOperations>(
     ))
 }
 
-fn squash_microblocks<R: RepoOperations>(repo: &R) -> Result<()> {
+fn squash_microblocks<R: RepoOperations>(repo: &R, assets_only: bool) -> Result<()> {
     let total_block_id = repo.get_total_block_id()?;
 
     if let Some(tbid) = total_block_id {
         let key_block_uid = repo.get_key_block_uid()?;
         repo.update_assets_block_references(key_block_uid)?;
-        repo.update_transactions_references(key_block_uid)?;
+
+        if !assets_only {
+            repo.update_transactions_references(key_block_uid)?;
+        }
+
         repo.delete_microblocks()?;
         repo.change_block_id(key_block_uid, &tbid)?;
     }

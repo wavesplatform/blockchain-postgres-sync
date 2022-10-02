@@ -2053,8 +2053,8 @@ dependencies = [
 
 [[package]]
 name = "wavesexchange_log"
-version = "0.5.0"
-source = "git+https://github.com/waves-exchange/wavesexchange-rs?tag=wavesexchange_log/0.5.0#f23ce00338fa8ce320f9627e1dc099bcc5244ddc"
+version = "0.5.1"
+source = "git+https://github.com/waves-exchange/wavesexchange-rs?tag=wavesexchange_log/0.5.1#8ccb6c3ef6b07c324203ed23109a2a5d80813c83"
 dependencies = [
  "chrono",
  "once_cell",

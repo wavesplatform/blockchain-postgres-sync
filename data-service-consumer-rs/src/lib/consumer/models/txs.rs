@@ -62,9 +62,9 @@ pub struct TxUidGenerator {
 }
 
 impl TxUidGenerator {
-    pub fn new(multiplier: Option<usize>) -> Self {
+    pub const fn new(multiplier: usize) -> Self {
         Self {
-            multiplier: multiplier.unwrap_or(0),
+            multiplier,
             last_height: 0,
             last_id: 0,
         }
@@ -1280,6 +1280,7 @@ pub struct Tx18Payment {
 }
 
 /// Ethereum
+#[derive(Clone, Debug)]
 pub struct Tx18Combined {
     pub tx: Tx18,
     pub args: Vec<Tx18Args>,

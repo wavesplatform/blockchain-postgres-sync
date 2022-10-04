@@ -289,8 +289,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_1::table, &txs, |t| {
             diesel::insert_into(txs_1::table)
                 .values(t)
-                .on_conflict(txs_1::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Genesis transactions"))
@@ -300,8 +298,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_2::table, &txs, |t| {
             diesel::insert_into(txs_2::table)
                 .values(t)
-                .on_conflict(txs_2::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Payment transactions"))
@@ -311,8 +307,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_3::table, &txs, |t| {
             diesel::insert_into(txs_3::table)
                 .values(t)
-                .on_conflict(txs_3::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Issue transactions"))
@@ -322,8 +316,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_4::table, &txs, |t| {
             diesel::insert_into(txs_4::table)
                 .values(t)
-                .on_conflict(txs_4::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Transfer transactions"))
@@ -333,8 +325,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_5::table, &txs, |t| {
             diesel::insert_into(txs_5::table)
                 .values(t)
-                .on_conflict(txs_5::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Reissue transactions"))
@@ -344,8 +334,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_6::table, &txs, |t| {
             diesel::insert_into(txs_6::table)
                 .values(t)
-                .on_conflict(txs_6::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Burn transactions"))
@@ -355,8 +343,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_7::table, &txs, |t| {
             diesel::insert_into(txs_7::table)
                 .values(t)
-                .on_conflict(txs_7::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Exchange transactions"))
@@ -366,8 +352,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_8::table, &txs, |t| {
             diesel::insert_into(txs_8::table)
                 .values(t)
-                .on_conflict(txs_8::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Lease transactions"))
@@ -405,8 +389,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_9::table, &txs9, |t| {
             diesel::insert_into(txs_9::table)
                 .values(t)
-                .on_conflict(txs_9::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert LeaseCancel transactions"))
@@ -416,8 +398,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_10::table, &txs, |t| {
             diesel::insert_into(txs_10::table)
                 .values(t)
-                .on_conflict(txs_10::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert CreateAlias transactions"))
@@ -431,8 +411,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_11::table, &txs11, |t| {
             diesel::insert_into(txs_11::table)
                 .values(t)
-                .on_conflict(txs_11::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert MassTransfer transactions"))?;
@@ -440,8 +418,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_11_transfers::table, &transfers, |t| {
             diesel::insert_into(txs_11_transfers::table)
                 .values(t)
-                .on_conflict((txs_11_transfers::tx_uid, txs_11_transfers::position_in_tx))
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert MassTransfer transfers"))
@@ -455,8 +431,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_12::table, &txs12, |t| {
             diesel::insert_into(txs_12::table)
                 .values(t)
-                .on_conflict(txs_12::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert DataTransaction transaction"))?;
@@ -464,8 +438,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_12_data::table, &data, |t| {
             diesel::insert_into(txs_12_data::table)
                 .values(t)
-                .on_conflict((txs_12_data::tx_uid, txs_12_data::position_in_tx))
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert DataTransaction data"))
@@ -475,8 +447,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_13::table, &txs, |t| {
             diesel::insert_into(txs_13::table)
                 .values(t)
-                .on_conflict(txs_13::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert SetScript transactions"))
@@ -486,8 +456,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_14::table, &txs, |t| {
             diesel::insert_into(txs_14::table)
                 .values(t)
-                .on_conflict(txs_14::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert SponsorFee transactions"))
@@ -497,8 +465,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_15::table, &txs, |t| {
             diesel::insert_into(txs_15::table)
                 .values(t)
-                .on_conflict(txs_15::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert SetAssetScript transactions"))
@@ -517,8 +483,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_16::table, &txs16, |t| {
             diesel::insert_into(txs_16::table)
                 .values(t)
-                .on_conflict(txs_16::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert InvokeScript transactions"))?;
@@ -526,8 +490,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_16_args::table, &args, |t| {
             diesel::insert_into(txs_16_args::table)
                 .values(t)
-                .on_conflict((txs_16_args::tx_uid, txs_16_args::position_in_args))
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert InvokeScript args"))?;
@@ -535,8 +497,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_16_payment::table, &payments, |t| {
             diesel::insert_into(txs_16_payment::table)
                 .values(t)
-                .on_conflict((txs_16_payment::tx_uid, txs_16_payment::position_in_payment))
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert InvokeScript payments"))
@@ -546,8 +506,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_17::table, &txs, |t| {
             diesel::insert_into(txs_17::table)
                 .values(t)
-                .on_conflict(txs_17::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert UpdateAssetInfo transactions"))
@@ -566,8 +524,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_18::table, &txs18, |t| {
             diesel::insert_into(txs_18::table)
                 .values(t)
-                .on_conflict(txs_18::uid)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Ethereum transactions"))?;
@@ -575,8 +531,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_18_args::table, &args, |t| {
             diesel::insert_into(txs_18_args::table)
                 .values(t)
-                .on_conflict((txs_18_args::tx_uid, txs_18_args::position_in_args))
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Ethereum InvokeScript args"))?;
@@ -584,8 +538,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(txs_18_payment::table, &payments, |t| {
             diesel::insert_into(txs_18_payment::table)
                 .values(t)
-                .on_conflict((txs_18_payment::tx_uid, txs_18_payment::position_in_payment))
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Ethereum InvokeScript payments"))

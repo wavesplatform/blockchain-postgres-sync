@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS txs (
     status VARCHAR DEFAULT 'succeeded' NOT NULL,
     block_uid BIGINT NOT NULL,
 
-    CONSTRAINT txs_pk PRIMARY KEY (uid, id, time_stamp),
+    CONSTRAINT txs_pk_uid_id_time_stamp PRIMARY KEY (uid, id, time_stamp),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 );
 
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS txs_1 (
     recipient_alias VARCHAR,
     amount BIGINT NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_1_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS txs_2 (
     recipient_alias VARCHAR,
     amount BIGINT NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_2_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS txs_3 (
     reissuable BOOLEAN NOT NULL,
     script VARCHAR,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_3_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS txs_4 (
     fee_asset_id VARCHAR NOT NULL,
     attachment VARCHAR NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_4_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS txs_5 (
     quantity BIGINT NOT NULL,
     reissuable BOOLEAN NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_5_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS txs_6 (
     asset_id VARCHAR NOT NULL,
     amount BIGINT NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_6_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS txs_7 (
     sell_matcher_fee BIGINT NOT NULL,
     fee_asset_id VARCHAR NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_7_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS txs_8 (
     recipient_alias VARCHAR,
     amount BIGINT NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_8_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTS txs_9 (
     sender_public_key VARCHAR NOT NULL,
     lease_tx_uid BIGINT,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_9_pk_uid PRIMARY KEY (uid),
     CONSTRAINT txs_9_un UNIQUE (uid, lease_tx_uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS txs_10 (
     sender_public_key VARCHAR NOT NULL,
     alias VARCHAR NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_10_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS txs_11 (
     asset_id VARCHAR NOT NULL,
     attachment VARCHAR NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_11_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS txs_12 (
     sender VARCHAR NOT NULL,
     sender_public_key VARCHAR NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_12_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -241,7 +241,7 @@ CREATE TABLE IF NOT EXISTS txs_13 (
     sender_public_key VARCHAR NOT NULL,
     script VARCHAR,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_13_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -252,7 +252,7 @@ CREATE TABLE IF NOT EXISTS txs_14 (
     asset_id VARCHAR NOT NULL,
     min_sponsored_asset_fee BIGINT,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_14_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -263,7 +263,7 @@ CREATE TABLE IF NOT EXISTS txs_15 (
     asset_id VARCHAR NOT NULL,
     script VARCHAR,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_15_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -276,7 +276,7 @@ CREATE TABLE IF NOT EXISTS txs_16 (
     function_name VARCHAR,
     fee_asset_id VARCHAR NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_16_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 )
 INHERITS (txs);
@@ -315,7 +315,7 @@ CREATE TABLE IF NOT EXISTS txs_17
     asset_name VARCHAR NOT NULL,
     description VARCHAR NOT NULL,
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_17_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 ) 
 INHERITS (txs);
@@ -325,7 +325,7 @@ CREATE TABLE IF NOT EXISTS txs_18
     payload BYTEA NOT NULL,
     function_name VARCHAR, -- null - transfer, not null - invoke
 
-    PRIMARY KEY (uid),
+    CONSTRAINT txs_18_pk_uid PRIMARY KEY (uid),
     CONSTRAINT fk_blocks_uid FOREIGN KEY (block_uid) REFERENCES blocks_microblocks(uid)
 ) 
 INHERITS (txs);

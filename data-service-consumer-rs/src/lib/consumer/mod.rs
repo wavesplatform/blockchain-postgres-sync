@@ -8,6 +8,7 @@ use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::str;
+use std::sync::Mutex;
 use std::time::Instant;
 use tokio::sync::mpsc::Receiver;
 use waves_protobuf_schemas::waves::{
@@ -31,6 +32,8 @@ use crate::{
     utils::epoch_ms_to_naivedatetime,
     waves::WAVES_ID,
 };
+
+static UID_GENERATOR: Mutex<TxUidGenerator> = Mutex::new(TxUidGenerator::new(100000));
 
 #[derive(Clone, Debug)]
 pub enum BlockchainUpdate {
@@ -320,8 +323,6 @@ fn handle_txs<R: RepoOperations>(
     let mut txs_17 = vec![];
     let mut txs_18 = vec![];
 
-    let mut ugen = TxUidGenerator::new(Some(100000));
-
     let txs_count = block_uid_data
         .iter()
         .fold(0usize, |txs, (_, block)| txs + block.txs.len());
@@ -329,9 +330,10 @@ fn handle_txs<R: RepoOperations>(
 
     for (block_uid, bm) in block_uid_data {
         for tx in &bm.txs {
+            let mut ugen = UID_GENERATOR.lock().unwrap();
             ugen.maybe_update_height(bm.height as usize);
             let result_tx = ConvertedTx::try_from((
-                &tx.data, &tx.id, bm.height, &tx.meta, &mut ugen, *block_uid, chain_id,
+                &tx.data, &tx.id, bm.height, &tx.meta, &mut *ugen, *block_uid, chain_id,
             ))?;
             match result_tx {
                 ConvertedTx::Genesis(t) => txs_1.push(t),
@@ -560,18 +562,22 @@ fn handle_base_asset_info_updates<R: RepoOperations>(
 }
 
 fn squash_microblocks<R: RepoOperations>(repo: &R, assets_only: bool) -> Result<()> {
-    let total_block_id = repo.get_total_block_id()?;
+    let last_microblock_id = repo.get_total_block_id()?;
 
-    if let Some(tbid) = total_block_id {
-        let key_block_uid = repo.get_key_block_uid()?;
-        repo.update_assets_block_references(key_block_uid)?;
+    if let Some(lmid) = last_microblock_id {
+        let last_block_uid = repo.get_key_block_uid()?;
+        debug!(
+            "squashing into block_uid = {}, new block_id = {}",
+            last_block_uid, lmid
+        );
+        repo.update_assets_block_references(last_block_uid)?;
 
         if !assets_only {
-            repo.update_transactions_references(key_block_uid)?;
+            repo.update_transactions_references(last_block_uid)?;
         }
 
         repo.delete_microblocks()?;
-        repo.change_block_id(key_block_uid, &tbid)?;
+        repo.change_block_id(last_block_uid, &lmid)?;
     }
 
     Ok(())

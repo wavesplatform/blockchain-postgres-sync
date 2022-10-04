@@ -4,8 +4,6 @@ use warp::reject::Reject;
 pub enum Error {
     #[error("LoadConfigFailed: {0}")]
     LoadConfigFailed(#[from] envy::Error),
-    #[error("HttpRequestError {0}")]
-    HttpRequestError(#[from] reqwest::Error),
     #[error("InvalidMessage: {0}")]
     InvalidMessage(String),
     #[error("DbDieselError: {0}")]

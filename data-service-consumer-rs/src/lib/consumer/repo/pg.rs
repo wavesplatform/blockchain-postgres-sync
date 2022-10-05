@@ -143,7 +143,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         diesel::insert_into(waves_data::table)
             .values(waves_data)
             .on_conflict(waves_data::quantity)
-            .do_nothing()
+            .do_nothing() // its ok to skip same quantity on historical sync
             .execute(self.conn)
             .map(drop)
             .map_err(build_err_fn("Cannot insert waves data"))
@@ -164,8 +164,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(asset_updates::table, updates, |t| {
             diesel::insert_into(asset_updates::table)
                 .values(t)
-                .on_conflict((asset_updates::superseded_by, asset_updates::asset_id))
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert new asset updates"))
@@ -175,8 +173,6 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(asset_origins::table, origins, |t| {
             diesel::insert_into(asset_origins::table)
                 .values(t)
-                .on_conflict(asset_origins::asset_id)
-                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert new assets"))

@@ -173,6 +173,8 @@ impl RepoOperations for PgRepoOperations<'_> {
         chunked(asset_origins::table, origins, |t| {
             diesel::insert_into(asset_origins::table)
                 .values(t)
+                .on_conflict(asset_origins::asset_id)
+                .do_nothing()
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert new assets"))

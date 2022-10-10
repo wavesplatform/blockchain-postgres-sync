@@ -9,6 +9,8 @@ lazy_static! {
         Regex::new(r"^(.*)_<([a-zA-Z\d]+)>$").unwrap();
 }
 
+pub type ChainId = u8;
+
 pub const WAVES_ID: &str = "WAVES";
 
 pub fn keccak256(message: &[u8]) -> [u8; 32] {
@@ -35,10 +37,8 @@ pub fn blake2b256(message: &[u8]) -> [u8; 32] {
 pub struct Address(String);
 pub struct PublicKeyHash<'b>(pub &'b [u8]);
 
-impl From<(&[u8], u8)> for Address {
-    fn from(data: (&[u8], u8)) -> Self {
-        let (pk, chain_id) = data;
-
+impl From<(&[u8], ChainId)> for Address {
+    fn from((pk, chain_id): (&[u8], ChainId)) -> Self {
         let pkh = keccak256(&blake2b256(pk));
 
         let mut addr = BytesMut::with_capacity(26); // VERSION + CHAIN_ID + PKH + checksum
@@ -55,10 +55,8 @@ impl From<(&[u8], u8)> for Address {
     }
 }
 
-impl From<(PublicKeyHash<'_>, u8)> for Address {
-    fn from(data: (PublicKeyHash, u8)) -> Self {
-        let (PublicKeyHash(hash), chain_id) = data;
-
+impl From<(PublicKeyHash<'_>, ChainId)> for Address {
+    fn from((PublicKeyHash(hash), chain_id): (PublicKeyHash, ChainId)) -> Self {
         let mut addr = BytesMut::with_capacity(26);
 
         addr.put_u8(1);

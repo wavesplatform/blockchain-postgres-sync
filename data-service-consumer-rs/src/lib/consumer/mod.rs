@@ -7,7 +7,6 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::str;
 use std::sync::Mutex;
 use std::time::Instant;
 use tokio::sync::mpsc::Receiver;
@@ -29,7 +28,7 @@ use crate::{
         txs::{Tx as ConvertedTx, TxUidGenerator},
         waves_data::WavesData,
     },
-    utils::epoch_ms_to_naivedatetime,
+    utils::{epoch_ms_to_naivedatetime, escape_unicode_null},
     waves::WAVES_ID,
 };
 
@@ -328,12 +327,14 @@ fn handle_txs<R: RepoOperations>(
         .fold(0usize, |txs, (_, block)| txs + block.txs.len());
     info!("handling {} transactions", txs_count);
 
+    let mut ugen = UID_GENERATOR.lock().unwrap();
     for (block_uid, bm) in block_uid_data {
+        ugen.maybe_update_height(bm.height);
+
         for tx in &bm.txs {
-            let mut ugen = UID_GENERATOR.lock().unwrap();
-            ugen.maybe_update_height(bm.height as usize);
+            let tx_uid = ugen.next();
             let result_tx = ConvertedTx::try_from((
-                &tx.data, &tx.id, bm.height, &tx.meta, &mut *ugen, *block_uid, chain_id,
+                &tx.data, &tx.id, bm.height, &tx.meta, tx_uid, *block_uid, chain_id,
             ))?;
             match result_tx {
                 ConvertedTx::Genesis(t) => txs_1.push(t),
@@ -611,8 +612,4 @@ fn rollback_assets<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
         .collect();
 
     repo.reopen_assets_superseded_by(&lowest_deleted_uids)
-}
-
-fn escape_unicode_null(s: &str) -> String {
-    s.replace("\0", "\\0")
 }

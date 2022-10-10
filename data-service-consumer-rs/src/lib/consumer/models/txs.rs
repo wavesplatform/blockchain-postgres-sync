@@ -1,8 +1,8 @@
 use crate::error::Error;
 use crate::models::{DataEntryTypeValue, Order, OrderMeta};
 use crate::schema::*;
-use crate::utils::{epoch_ms_to_naivedatetime, into_b58, into_prefixed_b64};
-use crate::waves::{extract_asset_id, Address, PublicKeyHash, WAVES_ID};
+use crate::utils::{epoch_ms_to_naivedatetime, escape_unicode_null, into_b58, into_prefixed_b64};
+use crate::waves::{extract_asset_id, Address, ChainId, PublicKeyHash, WAVES_ID};
 use chrono::NaiveDateTime;
 use diesel::Insertable;
 use serde_json::{json, Value};
@@ -21,18 +21,19 @@ use waves_protobuf_schemas::waves::{
 
 const WRONG_META_VAR: &str = "wrong meta variant";
 
-type Uid = i64;
-type Height = i32;
+type TxUid = i64;
+type TxHeight = i32;
 type TxType = i16;
-type Id = String;
-type TimeStamp = NaiveDateTime;
-type Signature = Option<String>;
-type Fee = i64;
-type Proofs = Option<Vec<String>>;
+type TxId = String;
+type TxTimeStamp = NaiveDateTime;
+type TxSignature = Option<String>;
+type TxFee = i64;
+type TxProofs = Option<Vec<String>>;
 type TxVersion = Option<i16>;
-type Sender = String;
-type SenderPubKey = String;
-type Status = String;
+type TxSender = String;
+type TxSenderPubKey = String;
+type TxStatus = String;
+type TxBlockUid = i64;
 
 pub enum Tx {
     Genesis(Tx1),
@@ -56,13 +57,13 @@ pub enum Tx {
 }
 
 pub struct TxUidGenerator {
-    multiplier: usize,
-    last_height: usize,
-    last_id: usize,
+    multiplier: i64,
+    last_height: TxHeight,
+    last_id: TxUid,
 }
 
 impl TxUidGenerator {
-    pub const fn new(multiplier: usize) -> Self {
+    pub const fn new(multiplier: i64) -> Self {
         Self {
             multiplier,
             last_height: 0,
@@ -70,15 +71,15 @@ impl TxUidGenerator {
         }
     }
 
-    pub fn maybe_update_height(&mut self, height: usize) {
+    pub fn maybe_update_height(&mut self, height: TxHeight) {
         if self.last_height < height {
             self.last_height = height;
             self.last_id = 0;
         }
     }
 
-    pub fn next(&mut self) -> usize {
-        let result = self.last_height * self.multiplier + self.last_id;
+    pub fn next(&mut self) -> TxUid {
+        let result = self.last_height as i64 * self.multiplier + self.last_id;
         self.last_id += 1;
         result
     }
@@ -87,25 +88,25 @@ impl TxUidGenerator {
 impl
     TryFrom<(
         &SignedTransaction,
-        &Id,
-        Height,
+        &TxId,
+        TxHeight,
         &TransactionMetadata,
-        &mut TxUidGenerator,
-        i64,
-        u8,
+        TxUid,
+        TxBlockUid,
+        ChainId,
     )> for Tx
 {
     type Error = Error;
 
     fn try_from(
-        (tx, id, height, meta, ugen, block_uid, chain_id): (
+        (tx, id, height, meta, tx_uid, block_uid, chain_id): (
             &SignedTransaction,
-            &Id,
-            Height,
+            &TxId,
+            TxHeight,
             &TransactionMetadata,
-            &mut TxUidGenerator,
-            i64,
-            u8,
+            TxUid,
+            TxBlockUid,
+            ChainId,
         ),
     ) -> Result<Self, Self::Error> {
         let SignedTransaction {
@@ -116,7 +117,7 @@ impl
                 "No transaction data in id={id}, height={height}",
             )))
         };
-        let uid = ugen.next() as i64;
+        let uid = tx_uid;
         let id = id.to_owned();
         let proofs = proofs.iter().map(|p| into_b58(p)).collect::<Vec<_>>();
         let signature = proofs
@@ -165,7 +166,7 @@ impl
                     block_uid,
                     function_name: None,
                 };
-                let built_tx = match meta.action.as_ref().unwrap() {
+                let result_tx = match meta.action.as_ref().unwrap() {
                     EthAction::Transfer(_) => Tx18Combined {
                         tx: eth_tx,
                         args: vec![],
@@ -210,7 +211,7 @@ impl
                                         }
                                     };
                                     Tx18Args {
-                                        tx_uid: uid,
+                                        tx_uid,
                                         arg_type: v_type.to_string(),
                                         arg_value_integer: v_int,
                                         arg_value_boolean: v_bool,
@@ -227,7 +228,7 @@ impl
                                 .iter()
                                 .enumerate()
                                 .map(|(i, p)| Tx18Payment {
-                                    tx_uid: uid,
+                                    tx_uid,
                                     amount: p.amount,
                                     position_in_payment: i as i16,
                                     height,
@@ -237,7 +238,7 @@ impl
                         }
                     }
                 };
-                return Ok(Tx::Ethereum(built_tx));
+                return Ok(Tx::Ethereum(result_tx));
             }
         };
         let tx_data = tx.data.as_ref().ok_or_else(|| {
@@ -317,8 +318,8 @@ impl
                 } else {
                     id
                 },
-                asset_name: sanitize_str(&t.name),
-                description: sanitize_str(&t.description),
+                asset_name: escape_unicode_null(&t.name),
+                description: escape_unicode_null(&t.description),
                 quantity: t.amount,
                 decimals: t.decimals as i16,
                 reissuable: t.reissuable,
@@ -523,7 +524,7 @@ impl
                         .zip(&meta.recipients_addresses)
                         .enumerate()
                         .map(|(i, (t, rcpt_addr))| Tx11Transfers {
-                            tx_uid: uid,
+                            tx_uid,
                             recipient_address: into_b58(rcpt_addr),
                             recipient_alias: extract_recipient_alias(&t.recipient),
                             amount: t.amount,
@@ -570,13 +571,13 @@ impl
                             _ => (None, None, None, None, None),
                         };
                         Tx12Data {
-                            tx_uid: uid,
-                            data_key: sanitize_str(&d.key),
+                            tx_uid,
+                            data_key: escape_unicode_null(&d.key),
                             data_type: v_type.map(String::from),
                             data_value_integer: v_int,
                             data_value_boolean: v_bool,
                             data_value_binary: v_bin.map(|b| into_prefixed_b64(&b)),
-                            data_value_string: v_str.map(|s| sanitize_str(&s)),
+                            data_value_string: v_str.map(|s| escape_unicode_null(&s)),
                             position_in_tx: i as i16,
                             height,
                         }
@@ -692,7 +693,7 @@ impl
                                 }
                             };
                             Tx16Args {
-                                tx_uid: uid,
+                                tx_uid,
                                 arg_type: v_type.to_string(),
                                 arg_value_integer: v_int,
                                 arg_value_boolean: v_bool,
@@ -709,7 +710,7 @@ impl
                         .iter()
                         .enumerate()
                         .map(|(i, p)| Tx16Payment {
-                            tx_uid: uid,
+                            tx_uid,
                             amount: p.amount,
                             position_in_payment: i as i16,
                             height,
@@ -732,8 +733,8 @@ impl
                 sender_public_key,
                 status,
                 asset_id: extract_asset_id(&t.asset_id),
-                asset_name: sanitize_str(&t.name),
-                description: sanitize_str(&t.description),
+                asset_name: escape_unicode_null(&t.name),
+                description: escape_unicode_null(&t.description),
                 block_uid,
             }),
             Data::InvokeExpression(_t) => unimplemented!(),
@@ -745,19 +746,19 @@ impl
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_1"]
 pub struct Tx1 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Option<Sender>,
-    pub sender_public_key: Option<SenderPubKey>,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: Option<TxSender>,
+    pub sender_public_key: Option<TxSenderPubKey>,
+    pub status: TxStatus,
     pub recipient_address: String,
     pub recipient_alias: Option<String>,
     pub amount: i64,
@@ -767,19 +768,19 @@ pub struct Tx1 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_2"]
 pub struct Tx2 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub recipient_address: String,
     pub recipient_alias: Option<String>,
     pub amount: i64,
@@ -789,19 +790,19 @@ pub struct Tx2 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_3"]
 pub struct Tx3 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub asset_id: String,
     pub asset_name: String,
     pub description: String,
@@ -815,19 +816,19 @@ pub struct Tx3 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_4"]
 pub struct Tx4 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub amount: i64,
     pub asset_id: String,
     pub recipient_address: String,
@@ -840,19 +841,19 @@ pub struct Tx4 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_5"]
 pub struct Tx5 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub asset_id: String,
     pub quantity: i64,
     pub reissuable: bool,
@@ -862,19 +863,19 @@ pub struct Tx5 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_6"]
 pub struct Tx6 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub asset_id: String,
     pub amount: i64,
 }
@@ -883,19 +884,19 @@ pub struct Tx6 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_7"]
 pub struct Tx7 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub order1: Value,
     pub order2: Value,
     pub amount_asset_id: String,
@@ -911,19 +912,19 @@ pub struct Tx7 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_8"]
 pub struct Tx8 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub recipient_address: String,
     pub recipient_alias: Option<String>,
     pub amount: i64,
@@ -932,19 +933,19 @@ pub struct Tx8 {
 /// LeaseCancel
 #[derive(Clone, Debug)]
 pub struct Tx9Partial {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub lease_id: Option<String>,
 }
 
@@ -952,19 +953,19 @@ pub struct Tx9Partial {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_9"]
 pub struct Tx9 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub lease_tx_uid: Option<i64>,
 }
 
@@ -994,19 +995,19 @@ impl From<(&Tx9Partial, Option<i64>)> for Tx9 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_10"]
 pub struct Tx10 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub alias: String,
 }
 
@@ -1014,19 +1015,19 @@ pub struct Tx10 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_11"]
 pub struct Tx11 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub asset_id: String,
     pub attachment: String,
 }
@@ -1035,12 +1036,12 @@ pub struct Tx11 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_11_transfers"]
 pub struct Tx11Transfers {
-    pub tx_uid: i64,
+    pub tx_uid: TxUid,
     pub recipient_address: String,
     pub recipient_alias: Option<String>,
     pub amount: i64,
     pub position_in_tx: i16,
-    pub height: i32,
+    pub height: TxHeight,
 }
 
 /// MassTransfer
@@ -1054,26 +1055,26 @@ pub struct Tx11Combined {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_12"]
 pub struct Tx12 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
 }
 
 /// DataTransaction
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_12_data"]
 pub struct Tx12Data {
-    pub tx_uid: i64,
+    pub tx_uid: TxUid,
     pub data_key: String,
     pub data_type: Option<String>,
     pub data_value_integer: Option<i64>,
@@ -1081,7 +1082,7 @@ pub struct Tx12Data {
     pub data_value_binary: Option<String>,
     pub data_value_string: Option<String>,
     pub position_in_tx: i16,
-    pub height: i32,
+    pub height: TxHeight,
 }
 
 /// DataTransaction
@@ -1095,19 +1096,19 @@ pub struct Tx12Combined {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_13"]
 pub struct Tx13 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub script: Option<String>,
 }
 
@@ -1115,19 +1116,19 @@ pub struct Tx13 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_14"]
 pub struct Tx14 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub asset_id: String,
     pub min_sponsored_asset_fee: Option<i64>,
 }
@@ -1136,19 +1137,19 @@ pub struct Tx14 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_15"]
 pub struct Tx15 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub asset_id: String,
     pub script: Option<String>,
 }
@@ -1157,19 +1158,19 @@ pub struct Tx15 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_16"]
 pub struct Tx16 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub dapp_address: String,
     pub dapp_alias: Option<String>,
     pub function_name: Option<String>,
@@ -1180,7 +1181,7 @@ pub struct Tx16 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_16_args"]
 pub struct Tx16Args {
-    pub tx_uid: i64,
+    pub tx_uid: TxUid,
     pub arg_type: String,
     pub arg_value_integer: Option<i64>,
     pub arg_value_boolean: Option<bool>,
@@ -1188,17 +1189,17 @@ pub struct Tx16Args {
     pub arg_value_string: Option<String>,
     pub arg_value_list: Option<Value>,
     pub position_in_args: i16,
-    pub height: i32,
+    pub height: TxHeight,
 }
 
 /// InvokeScript
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_16_payment"]
 pub struct Tx16Payment {
-    pub tx_uid: i64,
+    pub tx_uid: TxUid,
     pub amount: i64,
     pub position_in_payment: i16,
-    pub height: i32,
+    pub height: TxHeight,
     pub asset_id: String,
 }
 
@@ -1214,19 +1215,19 @@ pub struct Tx16Combined {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_17"]
 pub struct Tx17 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub asset_id: String,
     pub asset_name: String,
     pub description: String,
@@ -1236,19 +1237,19 @@ pub struct Tx17 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_18"]
 pub struct Tx18 {
-    pub uid: Uid,
-    pub height: Height,
+    pub uid: TxUid,
+    pub height: TxHeight,
     pub tx_type: TxType,
-    pub id: Id,
-    pub time_stamp: TimeStamp,
-    pub signature: Signature,
-    pub fee: Fee,
-    pub proofs: Proofs,
+    pub id: TxId,
+    pub time_stamp: TxTimeStamp,
+    pub signature: TxSignature,
+    pub fee: TxFee,
+    pub proofs: TxProofs,
     pub tx_version: TxVersion,
-    pub block_uid: i64,
-    pub sender: Sender,
-    pub sender_public_key: SenderPubKey,
-    pub status: Status,
+    pub block_uid: TxBlockUid,
+    pub sender: TxSender,
+    pub sender_public_key: TxSenderPubKey,
+    pub status: TxStatus,
     pub payload: Vec<u8>,
     pub function_name: Option<String>,
 }
@@ -1257,7 +1258,7 @@ pub struct Tx18 {
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_18_args"]
 pub struct Tx18Args {
-    pub tx_uid: i64,
+    pub tx_uid: TxUid,
     pub arg_type: String,
     pub arg_value_integer: Option<i64>,
     pub arg_value_boolean: Option<bool>,
@@ -1265,17 +1266,17 @@ pub struct Tx18Args {
     pub arg_value_string: Option<String>,
     pub arg_value_list: Option<Value>,
     pub position_in_args: i16,
-    pub height: i32,
+    pub height: TxHeight,
 }
 
 /// Ethereum InvokeScript
 #[derive(Clone, Debug, Insertable)]
 #[table_name = "txs_18_payment"]
 pub struct Tx18Payment {
-    pub tx_uid: i64,
+    pub tx_uid: TxUid,
     pub amount: i64,
     pub position_in_payment: i16,
-    pub height: i32,
+    pub height: TxHeight,
     pub asset_id: String,
 }
 
@@ -1285,10 +1286,6 @@ pub struct Tx18Combined {
     pub tx: Tx18,
     pub args: Vec<Tx18Args>,
     pub payments: Vec<Tx18Payment>,
-}
-
-fn sanitize_str(s: &String) -> String {
-    s.replace("\x00", "")
 }
 
 fn extract_recipient_alias(rcpt: &Option<Recipient>) -> Option<String> {

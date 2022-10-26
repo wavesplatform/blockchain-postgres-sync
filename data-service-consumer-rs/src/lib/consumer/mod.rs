@@ -25,7 +25,7 @@ use crate::models::BaseAssetInfoUpdate;
 use crate::waves::{extract_asset_id, Address};
 use crate::{
     consumer::models::{
-        txs::{Tx as ConvertedTx, TxUidGenerator},
+        txs::convert::{Tx as ConvertedTx, TxUidGenerator},
         waves_data::WavesData,
     },
     utils::{epoch_ms_to_naivedatetime, escape_unicode_null},

@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS txs (
     tx_type SMALLINT NOT NULL,
     sender VARCHAR,
     sender_public_key VARCHAR,
-    time_stamp TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    time_stamp TIMESTAMP WITH TIME ZONE NOT NULL,
     height INTEGER NOT NULL,
     id VARCHAR NOT NULL,
     signature VARCHAR,

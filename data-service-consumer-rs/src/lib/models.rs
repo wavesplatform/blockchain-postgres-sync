@@ -1,4 +1,4 @@
-use crate::utils::into_b58;
+use crate::utils::{escape_unicode_null, into_b58};
 use chrono::{DateTime, Utc};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
@@ -44,7 +44,9 @@ impl From<&InvokeScriptArgValue> for DataEntryTypeValue {
             InvokeScriptArgValue::BinaryValue(v) => {
                 DataEntryTypeValue::Binary(format!("base64:{}", base64::encode(v)))
             }
-            InvokeScriptArgValue::StringValue(v) => DataEntryTypeValue::String(v.to_owned()),
+            InvokeScriptArgValue::StringValue(v) => {
+                DataEntryTypeValue::String(escape_unicode_null(v))
+            }
             InvokeScriptArgValue::BooleanValue(v) => DataEntryTypeValue::Boolean(*v),
             // deep conversion of List
             InvokeScriptArgValue::List(v) => DataEntryTypeValue::List(json!(ArgList::from(v))),

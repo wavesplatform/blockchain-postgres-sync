@@ -3,52 +3,34 @@ pub trait TupleLen {
 }
 
 macro_rules! count {
-    () => (0usize);
-    ( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
+    () => (0);
+    ( $x:tt $($xs:tt)* ) => (1 + count!($($xs)*));
 }
 
 macro_rules! tuple_len_impls {
-    ($(
-        ($($T:ident),+)
-    )+) => {
-        $(
-            impl<$($T),+> TupleLen for ($($T,)+) {
-                #[inline]
-                fn len(&self) -> usize {
-                    count!($($T)+)
-                }
+    ( $T:ident, $($rem:ident),+ ) => {
+        impl<$T, $($rem),+> TupleLen for ($T, $($rem),+) {
+            #[inline]
+            fn len(&self) -> usize {
+                count!($T $($rem)+)
             }
-        )+
-    }
+        }
+
+        tuple_len_impls!($($rem),+);
+    };
+    ( $T:ident ) => {
+        impl<$T> TupleLen for ($T,) {
+            #[inline]
+            fn len(&self) -> usize {
+                1
+            }
+        }
+    };
 }
 
+// this macro makes TupleLen impls for (A, ..., Z), (B, ..., Z), ..., (Y, Z), (Z,)
 tuple_len_impls! {
-    (A)
-    (A, B)
-    (A, B, C)
-    (A, B, C, D)
-    (A, B, C, D, E)
-    (A, B, C, D, E, F)
-    (A, B, C, D, E, F, G)
-    (A, B, C, D, E, F, G, H)
-    (A, B, C, D, E, F, G, H, I)
-    (A, B, C, D, E, F, G, H, I, J)
-    (A, B, C, D, E, F, G, H, I, J, K)
-    (A, B, C, D, E, F, G, H, I, J, K, L)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y)
-    (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z)
+    A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z
 }
 
 #[cfg(test)]

@@ -55,7 +55,7 @@ impl Repo for PgRepo {
                 ops.conn.transaction(|| f(&ops))
             })
             .await
-            .expect("deadpool interaction failed")
+            .map_err(AppError::from)?
     }
 }
 

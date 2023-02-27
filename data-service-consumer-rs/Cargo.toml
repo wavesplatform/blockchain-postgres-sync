@@ -1,0 +1,51 @@
+[package]
+name = "data-service-asset-consumer"
+version = "0.0.1"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# nightly crashes with "backtrace" feature
+anyhow = { version = "1.0", default-features = false, features = ["std"] }
+async-trait = "0.1"
+base64 = "0.13"
+bigdecimal = { version = "0.1.2", features = ["serde"] }
+blake2 = "0.9"
+bs58 = "0.4.0"
+bytes = "1.1"
+chrono = { version = "0.4", features = ["serde"] }
+diesel = { version = "1.4", default-features = false, features = ["chrono", "postgres", "r2d2", "32-column-tables", "serde_json", "numeric"] }
+diesel_migrations = { version = "1.4", features = ["postgres"] }
+envy = "0.4"
+itertools = "0.10"
+lazy_static = "1.4"
+percent-encoding = "2.1"
+prost = { version = "0.8", features = ["no-recursion-limit"] }
+r2d2 = "0.8"
+regex = "1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.81"
+sha3 = "0.9"
+thiserror = "1.0"
+tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
+tonic = "0.5"
+wavesexchange_log = { git = "https://github.com/waves-exchange/wavesexchange-rs", tag = "wavesexchange_log/0.5.1" }
+waves-protobuf-schemas = { git = "https://github.com/wavesplatform/protobuf-schemas", tag = "v1.4.3" }
+deadpool-diesel = "0.3.1"
+hex = "0.4.3"
+
+[lib]
+name = "app_lib"
+path = "src/lib/lib.rs"
+
+[[bin]]
+name = "consumer"
+path = "src/bin/consumer.rs"
+
+[[bin]]
+name = "migration"
+path = "src/bin/migration.rs"
+
+[profile.release]
+lto = true

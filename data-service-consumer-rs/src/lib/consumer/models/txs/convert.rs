@@ -97,7 +97,7 @@ impl
             transaction: Some(tx),
             proofs,
         } = tx else {
-            return Err(Error::IncosistDataError(format!(
+            return Err(Error::InconsistDataError(format!(
                 "No transaction data in id={id}, height={height}",
             )))
         };
@@ -226,7 +226,7 @@ impl
             }
         };
         let tx_data = tx.data.as_ref().ok_or_else(|| {
-            Error::IncosistDataError(format!(
+            Error::InconsistDataError(format!(
                 "No inner transaction data in id={id}, height={height}",
             ))
         })?;

@@ -33,8 +33,8 @@ pub enum Error {
     #[error("JoinError: {0}")]
     JoinError(#[from] tokio::task::JoinError),
 
-    #[error("IncosistDataError: {0}")]
-    IncosistDataError(String),
+    #[error("InconsistDataError: {0}")]
+    InconsistDataError(String),
 }
 
 // impl done manually because InteractError is not Sync

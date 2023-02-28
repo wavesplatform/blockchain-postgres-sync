@@ -17,9 +17,13 @@ use waves_protobuf_schemas::waves::{
 };
 use wavesexchange_log::{debug, info, timer};
 
-use self::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
 use self::models::block_microblock::BlockMicroblock;
+use self::models::{
+    asset_tickers::DeletedAssetTicker,
+    assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
+};
 use self::repo::RepoOperations;
+use crate::config::consumer::Config;
 use crate::error::Error as AppError;
 use crate::models::BaseAssetInfoUpdate;
 use crate::waves::{extract_asset_id, Address};
@@ -88,19 +92,20 @@ pub trait UpdatesSource {
 }
 
 // TODO: handle shutdown signals -> rollback current transaction
-pub async fn start<R, T>(
-    starting_height: u32,
-    updates_src: T,
-    repo: R,
-    updates_per_request: usize,
-    max_duration: Duration,
-    chain_id: u8,
-    assets_only: bool,
-) -> Result<()>
+pub async fn start<T, R>(updates_src: T, repo: R, config: Config) -> Result<()>
 where
     T: UpdatesSource + Send + 'static,
     R: repo::Repo + Clone + Send + 'static,
 {
+    let Config {
+        assets_only,
+        chain_id,
+        max_wait_time,
+        starting_height,
+        updates_per_request,
+        ..
+    } = config;
+
     let starting_from_height = {
         repo.transaction(move |ops| match ops.get_prev_handled_height() {
             Ok(Some(prev_handled_height)) => {
@@ -119,7 +124,7 @@ where
     );
 
     let mut rx = updates_src
-        .stream(starting_from_height, updates_per_request, max_duration)
+        .stream(starting_from_height, updates_per_request, max_wait_time)
         .await?;
 
     loop {
@@ -567,11 +572,14 @@ fn squash_microblocks<R: RepoOperations>(repo: &R, assets_only: bool) -> Result<
 
     if let Some(lmid) = last_microblock_id {
         let last_block_uid = repo.get_key_block_uid()?;
+
         debug!(
             "squashing into block_uid = {}, new block_id = {}",
             last_block_uid, lmid
         );
+
         repo.update_assets_block_references(last_block_uid)?;
+        repo.update_asset_tickers_block_references(last_block_uid)?;
 
         if !assets_only {
             repo.update_transactions_references(last_block_uid)?;
@@ -588,9 +596,12 @@ fn rollback<R: RepoOperations>(repo: &R, block_uid: i64, assets_only: bool) -> R
     debug!("rolling back to block_uid = {}", block_uid);
 
     rollback_assets(repo, block_uid)?;
+    rollback_asset_tickers(repo, block_uid)?;
+
     if !assets_only {
         repo.rollback_transactions(block_uid)?;
     }
+
     repo.rollback_blocks_microblocks(block_uid)?;
 
     Ok(())
@@ -612,4 +623,22 @@ fn rollback_assets<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
         .collect();
 
     repo.reopen_assets_superseded_by(&lowest_deleted_uids)
+}
+
+fn rollback_asset_tickers<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
+    let deleted = repo.rollback_asset_tickers(&block_uid)?;
+
+    let mut grouped_deleted: HashMap<DeletedAssetTicker, Vec<DeletedAssetTicker>> = HashMap::new();
+
+    deleted.into_iter().for_each(|item| {
+        let group = grouped_deleted.entry(item.clone()).or_insert(vec![]);
+        group.push(item);
+    });
+
+    let lowest_deleted_uids: Vec<i64> = grouped_deleted
+        .into_iter()
+        .filter_map(|(_, group)| group.into_iter().min_by_key(|i| i.uid).map(|i| i.uid))
+        .collect();
+
+    repo.reopen_asset_tickers_superseded_by(&lowest_deleted_uids)
 }

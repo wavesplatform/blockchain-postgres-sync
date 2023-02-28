@@ -1,9 +1,10 @@
 DROP VIEW IF EXISTS assets;
+DROP VIEW IF EXISTS tickers;
 DROP TABLE IF EXISTS asset_origins;
 DROP TABLE IF EXISTS asset_updates;
+DROP TABLE IF EXISTS asset_tickers;
 DROP TABLE IF EXISTS assets_names_map;
 DROP TABLE IF EXISTS assets_metadata;
-DROP TABLE IF EXISTS tickers;
 DROP TABLE IF EXISTS candles;
 DROP TABLE IF EXISTS pairs;
 DROP TABLE IF EXISTS waves_data;

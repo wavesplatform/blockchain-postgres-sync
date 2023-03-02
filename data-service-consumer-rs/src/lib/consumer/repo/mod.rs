@@ -78,6 +78,10 @@ pub trait RepoOperations {
 
     fn close_asset_tickers_superseded_by(&self, updates: &Vec<AssetTickerOverride>) -> Result<()>;
 
+    fn set_asset_tickers_next_update_uid(&self, new_uid: i64) -> Result<()>;
+
+    fn get_next_asset_tickers_uid(&self) -> Result<i64>;
+
     //
     // TRANSACTIONS
     //

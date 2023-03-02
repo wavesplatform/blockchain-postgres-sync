@@ -1,4 +1,4 @@
-use crate::utils::{escape_unicode_null, into_b58};
+use crate::utils::{escape_unicode_null, into_base58};
 use chrono::{DateTime, Utc};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
@@ -141,21 +141,21 @@ impl From<OrderMeta<'_>> for Order {
             sender_address,
             sender_public_key,
         } = o;
-        let proofs: Vec<String> = order.proofs.iter().map(into_b58).collect();
+        let proofs: Vec<String> = order.proofs.iter().map(into_base58).collect();
         let signature = proofs.get(0).cloned().unwrap_or_else(|| String::new());
         Self {
-            matcher_public_key: into_b58(&order.matcher_public_key),
+            matcher_public_key: into_base58(&order.matcher_public_key),
             asset_pair: AssetPair {
                 amount_asset_id: order
                     .asset_pair
                     .as_ref()
                     .map(|p| &p.amount_asset_id)
-                    .and_then(|asset| (asset.len() > 0).then(|| into_b58(asset))),
+                    .and_then(|asset| (asset.len() > 0).then(|| into_base58(asset))),
                 price_asset_id: order
                     .asset_pair
                     .as_ref()
                     .map(|p| &p.price_asset_id)
-                    .and_then(|asset| (asset.len() > 0).then(|| into_b58(asset))),
+                    .and_then(|asset| (asset.len() > 0).then(|| into_base58(asset))),
             },
             order_type: OrderType::from(order.order_side),
             amount: order.amount,
@@ -167,12 +167,12 @@ impl From<OrderMeta<'_>> for Order {
                 .matcher_fee
                 .as_ref()
                 .map(|f| &f.asset_id)
-                .and_then(|asset| (asset.len() > 0).then(|| into_b58(asset))),
+                .and_then(|asset| (asset.len() > 0).then(|| into_base58(asset))),
             version: order.version,
             proofs,
-            sender: into_b58(sender_address),
-            id: into_b58(&id),
-            sender_public_key: into_b58(&sender_public_key),
+            sender: into_base58(sender_address),
+            id: into_base58(&id),
+            sender_public_key: into_base58(&sender_public_key),
             signature,
             eip712_signature: match order.sender {
                 Some(SenderPb::Eip712Signature(ref sig)) if order.version >= 4 => {

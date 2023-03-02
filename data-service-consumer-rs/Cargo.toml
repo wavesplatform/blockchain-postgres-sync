@@ -18,6 +18,7 @@ chrono = { version = "0.4", features = ["serde"] }
 diesel = { version = "1.4", default-features = false, features = ["chrono", "postgres", "r2d2", "32-column-tables", "serde_json", "numeric"] }
 diesel_migrations = { version = "1.4", features = ["postgres"] }
 envy = "0.4"
+fragstrings = { git = "https://github.com/a-kordys/fragstrings", tag = "v0.1.1", default-features = false, features = ["parse"] }
 itertools = "0.10"
 lazy_static = "1.4"
 percent-encoding = "2.1"

@@ -13,6 +13,20 @@ pub struct InsertableAssetTicker {
     pub ticker: String,
 }
 
+impl PartialEq for InsertableAssetTicker {
+    fn eq(&self, other: &InsertableAssetTicker) -> bool {
+        (&self.asset_id) == (&other.asset_id)
+    }
+}
+
+impl Eq for InsertableAssetTicker {}
+
+impl Hash for InsertableAssetTicker {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.asset_id.hash(state);
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct AssetTickerOverride {
     pub superseded_by: i64,

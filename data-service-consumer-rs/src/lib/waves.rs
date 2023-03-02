@@ -1,4 +1,4 @@
-use crate::utils::into_b58;
+use crate::utils::into_base58;
 use bytes::{BufMut, BytesMut};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -51,7 +51,7 @@ impl From<(&[u8], ChainId)> for Address {
 
         addr.put_slice(chks);
 
-        Address(into_b58(addr))
+        Address(into_base58(addr))
     }
 }
 
@@ -67,7 +67,7 @@ impl From<(PublicKeyHash<'_>, ChainId)> for Address {
 
         addr.put_slice(chks);
 
-        Address(into_b58(addr))
+        Address(into_base58(addr))
     }
 }
 
@@ -85,7 +85,7 @@ pub fn extract_asset_id(asset_id: impl AsRef<[u8]>) -> String {
     if asset_id.as_ref().is_empty() {
         WAVES_ID.to_string()
     } else {
-        into_b58(asset_id)
+        into_base58(asset_id)
     }
 }
 

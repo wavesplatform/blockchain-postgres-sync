@@ -50,6 +50,12 @@ table! {
     }
 }
 
+table! {
+    asset_tickers_uid_seq (last_value) {
+        last_value -> BigInt,
+    }
+}
+
 diesel::table! {
     use diesel::sql_types::*;
 

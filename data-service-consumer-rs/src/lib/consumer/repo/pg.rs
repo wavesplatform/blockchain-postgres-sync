@@ -322,6 +322,24 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot close asset_tickers superseded_by"))
     }
 
+    fn set_asset_tickers_next_update_uid(&self, new_uid: i64) -> Result<()> {
+        // 3rd param - is called; in case of true, value'll be incremented before returning
+        diesel::sql_query(format!(
+            "select setval('asset_tickers_uid_seq', {}, false);",
+            new_uid
+        ))
+        .execute(self.conn)
+        .map(drop)
+        .map_err(build_err_fn("Cannot set asset_tickers next update uid"))
+    }
+
+    fn get_next_asset_tickers_uid(&self) -> Result<i64> {
+        asset_tickers_uid_seq::table
+            .select(asset_tickers_uid_seq::last_value)
+            .first(self.conn)
+            .map_err(build_err_fn("Cannot get next asset tickers update uid"))
+    }
+
     //
     // TRANSACTIONS
     //

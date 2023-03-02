@@ -11,22 +11,23 @@ use std::sync::Mutex;
 use std::time::Instant;
 use tokio::sync::mpsc::Receiver;
 use waves_protobuf_schemas::waves::{
+    data_transaction_data::data_entry::Value,
     events::{transaction_metadata::Metadata, StateUpdate, TransactionMetadata},
     signed_transaction::Transaction,
     SignedTransaction, Transaction as WavesTx,
 };
 use wavesexchange_log::{debug, info, timer};
 
-use self::models::block_microblock::BlockMicroblock;
+use self::models::{asset_tickers::InsertableAssetTicker, block_microblock::BlockMicroblock};
 use self::models::{
-    asset_tickers::DeletedAssetTicker,
+    asset_tickers::{AssetTickerOverride, DeletedAssetTicker},
     assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
 };
 use self::repo::RepoOperations;
-use crate::config::consumer::Config;
 use crate::error::Error as AppError;
 use crate::models::BaseAssetInfoUpdate;
 use crate::waves::{extract_asset_id, Address};
+use crate::{config::consumer::Config, utils::into_base58};
 use crate::{
     consumer::models::{
         txs::convert::{Tx as ConvertedTx, TxUidGenerator},
@@ -35,6 +36,7 @@ use crate::{
     utils::{epoch_ms_to_naivedatetime, escape_unicode_null},
     waves::WAVES_ID,
 };
+use fragstrings::frag_parse;
 
 static UID_GENERATOR: Mutex<TxUidGenerator> = Mutex::new(TxUidGenerator::new(100000));
 
@@ -81,6 +83,12 @@ enum UpdatesItem {
     Rollback(String),
 }
 
+#[derive(Debug)]
+pub struct AssetTickerUpdate {
+    pub asset_id: String,
+    pub ticker: String,
+}
+
 #[async_trait::async_trait]
 pub trait UpdatesSource {
     async fn stream(
@@ -103,9 +111,12 @@ where
         max_wait_time,
         starting_height,
         updates_per_request,
+        asset_storage_address,
         ..
     } = config;
 
+    let asset_storage_address: Option<&'static str> =
+        asset_storage_address.map(|a| &*Box::leak(a.into_boxed_str()));
     let starting_from_height = {
         repo.transaction(move |ops| match ops.get_prev_handled_height() {
             Ok(Some(prev_handled_height)) => {
@@ -148,7 +159,13 @@ where
         start = Instant::now();
 
         repo.transaction(move |ops| {
-            handle_updates(updates_with_height, ops, chain_id, assets_only)?;
+            handle_updates(
+                updates_with_height,
+                ops,
+                chain_id,
+                assets_only,
+                asset_storage_address,
+            )?;
 
             info!(
                 "{} updates were saved to database in {:?}. Last height is {}.",
@@ -168,6 +185,7 @@ fn handle_updates<R: RepoOperations>(
     repo: &R,
     chain_id: u8,
     assets_only: bool,
+    asset_storage_address: Option<&str>,
 ) -> Result<()> {
     updates_with_height
         .updates
@@ -207,11 +225,15 @@ fn handle_updates<R: RepoOperations>(
         .try_fold((), |_, update_item| match update_item {
             UpdatesItem::Blocks(ba) => {
                 squash_microblocks(repo, assets_only)?;
-                handle_appends(repo, chain_id, ba, assets_only)
+                handle_appends(repo, chain_id, ba, assets_only, asset_storage_address)
             }
-            UpdatesItem::Microblock(mba) => {
-                handle_appends(repo, chain_id, &vec![mba.to_owned()], assets_only)
-            }
+            UpdatesItem::Microblock(mba) => handle_appends(
+                repo,
+                chain_id,
+                &vec![mba.to_owned()],
+                assets_only,
+                asset_storage_address,
+            ),
             UpdatesItem::Rollback(sig) => {
                 let block_uid = repo.get_block_uid(sig)?;
                 rollback(repo, block_uid, assets_only)
@@ -226,6 +248,7 @@ fn handle_appends<R>(
     chain_id: u8,
     appends: &Vec<BlockMicroblockAppend>,
     assets_only: bool,
+    asset_storage_address: Option<&str>,
 ) -> Result<()>
 where
     R: RepoOperations,
@@ -298,6 +321,30 @@ where
         if waves_data.len() > 0 {
             repo.insert_waves_data(&waves_data)?;
         }
+    }
+
+    timer!("asset tickers updates handling");
+
+    if let Some(storage_addr) = asset_storage_address {
+        let asset_tickers_updates_with_block_uids: Vec<(&i64, AssetTickerUpdate)> =
+            block_uids_with_appends
+                .iter()
+                .flat_map(|(block_uid, append)| {
+                    append
+                        .txs
+                        .iter()
+                        .flat_map(|tx| extract_asset_tickers_updates(tx, storage_addr))
+                        .map(|u| (block_uid, u))
+                        .collect_vec()
+                })
+                .collect();
+
+        handle_asset_tickers_updates(repo.clone(), &asset_tickers_updates_with_block_uids)?;
+
+        info!(
+            "handled {} asset tickers updates",
+            asset_tickers_updates_with_block_uids.len()
+        );
     }
 
     Ok(())
@@ -473,6 +520,41 @@ fn extract_base_asset_info_updates(
     asset_updates
 }
 
+fn extract_asset_tickers_updates(tx: &Tx, asset_storage_address: &str) -> Vec<AssetTickerUpdate> {
+    tx.state_update
+        .data_entries
+        .iter()
+        .filter_map(|data_entry_update| {
+            data_entry_update.data_entry.as_ref().and_then(|de| {
+                if asset_storage_address == into_base58(&data_entry_update.address)
+                    && de.key.starts_with("%s%s__assetId2ticker__")
+                {
+                    match de.value.as_ref() {
+                        Some(value) => match value {
+                            Value::StringValue(value) => {
+                                frag_parse!("%s%s", de.key).map(|(_, asset_id)| AssetTickerUpdate {
+                                    asset_id: asset_id,
+                                    ticker: value.clone(),
+                                })
+                            }
+                            _ => None,
+                        },
+                        // key was deleted -> drop asset ticker
+                        None => {
+                            frag_parse!("%s%s", de.key).map(|(_, asset_id)| AssetTickerUpdate {
+                                asset_id,
+                                ticker: "".into(),
+                            })
+                        }
+                    }
+                } else {
+                    None
+                }
+            })
+        })
+        .collect_vec()
+}
+
 fn handle_base_asset_info_updates<R: RepoOperations>(
     repo: &R,
     updates: &[(i64, BaseAssetInfoUpdate)],
@@ -565,6 +647,96 @@ fn handle_base_asset_info_updates<R: RepoOperations>(
             .map(|a| a.uid)
             .collect_vec(),
     ))
+}
+
+fn handle_asset_tickers_updates<R: RepoOperations>(
+    repo: &R,
+    updates: &[(&i64, AssetTickerUpdate)],
+) -> Result<()> {
+    if updates.is_empty() {
+        return Ok(());
+    }
+
+    let updates_count = updates.len();
+
+    let asset_tickers_next_uid = repo.get_next_asset_tickers_uid()?;
+
+    let asset_tickers_updates = updates
+        .iter()
+        .enumerate()
+        .map(
+            |(update_idx, (block_uid, tickers_update))| InsertableAssetTicker {
+                uid: asset_tickers_next_uid + update_idx as i64,
+                superseded_by: -1,
+                block_uid: *block_uid.clone(),
+                asset_id: tickers_update.asset_id.clone(),
+                ticker: tickers_update.ticker.clone(),
+            },
+        )
+        .collect_vec();
+
+    let mut asset_tickers_grouped: HashMap<InsertableAssetTicker, Vec<InsertableAssetTicker>> =
+        HashMap::new();
+
+    asset_tickers_updates.into_iter().for_each(|update| {
+        let group = asset_tickers_grouped
+            .entry(update.clone())
+            .or_insert(vec![]);
+        group.push(update);
+    });
+
+    let asset_tickers_grouped = asset_tickers_grouped.into_iter().collect_vec();
+
+    let asset_tickers_grouped_with_uids_superseded_by = asset_tickers_grouped
+        .into_iter()
+        .map(|(group_key, group)| {
+            let mut updates = group
+                .into_iter()
+                .sorted_by_key(|item| item.uid)
+                .collect::<Vec<InsertableAssetTicker>>();
+
+            let mut last_uid = std::i64::MAX - 1;
+            (
+                group_key,
+                updates
+                    .as_mut_slice()
+                    .iter_mut()
+                    .rev()
+                    .map(|cur| {
+                        cur.superseded_by = last_uid;
+                        last_uid = cur.uid;
+                        cur.to_owned()
+                    })
+                    .sorted_by_key(|item| item.uid)
+                    .collect(),
+            )
+        })
+        .collect::<Vec<(InsertableAssetTicker, Vec<InsertableAssetTicker>)>>();
+
+    let asset_tickers_first_uids: Vec<AssetTickerOverride> =
+        asset_tickers_grouped_with_uids_superseded_by
+            .iter()
+            .map(|(_, group)| {
+                let first = group.iter().next().unwrap().clone();
+                AssetTickerOverride {
+                    superseded_by: first.uid,
+                    asset_id: first.asset_id,
+                }
+            })
+            .collect();
+
+    repo.close_asset_tickers_superseded_by(&asset_tickers_first_uids)?;
+
+    let asset_tickers_with_uids_superseded_by = &asset_tickers_grouped_with_uids_superseded_by
+        .clone()
+        .into_iter()
+        .flat_map(|(_, v)| v)
+        .sorted_by_key(|asset_tickers| asset_tickers.uid)
+        .collect_vec();
+
+    repo.insert_asset_tickers(asset_tickers_with_uids_superseded_by)?;
+
+    repo.set_asset_tickers_next_update_uid(asset_tickers_next_uid + updates_count as i64)
 }
 
 fn squash_microblocks<R: RepoOperations>(repo: &R, assets_only: bool) -> Result<()> {

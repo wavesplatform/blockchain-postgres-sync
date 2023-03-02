@@ -1,4 +1,6 @@
-table! {
+// @generated automatically by Diesel CLI.
+
+diesel::table! {
     use diesel::sql_types::*;
 
     asset_origins (asset_id) {
@@ -11,7 +13,19 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
+    use diesel::sql_types::*;
+
+    asset_tickers (superseded_by, asset_id) {
+        uid -> Int8,
+        superseded_by -> Int8,
+        block_uid -> Int8,
+        asset_id -> Text,
+        ticker -> Text,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
 
     asset_updates (superseded_by, asset_id) {
@@ -37,6 +51,12 @@ table! {
 }
 
 table! {
+    asset_tickers_uid_seq (last_value) {
+        last_value -> BigInt,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
 
     assets_metadata (asset_id) {
@@ -47,7 +67,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     blocks_microblocks (id) {
@@ -58,7 +78,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     candles (interval, time_start, amount_asset_id, price_asset_id, matcher_address) {
@@ -79,7 +99,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     pairs (amount_asset_id, price_asset_id, matcher_address) {
@@ -98,16 +118,7 @@ table! {
     }
 }
 
-table! {
-    use diesel::sql_types::*;
-
-    tickers (asset_id) {
-        asset_id -> Text,
-        ticker -> Text,
-    }
-}
-
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs (uid, id, time_stamp) {
@@ -115,19 +126,19 @@ table! {
         tx_type -> Int2,
         sender -> Nullable<Varchar>,
         sender_public_key -> Nullable<Varchar>,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_1 (uid) {
@@ -135,22 +146,22 @@ table! {
         tx_type -> Int2,
         sender -> Nullable<Varchar>,
         sender_public_key -> Nullable<Varchar>,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         recipient_address -> Varchar,
         recipient_alias -> Nullable<Varchar>,
         amount -> Int8,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_10 (uid) {
@@ -158,20 +169,20 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         alias -> Varchar,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_11 (uid) {
@@ -179,21 +190,21 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         asset_id -> Varchar,
         attachment -> Varchar,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_11_transfers (tx_uid, position_in_tx) {
@@ -206,7 +217,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_12 (uid) {
@@ -214,19 +225,19 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_12_data (tx_uid, position_in_tx) {
@@ -242,7 +253,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_13 (uid) {
@@ -250,20 +261,20 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         script -> Nullable<Varchar>,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_14 (uid) {
@@ -271,21 +282,21 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         asset_id -> Varchar,
         min_sponsored_asset_fee -> Nullable<Int8>,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_15 (uid) {
@@ -293,21 +304,21 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         asset_id -> Varchar,
         script -> Nullable<Varchar>,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_16 (uid) {
@@ -315,15 +326,15 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         dapp_address -> Varchar,
         dapp_alias -> Nullable<Varchar>,
         function_name -> Nullable<Varchar>,
@@ -331,7 +342,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_16_args (tx_uid, position_in_args) {
@@ -347,7 +358,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_16_payment (tx_uid, position_in_payment) {
@@ -359,7 +370,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_17 (uid) {
@@ -367,22 +378,22 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         asset_id -> Varchar,
         asset_name -> Varchar,
         description -> Varchar,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_18 (uid) {
@@ -390,21 +401,21 @@ table! {
         tx_type -> Int2,
         sender -> Nullable<Varchar>,
         sender_public_key -> Nullable<Varchar>,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         payload -> Bytea,
         function_name -> Nullable<Varchar>,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_18_args (tx_uid, position_in_args) {
@@ -420,7 +431,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_18_payment (tx_uid, position_in_payment) {
@@ -432,7 +443,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_2 (uid) {
@@ -440,22 +451,22 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         recipient_address -> Varchar,
         recipient_alias -> Nullable<Varchar>,
         amount -> Int8,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_3 (uid) {
@@ -463,15 +474,15 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         asset_id -> Varchar,
         asset_name -> Varchar,
         description -> Varchar,
@@ -482,7 +493,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_4 (uid) {
@@ -490,15 +501,15 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         asset_id -> Varchar,
         amount -> Int8,
         recipient_address -> Varchar,
@@ -508,7 +519,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_5 (uid) {
@@ -516,22 +527,22 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         asset_id -> Varchar,
         quantity -> Int8,
         reissuable -> Bool,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_6 (uid) {
@@ -539,21 +550,21 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         asset_id -> Varchar,
         amount -> Int8,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_7 (uid) {
@@ -561,15 +572,15 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         order1 -> Jsonb,
         order2 -> Jsonb,
         amount -> Int8,
@@ -582,7 +593,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_8 (uid) {
@@ -590,22 +601,22 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         recipient_address -> Varchar,
         recipient_alias -> Nullable<Varchar>,
         amount -> Int8,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     txs_9 (uid) {
@@ -613,20 +624,20 @@ table! {
         tx_type -> Int2,
         sender -> Varchar,
         sender_public_key -> Varchar,
-        id -> Varchar,
-        time_stamp -> Timestamp,
+        time_stamp -> Timestamptz,
         height -> Int4,
+        id -> Varchar,
         signature -> Nullable<Varchar>,
-        proofs -> Nullable<Array<Text>>,
+        proofs -> Nullable<Array<Nullable<Text>>>,
         tx_version -> Nullable<Int2>,
-        block_uid -> Int8,
         fee -> Int8,
         status -> Varchar,
+        block_uid -> Int8,
         lease_tx_uid -> Nullable<Int8>,
     }
 }
 
-table! {
+diesel::table! {
     use diesel::sql_types::*;
 
     waves_data (quantity) {
@@ -635,14 +646,14 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(
+diesel::allow_tables_to_appear_in_same_query!(
     asset_origins,
+    asset_tickers,
     asset_updates,
     assets_metadata,
     blocks_microblocks,
     candles,
     pairs,
-    tickers,
     txs,
     txs_1,
     txs_10,

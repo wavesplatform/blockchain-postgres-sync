@@ -1,7 +1,9 @@
 use super::*;
 use crate::error::Error;
 use crate::models::{DataEntryTypeValue, Order, OrderMeta};
-use crate::utils::{epoch_ms_to_naivedatetime, escape_unicode_null, into_b58, into_prefixed_b64};
+use crate::utils::{
+    epoch_ms_to_naivedatetime, escape_unicode_null, into_base58, into_prefixed_base64,
+};
 use crate::waves::{extract_asset_id, Address, ChainId, PublicKeyHash, WAVES_ID};
 use serde_json::json;
 use waves_protobuf_schemas::waves::{
@@ -97,13 +99,13 @@ impl
             transaction: Some(tx),
             proofs,
         } = tx else {
-            return Err(Error::IncosistDataError(format!(
+            return Err(Error::InconsistDataError(format!(
                 "No transaction data in id={id}, height={height}",
             )))
         };
         let uid = tx_uid;
         let id = id.to_owned();
-        let proofs = proofs.iter().map(into_b58).collect::<Vec<_>>();
+        let proofs = proofs.iter().map(into_base58).collect::<Vec<_>>();
         let signature = proofs
             .get(0)
             .and_then(|p| (p.len() > 0).then_some(p.to_owned()));
@@ -125,7 +127,7 @@ impl
             }
         }
 
-        let sender = into_b58(&meta.sender_address);
+        let sender = into_base58(&meta.sender_address);
 
         let tx = match tx {
             Transaction::WavesTransaction(tx) => tx,
@@ -144,7 +146,7 @@ impl
                     proofs,
                     tx_version: Some(1),
                     sender,
-                    sender_public_key: into_b58(&meta.sender_public_key),
+                    sender_public_key: into_base58(&meta.sender_public_key),
                     status,
                     payload: tx.clone(),
                     block_uid,
@@ -199,7 +201,7 @@ impl
                                         arg_type: v_type.to_string(),
                                         arg_value_integer: v_int,
                                         arg_value_boolean: v_bool,
-                                        arg_value_binary: v_bin.map(into_prefixed_b64),
+                                        arg_value_binary: v_bin.map(into_prefixed_base64),
                                         arg_value_string: v_str.map(escape_unicode_null),
                                         arg_value_list: v_list,
                                         position_in_args: i as i16,
@@ -226,7 +228,7 @@ impl
             }
         };
         let tx_data = tx.data.as_ref().ok_or_else(|| {
-            Error::IncosistDataError(format!(
+            Error::InconsistDataError(format!(
                 "No inner transaction data in id={id}, height={height}",
             ))
         })?;
@@ -237,7 +239,7 @@ impl
             .map(|f| (f.amount, extract_asset_id(&f.asset_id)))
             .unwrap_or((0, WAVES_ID.to_string()));
         let tx_version = Some(tx.version as i16);
-        let sender_public_key = into_b58(&tx.sender_public_key);
+        let sender_public_key = into_base58(&tx.sender_public_key);
 
         Ok(match tx_data {
             Data::Genesis(t) => Tx::Genesis(Tx1 {
@@ -331,8 +333,8 @@ impl
                     asset_id: extract_asset_id(asset_id),
                     fee_asset_id,
                     amount: *amount,
-                    attachment: into_b58(&t.attachment),
-                    recipient_address: into_b58(&meta.recipient_address),
+                    attachment: into_base58(&t.attachment),
+                    recipient_address: into_base58(&meta.recipient_address),
                     recipient_alias: extract_recipient_alias(&t.recipient),
                     block_uid,
                 })
@@ -439,7 +441,7 @@ impl
                     sender_public_key,
                     status,
                     amount: t.amount,
-                    recipient_address: into_b58(&meta.recipient_address),
+                    recipient_address: into_base58(&meta.recipient_address),
                     recipient_alias: extract_recipient_alias(&t.recipient),
                     block_uid,
                 })
@@ -458,7 +460,7 @@ impl
                 sender_public_key,
                 status,
                 lease_id: if !t.lease_id.is_empty() {
-                    Some(into_b58(&t.lease_id))
+                    Some(into_base58(&t.lease_id))
                 } else {
                     None
                 },
@@ -499,7 +501,7 @@ impl
                         sender_public_key,
                         status,
                         asset_id: extract_asset_id(&t.asset_id),
-                        attachment: into_b58(&t.attachment),
+                        attachment: into_base58(&t.attachment),
                         block_uid,
                     },
                     transfers: t
@@ -509,7 +511,7 @@ impl
                         .enumerate()
                         .map(|(i, (t, rcpt_addr))| Tx11Transfers {
                             tx_uid,
-                            recipient_address: into_b58(rcpt_addr),
+                            recipient_address: into_base58(rcpt_addr),
                             recipient_alias: extract_recipient_alias(&t.recipient),
                             amount: t.amount,
                             position_in_tx: i as i16,
@@ -560,7 +562,7 @@ impl
                             data_type: v_type.map(String::from),
                             data_value_integer: v_int,
                             data_value_boolean: v_bool,
-                            data_value_binary: v_bin.map(into_prefixed_b64),
+                            data_value_binary: v_bin.map(into_prefixed_base64),
                             data_value_string: v_str.map(escape_unicode_null),
                             position_in_tx: i as i16,
                             height,
@@ -641,7 +643,7 @@ impl
                         status,
                         function_name: Some(meta.function_name.clone()),
                         fee_asset_id: extract_asset_id(&tx.fee.as_ref().unwrap().asset_id),
-                        dapp_address: into_b58(&meta.d_app_address),
+                        dapp_address: into_base58(&meta.d_app_address),
                         dapp_alias: extract_recipient_alias(&t.d_app),
                         block_uid,
                     },
@@ -681,7 +683,7 @@ impl
                                 arg_type: v_type.to_string(),
                                 arg_value_integer: v_int,
                                 arg_value_boolean: v_bool,
-                                arg_value_binary: v_bin.map(into_prefixed_b64),
+                                arg_value_binary: v_bin.map(into_prefixed_base64),
                                 arg_value_string: v_str.map(escape_unicode_null),
                                 arg_value_list: v_list,
                                 position_in_args: i as i16,
@@ -738,7 +740,7 @@ fn extract_recipient_alias(rcpt: &Option<Recipient>) -> Option<String> {
 
 fn extract_script(script: &Vec<u8>) -> Option<String> {
     if !script.is_empty() {
-        Some(into_prefixed_b64(script))
+        Some(into_prefixed_base64(script))
     } else {
         None
     }

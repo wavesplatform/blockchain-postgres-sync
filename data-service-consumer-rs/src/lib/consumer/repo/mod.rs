@@ -3,10 +3,13 @@ pub mod pg;
 use anyhow::Result;
 use async_trait::async_trait;
 
-use super::models::assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset};
-use super::models::block_microblock::BlockMicroblock;
-use super::models::txs::*;
-use super::models::waves_data::WavesData;
+use super::models::{
+    asset_tickers::{AssetTickerOverride, DeletedAssetTicker, InsertableAssetTicker},
+    assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
+    block_microblock::BlockMicroblock,
+    txs::*,
+    waves_data::WavesData,
+};
 use super::PrevHandledHeight;
 
 #[async_trait]
@@ -65,9 +68,24 @@ pub trait RepoOperations {
 
     fn assets_gt_block_uid(&self, block_uid: i64) -> Result<Vec<i64>>;
 
+    fn insert_asset_tickers(&self, tickers: &Vec<InsertableAssetTicker>) -> Result<()>;
+
+    fn rollback_asset_tickers(&self, block_uid: &i64) -> Result<Vec<DeletedAssetTicker>>;
+
+    fn update_asset_tickers_block_references(&self, block_uid: i64) -> Result<()>;
+
+    fn reopen_asset_tickers_superseded_by(&self, current_superseded_by: &Vec<i64>) -> Result<()>;
+
+    fn close_asset_tickers_superseded_by(&self, updates: &Vec<AssetTickerOverride>) -> Result<()>;
+
+    fn set_asset_tickers_next_update_uid(&self, new_uid: i64) -> Result<()>;
+
+    fn get_next_asset_tickers_uid(&self) -> Result<i64>;
+
     //
     // TRANSACTIONS
     //
+
     fn update_transactions_references(&self, block_uid: i64) -> Result<()>;
 
     fn rollback_transactions(&self, block_uid: i64) -> Result<()>;

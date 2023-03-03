@@ -2,7 +2,7 @@ use diesel::migration::Migration;
 use diesel::{migration, pg::PgConnection, Connection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
-use lib::{config, db::generate_postgres_url};
+use app_lib::{config, db::generate_postgres_url};
 
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 

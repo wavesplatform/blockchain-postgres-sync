@@ -11,7 +11,7 @@ use crate::error::Error as AppError;
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 pub type PgAsyncPool = DPool<DManager<PgConnection>>;
 
-fn generate_postgres_url(config: &Config) -> String {
+pub fn generate_postgres_url(config: &Config) -> String {
     format!(
         "postgres://{}:{}@{}:{}/{}",
         config.user, config.password, config.host, config.port, config.database

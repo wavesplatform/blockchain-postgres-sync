@@ -1,10 +1,10 @@
 use anyhow::{Error, Result};
 use async_trait::async_trait;
-use diesel::expression::sql_literal::sql;
+use diesel::dsl::sql;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::result::Error as DslError;
-use diesel::sql_types::{Array, BigInt, VarChar};
+use diesel::sql_types::{Array, BigInt, Int8, VarChar};
 use diesel::Table;
 use std::collections::HashMap;
 use std::mem::drop;
@@ -37,7 +37,7 @@ pub fn new(pool: PgAsyncPool) -> PgRepo {
 }
 
 pub struct PgRepoOperations<'c> {
-    conn: &'c PgConnection,
+    conn: &'c mut PgConnection,
 }
 
 #[async_trait]
@@ -46,16 +46,13 @@ impl Repo for PgRepo {
 
     async fn transaction<F, R>(&self, f: F) -> Result<R>
     where
-        F: for<'conn> FnOnce(&Self::Operations<'conn>) -> Result<R>,
+        F: for<'conn> FnOnce(&mut Self::Operations<'conn>) -> Result<R>,
         F: Send + 'static,
         R: Send + 'static,
     {
         let connection = self.pool.get().await?;
         connection
-            .interact(|conn| {
-                let ops = PgRepoOperations { conn };
-                ops.conn.transaction(|| f(&ops))
-            })
+            .interact(|conn| conn.transaction(|conn| f(&mut PgRepoOperations { conn })))
             .await
             .map_err(AppError::from)?
     }
@@ -66,7 +63,7 @@ impl RepoOperations for PgRepoOperations<'_> {
     // COMMON
     //
 
-    fn get_prev_handled_height(&self) -> Result<Option<PrevHandledHeight>> {
+    fn get_prev_handled_height(&mut self) -> Result<Option<PrevHandledHeight>> {
         blocks_microblocks::table
             .select((blocks_microblocks::uid, blocks_microblocks::height))
             .filter(
@@ -79,7 +76,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot get prev handled_height"))
     }
 
-    fn get_block_uid(&self, block_id: &str) -> Result<i64> {
+    fn get_block_uid(&mut self, block_id: &str) -> Result<i64> {
         blocks_microblocks::table
             .select(blocks_microblocks::uid)
             .filter(blocks_microblocks::id.eq(block_id))
@@ -90,15 +87,15 @@ impl RepoOperations for PgRepoOperations<'_> {
             )))
     }
 
-    fn get_key_block_uid(&self) -> Result<i64> {
+    fn get_key_block_uid(&mut self) -> Result<i64> {
         blocks_microblocks::table
-            .select(sql("max(uid)"))
+            .select(sql::<Int8>("max(uid)"))
             .filter(blocks_microblocks::time_stamp.is_not_null())
             .get_result(self.conn)
             .map_err(build_err_fn("Cannot get key block uid"))
     }
 
-    fn get_total_block_id(&self) -> Result<Option<String>> {
+    fn get_total_block_id(&mut self) -> Result<Option<String>> {
         blocks_microblocks::table
             .select(blocks_microblocks::id)
             .filter(blocks_microblocks::time_stamp.is_null())
@@ -108,7 +105,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot get total block id"))
     }
 
-    fn insert_blocks_or_microblocks(&self, blocks: &Vec<BlockMicroblock>) -> Result<Vec<i64>> {
+    fn insert_blocks_or_microblocks(&mut self, blocks: &Vec<BlockMicroblock>) -> Result<Vec<i64>> {
         diesel::insert_into(blocks_microblocks::table)
             .values(blocks)
             .returning(blocks_microblocks::uid)
@@ -116,7 +113,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot insert blocks/microblocks"))
     }
 
-    fn change_block_id(&self, block_uid: i64, new_block_id: &str) -> Result<()> {
+    fn change_block_id(&mut self, block_uid: i64, new_block_id: &str) -> Result<()> {
         diesel::update(blocks_microblocks::table)
             .set(blocks_microblocks::id.eq(new_block_id))
             .filter(blocks_microblocks::uid.eq(block_uid))
@@ -125,7 +122,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot change block id"))
     }
 
-    fn delete_microblocks(&self) -> Result<()> {
+    fn delete_microblocks(&mut self) -> Result<()> {
         diesel::delete(blocks_microblocks::table)
             .filter(blocks_microblocks::time_stamp.is_null())
             .execute(self.conn)
@@ -133,7 +130,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot delete microblocks"))
     }
 
-    fn rollback_blocks_microblocks(&self, block_uid: i64) -> Result<()> {
+    fn rollback_blocks_microblocks(&mut self, block_uid: i64) -> Result<()> {
         diesel::delete(blocks_microblocks::table)
             .filter(blocks_microblocks::uid.gt(block_uid))
             .execute(self.conn)
@@ -141,7 +138,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot rollback blocks/microblocks"))
     }
 
-    fn insert_waves_data(&self, waves_data: &Vec<WavesData>) -> Result<()> {
+    fn insert_waves_data(&mut self, waves_data: &Vec<WavesData>) -> Result<()> {
         diesel::insert_into(waves_data::table)
             .values(waves_data)
             .on_conflict(waves_data::quantity)
@@ -155,14 +152,14 @@ impl RepoOperations for PgRepoOperations<'_> {
     // ASSETS
     //
 
-    fn get_next_assets_uid(&self) -> Result<i64> {
+    fn get_next_assets_uid(&mut self) -> Result<i64> {
         asset_updates_uid_seq::table
             .select(asset_updates_uid_seq::last_value)
             .first(self.conn)
             .map_err(build_err_fn("Cannot get next assets update uid"))
     }
 
-    fn insert_asset_updates(&self, updates: &Vec<AssetUpdate>) -> Result<()> {
+    fn insert_asset_updates(&mut self, updates: &Vec<AssetUpdate>) -> Result<()> {
         chunked(asset_updates::table, updates, |chunk| {
             diesel::insert_into(asset_updates::table)
                 .values(chunk)
@@ -171,7 +168,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert new asset updates"))
     }
 
-    fn insert_asset_origins(&self, origins: &Vec<AssetOrigin>) -> Result<()> {
+    fn insert_asset_origins(&mut self, origins: &Vec<AssetOrigin>) -> Result<()> {
         chunked(asset_origins::table, origins, |chunk| {
             diesel::insert_into(asset_origins::table)
                 .values(chunk)
@@ -182,7 +179,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert new assets"))
     }
 
-    fn update_assets_block_references(&self, block_uid: i64) -> Result<()> {
+    fn update_assets_block_references(&mut self, block_uid: i64) -> Result<()> {
         diesel::update(asset_updates::table)
             .set((asset_updates::block_uid.eq(block_uid),))
             .filter(asset_updates::block_uid.gt(block_uid))
@@ -191,7 +188,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot update assets block references"))
     }
 
-    fn close_assets_superseded_by(&self, updates: &Vec<AssetOverride>) -> Result<()> {
+    fn close_assets_superseded_by(&mut self, updates: &Vec<AssetOverride>) -> Result<()> {
         let (ids, superseded_by_uids): (Vec<&String>, Vec<i64>) =
             updates.iter().map(|u| (&u.id, u.superseded_by)).unzip();
 
@@ -210,7 +207,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot close assets superseded_by"))
     }
 
-    fn reopen_assets_superseded_by(&self, current_superseded_by: &Vec<i64>) -> Result<()> {
+    fn reopen_assets_superseded_by(&mut self, current_superseded_by: &Vec<i64>) -> Result<()> {
         diesel::sql_query(
             "UPDATE asset_updates
             SET superseded_by = $1
@@ -224,7 +221,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot reopen assets superseded_by"))
     }
 
-    fn set_assets_next_update_uid(&self, new_uid: i64) -> Result<()> {
+    fn set_assets_next_update_uid(&mut self, new_uid: i64) -> Result<()> {
         // 3rd param - is called; in case of true, value'll be incremented before returning
         diesel::sql_query(format!(
             "select setval('asset_updates_uid_seq', {}, false);",
@@ -235,7 +232,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot set assets next update uid"))
     }
 
-    fn rollback_assets(&self, block_uid: i64) -> Result<Vec<DeletedAsset>> {
+    fn rollback_assets(&mut self, block_uid: i64) -> Result<Vec<DeletedAsset>> {
         diesel::delete(asset_updates::table)
             .filter(asset_updates::block_uid.gt(block_uid))
             .returning((asset_updates::uid, asset_updates::asset_id))
@@ -248,7 +245,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot rollback assets"))
     }
 
-    fn assets_gt_block_uid(&self, block_uid: i64) -> Result<Vec<i64>> {
+    fn assets_gt_block_uid(&mut self, block_uid: i64) -> Result<Vec<i64>> {
         asset_updates::table
             .select(asset_updates::uid)
             .filter(asset_updates::block_uid.gt(block_uid))
@@ -259,7 +256,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             )))
     }
 
-    fn insert_asset_tickers(&self, tickers: &Vec<InsertableAssetTicker>) -> Result<()> {
+    fn insert_asset_tickers(&mut self, tickers: &Vec<InsertableAssetTicker>) -> Result<()> {
         chunked(asset_tickers::table, tickers, |chunk| {
             diesel::insert_into(asset_tickers::table)
                 .values(chunk)
@@ -268,7 +265,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert new asset tickers"))
     }
 
-    fn rollback_asset_tickers(&self, block_uid: &i64) -> Result<Vec<DeletedAssetTicker>> {
+    fn rollback_asset_tickers(&mut self, block_uid: &i64) -> Result<Vec<DeletedAssetTicker>> {
         diesel::delete(asset_tickers::table)
             .filter(asset_tickers::block_uid.gt(block_uid))
             .returning((asset_tickers::uid, asset_tickers::asset_id))
@@ -281,7 +278,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot rollback asset_tickers"))
     }
 
-    fn update_asset_tickers_block_references(&self, block_uid: i64) -> Result<()> {
+    fn update_asset_tickers_block_references(&mut self, block_uid: i64) -> Result<()> {
         diesel::update(asset_tickers::table)
             .set((asset_tickers::block_uid.eq(block_uid),))
             .filter(asset_tickers::block_uid.gt(block_uid))
@@ -290,7 +287,10 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot update asset tickers block references"))
     }
 
-    fn reopen_asset_tickers_superseded_by(&self, current_superseded_by: &Vec<i64>) -> Result<()> {
+    fn reopen_asset_tickers_superseded_by(
+        &mut self,
+        current_superseded_by: &Vec<i64>,
+    ) -> Result<()> {
         diesel::sql_query(
             "UPDATE asset_tickers SET superseded_by = $1 FROM (SELECT UNNEST($2) AS superseded_by) AS current
             WHERE asset_tickers.superseded_by = current.superseded_by;")
@@ -301,7 +301,10 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot reopen asset_tickers superseded_by"))
     }
 
-    fn close_asset_tickers_superseded_by(&self, updates: &Vec<AssetTickerOverride>) -> Result<()> {
+    fn close_asset_tickers_superseded_by(
+        &mut self,
+        updates: &Vec<AssetTickerOverride>,
+    ) -> Result<()> {
         let (ids, superseded_by_uids): (Vec<&String>, Vec<i64>) = updates
             .iter()
             .map(|u| (&u.asset_id, u.superseded_by))
@@ -322,7 +325,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot close asset_tickers superseded_by"))
     }
 
-    fn set_asset_tickers_next_update_uid(&self, new_uid: i64) -> Result<()> {
+    fn set_asset_tickers_next_update_uid(&mut self, new_uid: i64) -> Result<()> {
         // 3rd param - is called; in case of true, value'll be incremented before returning
         diesel::sql_query(format!(
             "select setval('asset_tickers_uid_seq', {}, false);",
@@ -333,7 +336,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot set asset_tickers next update uid"))
     }
 
-    fn get_next_asset_tickers_uid(&self) -> Result<i64> {
+    fn get_next_asset_tickers_uid(&mut self) -> Result<i64> {
         asset_tickers_uid_seq::table
             .select(asset_tickers_uid_seq::last_value)
             .first(self.conn)
@@ -344,7 +347,7 @@ impl RepoOperations for PgRepoOperations<'_> {
     // TRANSACTIONS
     //
 
-    fn update_transactions_references(&self, block_uid: i64) -> Result<()> {
+    fn update_transactions_references(&mut self, block_uid: i64) -> Result<()> {
         diesel::update(txs::table)
             .set((txs::block_uid.eq(block_uid),))
             .filter(txs::block_uid.gt(block_uid))
@@ -353,7 +356,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot update transactions references"))
     }
 
-    fn rollback_transactions(&self, block_uid: i64) -> Result<()> {
+    fn rollback_transactions(&mut self, block_uid: i64) -> Result<()> {
         diesel::delete(txs::table)
             .filter(txs::block_uid.gt(block_uid))
             .execute(self.conn)
@@ -361,7 +364,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map_err(build_err_fn("Cannot rollback transactions"))
     }
 
-    fn insert_txs_1(&self, txs: Vec<Tx1>) -> Result<()> {
+    fn insert_txs_1(&mut self, txs: Vec<Tx1>) -> Result<()> {
         chunked(txs_1::table, &txs, |chunk| {
             diesel::insert_into(txs_1::table)
                 .values(chunk)
@@ -370,7 +373,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert Genesis transactions"))
     }
 
-    fn insert_txs_2(&self, txs: Vec<Tx2>) -> Result<()> {
+    fn insert_txs_2(&mut self, txs: Vec<Tx2>) -> Result<()> {
         chunked(txs_2::table, &txs, |chunk| {
             diesel::insert_into(txs_2::table)
                 .values(chunk)
@@ -379,7 +382,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert Payment transactions"))
     }
 
-    fn insert_txs_3(&self, txs: Vec<Tx3>) -> Result<()> {
+    fn insert_txs_3(&mut self, txs: Vec<Tx3>) -> Result<()> {
         chunked(txs_3::table, &txs, |chunk| {
             diesel::insert_into(txs_3::table)
                 .values(chunk)
@@ -388,7 +391,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert Issue transactions"))
     }
 
-    fn insert_txs_4(&self, txs: Vec<Tx4>) -> Result<()> {
+    fn insert_txs_4(&mut self, txs: Vec<Tx4>) -> Result<()> {
         chunked(txs_4::table, &txs, |chunk| {
             diesel::insert_into(txs_4::table)
                 .values(chunk)
@@ -397,7 +400,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert Transfer transactions"))
     }
 
-    fn insert_txs_5(&self, txs: Vec<Tx5>) -> Result<()> {
+    fn insert_txs_5(&mut self, txs: Vec<Tx5>) -> Result<()> {
         chunked(txs_5::table, &txs, |chunk| {
             diesel::insert_into(txs_5::table)
                 .values(chunk)
@@ -406,7 +409,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert Reissue transactions"))
     }
 
-    fn insert_txs_6(&self, txs: Vec<Tx6>) -> Result<()> {
+    fn insert_txs_6(&mut self, txs: Vec<Tx6>) -> Result<()> {
         chunked(txs_6::table, &txs, |chunk| {
             diesel::insert_into(txs_6::table)
                 .values(chunk)
@@ -415,7 +418,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert Burn transactions"))
     }
 
-    fn insert_txs_7(&self, txs: Vec<Tx7>) -> Result<()> {
+    fn insert_txs_7(&mut self, txs: Vec<Tx7>) -> Result<()> {
         chunked(txs_7::table, &txs, |chunk| {
             diesel::insert_into(txs_7::table)
                 .values(chunk)
@@ -424,7 +427,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert Exchange transactions"))
     }
 
-    fn insert_txs_8(&self, txs: Vec<Tx8>) -> Result<()> {
+    fn insert_txs_8(&mut self, txs: Vec<Tx8>) -> Result<()> {
         chunked(txs_8::table, &txs, |chunk| {
             diesel::insert_into(txs_8::table)
                 .values(chunk)
@@ -433,9 +436,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert Lease transactions"))
     }
 
-    fn insert_txs_9(&self, txs: Vec<Tx9Partial>) -> Result<()> {
-        use diesel::pg::expression::dsl::any;
-
+    fn insert_txs_9(&mut self, txs: Vec<Tx9Partial>) -> Result<()> {
         let lease_ids = txs
             .iter()
             .filter_map(|tx| tx.lease_id.as_ref())
@@ -443,7 +444,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         let tx_id_uid = chunked_with_result(txs::table, &lease_ids, |ids| {
             txs::table
                 .select((txs::id, txs::uid))
-                .filter(txs::id.eq(any(ids)))
+                .filter(txs::id.eq_any(ids))
                 .get_results(self.conn)
         })
         .map_err(build_err_fn("Cannot find uids for lease_ids"))?;
@@ -470,7 +471,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert LeaseCancel transactions"))
     }
 
-    fn insert_txs_10(&self, txs: Vec<Tx10>) -> Result<()> {
+    fn insert_txs_10(&mut self, txs: Vec<Tx10>) -> Result<()> {
         chunked(txs_10::table, &txs, |chunk| {
             diesel::insert_into(txs_10::table)
                 .values(chunk)
@@ -479,7 +480,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert CreateAlias transactions"))
     }
 
-    fn insert_txs_11(&self, txs: Vec<Tx11Combined>) -> Result<()> {
+    fn insert_txs_11(&mut self, txs: Vec<Tx11Combined>) -> Result<()> {
         let (txs11, transfers): (Vec<Tx11>, Vec<Vec<Tx11Transfers>>) =
             txs.into_iter().map(|t| (t.tx, t.transfers)).unzip();
         let transfers = transfers.into_iter().flatten().collect::<Vec<_>>();
@@ -499,7 +500,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert MassTransfer transfers"))
     }
 
-    fn insert_txs_12(&self, txs: Vec<Tx12Combined>) -> Result<()> {
+    fn insert_txs_12(&mut self, txs: Vec<Tx12Combined>) -> Result<()> {
         let (txs12, data): (Vec<Tx12>, Vec<Vec<Tx12Data>>) =
             txs.into_iter().map(|t| (t.tx, t.data)).unzip();
         let data = data.into_iter().flatten().collect::<Vec<_>>();
@@ -519,7 +520,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert DataTransaction data"))
     }
 
-    fn insert_txs_13(&self, txs: Vec<Tx13>) -> Result<()> {
+    fn insert_txs_13(&mut self, txs: Vec<Tx13>) -> Result<()> {
         chunked(txs_13::table, &txs, |chunk| {
             diesel::insert_into(txs_13::table)
                 .values(chunk)
@@ -528,7 +529,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert SetScript transactions"))
     }
 
-    fn insert_txs_14(&self, txs: Vec<Tx14>) -> Result<()> {
+    fn insert_txs_14(&mut self, txs: Vec<Tx14>) -> Result<()> {
         chunked(txs_14::table, &txs, |chunk| {
             diesel::insert_into(txs_14::table)
                 .values(chunk)
@@ -537,7 +538,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert SponsorFee transactions"))
     }
 
-    fn insert_txs_15(&self, txs: Vec<Tx15>) -> Result<()> {
+    fn insert_txs_15(&mut self, txs: Vec<Tx15>) -> Result<()> {
         chunked(txs_15::table, &txs, |chunk| {
             diesel::insert_into(txs_15::table)
                 .values(chunk)
@@ -546,7 +547,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert SetAssetScript transactions"))
     }
 
-    fn insert_txs_16(&self, txs: Vec<Tx16Combined>) -> Result<()> {
+    fn insert_txs_16(&mut self, txs: Vec<Tx16Combined>) -> Result<()> {
         let (txs16, data): (Vec<Tx16>, Vec<(Vec<Tx16Args>, Vec<Tx16Payment>)>) = txs
             .into_iter()
             .map(|t| (t.tx, (t.args, t.payments)))
@@ -578,7 +579,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert InvokeScript payments"))
     }
 
-    fn insert_txs_17(&self, txs: Vec<Tx17>) -> Result<()> {
+    fn insert_txs_17(&mut self, txs: Vec<Tx17>) -> Result<()> {
         chunked(txs_17::table, &txs, |chunk| {
             diesel::insert_into(txs_17::table)
                 .values(chunk)
@@ -587,7 +588,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         .map_err(build_err_fn("Cannot insert UpdateAssetInfo transactions"))
     }
 
-    fn insert_txs_18(&self, txs: Vec<Tx18Combined>) -> Result<()> {
+    fn insert_txs_18(&mut self, txs: Vec<Tx18Combined>) -> Result<()> {
         let (txs18, data): (Vec<Tx18>, Vec<(Vec<Tx18Args>, Vec<Tx18Payment>)>) = txs
             .into_iter()
             .map(|t| (t.tx, (t.args, t.payments)))
@@ -620,11 +621,15 @@ impl RepoOperations for PgRepoOperations<'_> {
     }
 }
 
-fn chunked_with_result<T, F, V, R>(_: T, values: &Vec<V>, query_fn: F) -> Result<Vec<R>, DslError>
+fn chunked_with_result<T, F, V, R>(
+    _: T,
+    values: &Vec<V>,
+    mut query_fn: F,
+) -> Result<Vec<R>, DslError>
 where
     T: Table,
     T::AllColumns: TupleLen,
-    F: Fn(&[V]) -> Result<Vec<R>, DslError>,
+    F: FnMut(&[V]) -> Result<Vec<R>, DslError>,
 {
     let columns_count = T::all_columns().len();
     let chunk_size = (PG_MAX_INSERT_FIELDS_COUNT / columns_count) / 10 * 10;
@@ -640,11 +645,11 @@ where
 }
 
 #[inline]
-fn chunked<T, F, V>(table: T, values: &Vec<V>, query_fn: F) -> Result<(), DslError>
+fn chunked<T, F, V>(table: T, values: &Vec<V>, mut query_fn: F) -> Result<(), DslError>
 where
     T: Table,
     T::AllColumns: TupleLen,
-    F: Fn(&[V]) -> Result<usize, DslError>, //allows only dsl_query.execute()
+    F: FnMut(&[V]) -> Result<usize, DslError>, //allows only dsl_query.execute()
 {
     chunked_with_result(table, values, |v| query_fn(v).map(|_| Vec::<()>::new())).map(drop)
 }

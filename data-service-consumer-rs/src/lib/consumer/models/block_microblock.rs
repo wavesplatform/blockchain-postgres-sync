@@ -4,7 +4,7 @@ use chrono::NaiveDateTime;
 use diesel::Insertable;
 
 #[derive(Clone, Debug, Insertable, QueryableByName)]
-#[table_name = "blocks_microblocks"]
+#[diesel(table_name = blocks_microblocks)]
 pub struct BlockMicroblock {
     pub id: String,
     pub time_stamp: Option<NaiveDateTime>,

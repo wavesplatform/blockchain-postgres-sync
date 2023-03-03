@@ -4,7 +4,7 @@ use crate::schema::asset_tickers;
 use diesel::Insertable;
 
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "asset_tickers"]
+#[diesel(table_name = asset_tickers)]
 pub struct InsertableAssetTicker {
     pub uid: i64,
     pub superseded_by: i64,

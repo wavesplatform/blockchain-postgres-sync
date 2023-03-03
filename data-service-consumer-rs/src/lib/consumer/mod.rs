@@ -182,7 +182,7 @@ where
 
 fn handle_updates<R: RepoOperations>(
     updates_with_height: BlockchainUpdatesWithLastHeight,
-    repo: &R,
+    repo: &mut R,
     chain_id: u8,
     assets_only: bool,
     asset_storage_address: Option<&str>,
@@ -244,7 +244,7 @@ fn handle_updates<R: RepoOperations>(
 }
 
 fn handle_appends<R>(
-    repo: &R,
+    repo: &mut R,
     chain_id: u8,
     appends: &Vec<BlockMicroblockAppend>,
     assets_only: bool,
@@ -339,7 +339,7 @@ where
                 })
                 .collect();
 
-        handle_asset_tickers_updates(repo.clone(), &asset_tickers_updates_with_block_uids)?;
+        handle_asset_tickers_updates(repo, &asset_tickers_updates_with_block_uids)?;
 
         info!(
             "handled {} asset tickers updates",
@@ -351,7 +351,7 @@ where
 }
 
 fn handle_txs<R: RepoOperations>(
-    repo: &R,
+    repo: &mut R,
     block_uid_data: &Vec<(i64, &BlockMicroblockAppend)>,
     chain_id: u8,
 ) -> Result<(), Error> {
@@ -412,10 +412,10 @@ fn handle_txs<R: RepoOperations>(
     }
 
     #[inline]
-    fn insert_txs<T, F>(txs: Vec<T>, inserter: F) -> Result<()>
+    fn insert_txs<T, F>(txs: Vec<T>, mut inserter: F) -> Result<()>
     where
         T: 'static,
-        F: Fn(Vec<T>) -> Result<()>,
+        F: FnMut(Vec<T>) -> Result<()>,
     {
         if !txs.is_empty() {
             inserter(txs)?;
@@ -556,7 +556,7 @@ fn extract_asset_tickers_updates(tx: &Tx, asset_storage_address: &str) -> Vec<As
 }
 
 fn handle_base_asset_info_updates<R: RepoOperations>(
-    repo: &R,
+    repo: &mut R,
     updates: &[(i64, BaseAssetInfoUpdate)],
 ) -> Result<Option<Vec<i64>>> {
     if updates.is_empty() {
@@ -650,7 +650,7 @@ fn handle_base_asset_info_updates<R: RepoOperations>(
 }
 
 fn handle_asset_tickers_updates<R: RepoOperations>(
-    repo: &R,
+    repo: &mut R,
     updates: &[(&i64, AssetTickerUpdate)],
 ) -> Result<()> {
     if updates.is_empty() {
@@ -739,7 +739,7 @@ fn handle_asset_tickers_updates<R: RepoOperations>(
     repo.set_asset_tickers_next_update_uid(asset_tickers_next_uid + updates_count as i64)
 }
 
-fn squash_microblocks<R: RepoOperations>(repo: &R, assets_only: bool) -> Result<()> {
+fn squash_microblocks<R: RepoOperations>(repo: &mut R, assets_only: bool) -> Result<()> {
     let last_microblock_id = repo.get_total_block_id()?;
 
     if let Some(lmid) = last_microblock_id {
@@ -764,7 +764,7 @@ fn squash_microblocks<R: RepoOperations>(repo: &R, assets_only: bool) -> Result<
     Ok(())
 }
 
-fn rollback<R: RepoOperations>(repo: &R, block_uid: i64, assets_only: bool) -> Result<()> {
+fn rollback<R: RepoOperations>(repo: &mut R, block_uid: i64, assets_only: bool) -> Result<()> {
     debug!("rolling back to block_uid = {}", block_uid);
 
     rollback_assets(repo, block_uid)?;
@@ -779,7 +779,7 @@ fn rollback<R: RepoOperations>(repo: &R, block_uid: i64, assets_only: bool) -> R
     Ok(())
 }
 
-fn rollback_assets<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
+fn rollback_assets<R: RepoOperations>(repo: &mut R, block_uid: i64) -> Result<()> {
     let deleted = repo.rollback_assets(block_uid)?;
 
     let mut grouped_deleted: HashMap<DeletedAsset, Vec<DeletedAsset>> = HashMap::new();
@@ -797,7 +797,7 @@ fn rollback_assets<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
     repo.reopen_assets_superseded_by(&lowest_deleted_uids)
 }
 
-fn rollback_asset_tickers<R: RepoOperations>(repo: &R, block_uid: i64) -> Result<()> {
+fn rollback_asset_tickers<R: RepoOperations>(repo: &mut R, block_uid: i64) -> Result<()> {
     let deleted = repo.rollback_asset_tickers(&block_uid)?;
 
     let mut grouped_deleted: HashMap<DeletedAssetTicker, Vec<DeletedAssetTicker>> = HashMap::new();

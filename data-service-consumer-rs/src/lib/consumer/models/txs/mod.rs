@@ -21,7 +21,7 @@ type TxBlockUid = i64;
 
 /// Genesis
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_1"]
+#[diesel(table_name = txs_1)]
 pub struct Tx1 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -43,7 +43,7 @@ pub struct Tx1 {
 
 /// Payment
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_2"]
+#[diesel(table_name = txs_2)]
 pub struct Tx2 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -65,7 +65,7 @@ pub struct Tx2 {
 
 /// Issue
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_3"]
+#[diesel(table_name = txs_3)]
 pub struct Tx3 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -91,7 +91,7 @@ pub struct Tx3 {
 
 /// Transfer
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_4"]
+#[diesel(table_name = txs_4)]
 pub struct Tx4 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -116,7 +116,7 @@ pub struct Tx4 {
 
 /// Reissue
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_5"]
+#[diesel(table_name = txs_5)]
 pub struct Tx5 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -138,7 +138,7 @@ pub struct Tx5 {
 
 /// Burn
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_6"]
+#[diesel(table_name = txs_6)]
 pub struct Tx6 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -159,7 +159,7 @@ pub struct Tx6 {
 
 /// Exchange
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_7"]
+#[diesel(table_name = txs_7)]
 pub struct Tx7 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -187,7 +187,7 @@ pub struct Tx7 {
 
 /// Lease
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_8"]
+#[diesel(table_name = txs_8)]
 pub struct Tx8 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -228,7 +228,7 @@ pub struct Tx9Partial {
 
 /// LeaseCancel
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_9"]
+#[diesel(table_name = txs_9)]
 pub struct Tx9 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -270,7 +270,7 @@ impl From<(&Tx9Partial, Option<i64>)> for Tx9 {
 
 /// CreateAlias
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_10"]
+#[diesel(table_name = txs_10)]
 pub struct Tx10 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -290,7 +290,7 @@ pub struct Tx10 {
 
 /// MassTransfer
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_11"]
+#[diesel(table_name = txs_11)]
 pub struct Tx11 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -311,7 +311,7 @@ pub struct Tx11 {
 
 /// MassTransfer
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_11_transfers"]
+#[diesel(table_name = txs_11_transfers)]
 pub struct Tx11Transfers {
     pub tx_uid: TxUid,
     pub recipient_address: String,
@@ -330,7 +330,7 @@ pub struct Tx11Combined {
 
 /// DataTransaction
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_12"]
+#[diesel(table_name = txs_12)]
 pub struct Tx12 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -349,7 +349,7 @@ pub struct Tx12 {
 
 /// DataTransaction
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_12_data"]
+#[diesel(table_name = txs_12_data)]
 pub struct Tx12Data {
     pub tx_uid: TxUid,
     pub data_key: String,
@@ -371,7 +371,7 @@ pub struct Tx12Combined {
 
 /// SetScript
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_13"]
+#[diesel(table_name = txs_13)]
 pub struct Tx13 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -391,7 +391,7 @@ pub struct Tx13 {
 
 /// SponsorFee
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_14"]
+#[diesel(table_name = txs_14)]
 pub struct Tx14 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -412,7 +412,7 @@ pub struct Tx14 {
 
 /// SetAssetScript
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_15"]
+#[diesel(table_name = txs_15)]
 pub struct Tx15 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -433,7 +433,7 @@ pub struct Tx15 {
 
 /// InvokeScript
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_16"]
+#[diesel(table_name = txs_16)]
 pub struct Tx16 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -456,7 +456,7 @@ pub struct Tx16 {
 
 /// InvokeScript
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_16_args"]
+#[diesel(table_name = txs_16_args)]
 pub struct Tx16Args {
     pub tx_uid: TxUid,
     pub arg_type: String,
@@ -471,7 +471,7 @@ pub struct Tx16Args {
 
 /// InvokeScript
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_16_payment"]
+#[diesel(table_name = txs_16_payment)]
 pub struct Tx16Payment {
     pub tx_uid: TxUid,
     pub amount: i64,
@@ -490,7 +490,7 @@ pub struct Tx16Combined {
 
 /// UpdateAssetInfo
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_17"]
+#[diesel(table_name = txs_17)]
 pub struct Tx17 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -512,7 +512,7 @@ pub struct Tx17 {
 
 /// Ethereum
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_18"]
+#[diesel(table_name = txs_18)]
 pub struct Tx18 {
     pub uid: TxUid,
     pub height: TxHeight,
@@ -533,7 +533,7 @@ pub struct Tx18 {
 
 /// Ethereum InvokeScript
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_18_args"]
+#[diesel(table_name = txs_18_args)]
 pub struct Tx18Args {
     pub tx_uid: TxUid,
     pub arg_type: String,
@@ -548,7 +548,7 @@ pub struct Tx18Args {
 
 /// Ethereum InvokeScript
 #[derive(Clone, Debug, Insertable)]
-#[table_name = "txs_18_payment"]
+#[diesel(table_name = txs_18_payment)]
 pub struct Tx18Payment {
     pub tx_uid: TxUid,
     pub amount: i64,

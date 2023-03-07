@@ -658,6 +658,7 @@ CREATE INDEX IF NOT EXISTS asset_updates_to_tsvector_idx
     ON asset_updates USING gin (to_tsvector('simple'::regconfig, name::TEXT))
     WHERE (superseded_by = '9223372036854775806'::BIGINT);
 CREATE INDEX IF NOT EXISTS asset_updates_block_uid_idx  ON asset_updates (block_uid);
+CREATE INDEX IF NOT EXISTS asset_tickers_block_uid_idx  ON asset_tickers (block_uid);
 CREATE INDEX IF NOT EXISTS blocks_microblocks_time_stamp_uid_idx ON blocks_microblocks (time_stamp DESC, uid DESC);
 CREATE INDEX IF NOT EXISTS blocks_microblocks_id_idx    ON blocks_microblocks (id);
 CREATE INDEX IF NOT EXISTS candles_max_height_index     ON candles USING btree (max_height);
@@ -667,4 +668,4 @@ CREATE INDEX IF NOT EXISTS candles_assets_id_idx
     ON public.candles USING btree (amount_asset_id, price_asset_id)
     WHERE ((("interval")::text = '1d'::text) AND ((matcher_address)::text = '3PEjHv3JGjcWNpYEEkif2w8NXV4kbhnoGgu'::text));
 CREATE INDEX IF NOT EXISTS waves_data_height_desc_quantity_idx ON waves_data (height DESC NULLS LAST, quantity);
-CREATE UNIQUE INDEX IF NOT EXISTS asset_tickers_ticker_idx    ON asset_tickers (ticker);
+CREATE INDEX IF NOT EXISTS asset_tickers_ticker_idx    ON asset_tickers (ticker);

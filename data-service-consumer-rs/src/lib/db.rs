@@ -24,7 +24,7 @@ pub async fn async_pool(config: &Config) -> Result<PgAsyncPool> {
     let manager = DManager::new(db_url, Runtime::Tokio1);
     let pool = DPool::builder(manager)
         .max_size(config.poolsize as usize)
-        .wait_timeout(Some(Duration::from_secs(5 * 60)))
+        .wait_timeout(Some(Duration::from_secs(10 * 60)))
         .runtime(Runtime::Tokio1)
         .build()?;
     Ok(pool)
@@ -37,7 +37,7 @@ pub fn pool(config: &Config) -> Result<PgPool, AppError> {
     Ok(Pool::builder()
         .min_idle(Some(1))
         .max_size(config.poolsize as u32)
-        .idle_timeout(Some(Duration::from_secs(5 * 60)))
+        .idle_timeout(Some(Duration::from_secs(10 * 60)))
         .connection_timeout(Duration::from_secs(5))
         .build(manager)?)
 }

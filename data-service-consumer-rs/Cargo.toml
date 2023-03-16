@@ -48,5 +48,9 @@ path = "src/bin/consumer.rs"
 name = "migration"
 path = "src/bin/migration.rs"
 
+[[bin]]
+name = "rollback"
+path = "src/bin/rollback.rs"
+
 [profile.release]
 lto = true

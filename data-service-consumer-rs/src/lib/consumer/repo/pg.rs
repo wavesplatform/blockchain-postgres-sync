@@ -37,7 +37,7 @@ pub fn new(pool: PgAsyncPool) -> PgRepo {
 }
 
 pub struct PgRepoOperations<'c> {
-    conn: &'c mut PgConnection,
+    pub conn: &'c mut PgConnection,
 }
 
 #[async_trait]

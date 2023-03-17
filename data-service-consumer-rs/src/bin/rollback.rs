@@ -4,8 +4,8 @@ use app_lib::{
     consumer::{repo::pg::PgRepoOperations, rollback},
     db::generate_postgres_url,
 };
-use diesel::pg::PgConnection;
 use diesel::Connection;
+use diesel::{dsl::sql_query, pg::PgConnection, RunQueryDsl};
 
 fn main() -> Result<()> {
     let db_config = config::postgres::load()?;
@@ -13,6 +13,7 @@ fn main() -> Result<()> {
     let mut conn = PgConnection::establish(&generate_postgres_url(&db_config))?;
 
     conn.transaction(|conn| {
+        sql_query("SET enable_seqscan = OFF;").execute(conn)?;
         rollback(
             &mut PgRepoOperations { conn },
             rollback_config.rollback_to,

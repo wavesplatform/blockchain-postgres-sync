@@ -1,1 +1,0 @@
-ALTER TABLE txs_12_data ALTER COLUMN data_type DROP NOT NULL;

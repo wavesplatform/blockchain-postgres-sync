@@ -1,21 +1,21 @@
-FROM node:10-alpine
+FROM rust:1.65 AS builder
+WORKDIR /app
 
-# enable node_modules caching layer
-RUN apk add --no-cache tini git
-ADD package.json /tmp/package.json
-ADD package-lock.json /tmp/package-lock.json
-RUN cd /tmp && npm install
-RUN mkdir -p /opt/app && cp -a /tmp/node_modules /opt/app
+RUN rustup component add rustfmt
 
-# set work dir
-WORKDIR /opt/app
-ADD . /opt/app
-RUN cd /opt/app
+COPY Cargo.* ./
+COPY ./src ./src
+COPY ./migrations ./migrations
 
-# add tini for PID 1 handling
-ENTRYPOINT ["/sbin/tini", "--"]
+RUN cargo install --path .
 
-# NodeJS launch
-USER node
-ENV NODE_ENV production
-CMD ["/bin/sh", "/opt/app/entrypoint.sh"]
+
+FROM debian:11 as runtime
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y curl openssl libssl-dev libpq-dev
+RUN /usr/sbin/update-ca-certificates
+
+COPY --from=builder /usr/local/cargo/bin/* ./
+
+CMD ['./api']

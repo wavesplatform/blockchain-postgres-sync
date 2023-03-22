@@ -1,5 +1,5 @@
 [package]
-name = "data-service-asset-consumer"
+name = "data-service-consumer"
 version = "0.0.1"
 edition = "2021"
 
@@ -52,5 +52,3 @@ path = "src/bin/migration.rs"
 name = "rollback"
 path = "src/bin/rollback.rs"
 
-[profile.release]
-lto = true

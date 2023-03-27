@@ -6,4 +6,6 @@ CREATE INDEX IF NOT EXISTS asset_tickers_block_uid_idx ON asset_updates (block_u
 CREATE OR REPLACE VIEW tickers(
     asset_id,
     ticker
-) AS SELECT DISTINCT ON (ticker) asset_id, ticker FROM asset_tickers ORDER BY ticker, uid DESC;
+) AS SELECT DISTINCT ON (ticker) * FROM
+    (SELECT DISTINCT ON (asset_id) asset_id, ticker, uid FROM asset_tickers ORDER BY asset_id, uid DESC) as uord
+    ORDER BY ticker, uid DESC;

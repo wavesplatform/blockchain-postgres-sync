@@ -626,13 +626,17 @@ impl RepoOperations for PgRepoOperations<'_> {
     //
 
     fn calculate_candles_since_block_uid(&mut self, block_uid: i64) -> Result<()> {
-        let first_tx7_in_block_ts = txs_7::table
+        let first_tx7_in_block_ts = match txs_7::table
             .select(txs_7::time_stamp)
             .filter(txs_7::uid.eq(block_uid))
             .order(txs_7::time_stamp.asc())
-            .first::<NaiveDateTime>(self.conn)?
-            .with_second(0)
-            .unwrap();
+            .first::<NaiveDateTime>(self.conn)
+            .optional()
+            .map_err(build_err_fn("Cannot find exchange txs"))?
+        {
+            Some(ts) => ts.with_second(0).unwrap(),
+            None => return Ok(()),
+        };
 
         diesel::sql_query("CALL calc_and_insert_candles_since_timestamp($1)")
             .bind::<Timestamp, _>(first_tx7_in_block_ts)
@@ -642,13 +646,17 @@ impl RepoOperations for PgRepoOperations<'_> {
     }
 
     fn rollback_candles(&mut self, block_uid: i64) -> Result<()> {
-        let first_tx7_in_block_ts = txs_7::table
+        let first_tx7_in_block_ts = match txs_7::table
             .select(txs_7::time_stamp)
             .filter(txs_7::uid.eq(block_uid + 1))
             .order(txs_7::time_stamp.asc())
-            .first::<NaiveDateTime>(self.conn)?
-            .with_second(0)
-            .unwrap();
+            .first::<NaiveDateTime>(self.conn)
+            .optional()
+            .map_err(build_err_fn("Cannot find exchange txs in rollback"))?
+        {
+            Some(ts) => ts.with_second(0).unwrap(),
+            None => return Ok(()),
+        };
 
         diesel::delete(candles::table)
             .filter(candles::time_start.gt(first_tx7_in_block_ts))

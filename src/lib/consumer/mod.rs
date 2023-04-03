@@ -263,7 +263,6 @@ where
             })
             .collect_vec(),
     )?;
-    let first_new_block_uid = block_uids.iter().next().cloned();
 
     let block_uids_with_appends = block_uids.into_iter().zip(appends).collect_vec();
 
@@ -321,10 +320,6 @@ where
 
         if waves_data.len() > 0 {
             repo.insert_waves_data(&waves_data)?;
-        }
-
-        if let Some(block_uid) = first_new_block_uid {
-            repo.calculate_candles_since_block_uid(block_uid)?;
         }
     }
 
@@ -415,6 +410,8 @@ fn handle_txs<R: RepoOperations>(
         }
     }
 
+    let has_txs_7 = !txs_7.is_empty();
+
     #[inline]
     fn insert_txs<T, F>(txs: Vec<T>, mut inserter: F) -> Result<()>
     where
@@ -447,6 +444,15 @@ fn handle_txs<R: RepoOperations>(
     insert_txs(txs_18, |txs| repo.insert_txs_18(txs))?;
 
     info!("{} transactions handled", txs_count);
+
+    if has_txs_7 {
+        let first_new_block_uid = block_uid_data.iter().next().map(|d| d.0);
+        if let Some(block_uid) = first_new_block_uid {
+            repo.calculate_candles_since_block_uid(block_uid)?;
+
+            info!("candles calculated")
+        }
+    }
 
     Ok(())
 }

@@ -378,14 +378,16 @@ fn handle_txs<R: RepoOperations>(
         .fold(0usize, |txs, (_, block)| txs + block.txs.len());
     info!("handling {} transactions", txs_count);
 
+    let mut first_block_with_tx7_uid = None::<i64>;
+
     let mut ugen = UID_GENERATOR.lock().unwrap();
-    for (block_uid, bm) in block_uid_data {
+    for &(block_uid, bm) in block_uid_data {
         ugen.maybe_update_height(bm.height);
 
         for tx in &bm.txs {
             let tx_uid = ugen.next();
             let result_tx = ConvertedTx::try_from((
-                &tx.data, &tx.id, bm.height, &tx.meta, tx_uid, *block_uid, chain_id,
+                &tx.data, &tx.id, bm.height, &tx.meta, tx_uid, block_uid, chain_id,
             ))?;
             match result_tx {
                 ConvertedTx::Genesis(t) => txs_1.push(t),
@@ -394,7 +396,12 @@ fn handle_txs<R: RepoOperations>(
                 ConvertedTx::Transfer(t) => txs_4.push(t),
                 ConvertedTx::Reissue(t) => txs_5.push(t),
                 ConvertedTx::Burn(t) => txs_6.push(t),
-                ConvertedTx::Exchange(t) => txs_7.push(t),
+                ConvertedTx::Exchange(t) => {
+                    if first_block_with_tx7_uid.is_none() {
+                        first_block_with_tx7_uid = Some(block_uid);
+                    }
+                    txs_7.push(t);
+                }
                 ConvertedTx::Lease(t) => txs_8.push(t),
                 ConvertedTx::LeaseCancel(t) => txs_9.push(t),
                 ConvertedTx::CreateAlias(t) => txs_10.push(t),
@@ -409,8 +416,6 @@ fn handle_txs<R: RepoOperations>(
             }
         }
     }
-
-    let has_txs_7 = !txs_7.is_empty();
 
     #[inline]
     fn insert_txs<T, F>(txs: Vec<T>, mut inserter: F) -> Result<()>
@@ -445,13 +450,10 @@ fn handle_txs<R: RepoOperations>(
 
     info!("{} transactions handled", txs_count);
 
-    if has_txs_7 {
-        let first_new_block_uid = block_uid_data.iter().next().map(|d| d.0);
-        if let Some(block_uid) = first_new_block_uid {
-            repo.calculate_candles_since_block_uid(block_uid)?;
+    if let Some(block_uid) = first_block_with_tx7_uid {
+        repo.calculate_candles_since_block_uid(block_uid)?;
 
-            info!("candles calculated")
-        }
+        info!("candles calculated")
     }
 
     Ok(())

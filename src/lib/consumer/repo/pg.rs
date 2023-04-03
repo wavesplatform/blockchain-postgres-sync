@@ -628,7 +628,7 @@ impl RepoOperations for PgRepoOperations<'_> {
     fn calculate_candles_since_block_uid(&mut self, block_uid: i64) -> Result<()> {
         let first_tx7_in_block_ts = match txs_7::table
             .select(txs_7::time_stamp)
-            .filter(txs_7::uid.eq(block_uid))
+            .filter(txs_7::block_uid.eq(block_uid))
             .order(txs_7::time_stamp.asc())
             .first::<NaiveDateTime>(self.conn)
             .optional()
@@ -648,7 +648,7 @@ impl RepoOperations for PgRepoOperations<'_> {
     fn rollback_candles(&mut self, block_uid: i64) -> Result<()> {
         let first_tx7_in_block_ts = match txs_7::table
             .select(txs_7::time_stamp)
-            .filter(txs_7::uid.eq(block_uid + 1))
+            .filter(txs_7::block_uid.eq(block_uid + 1))
             .order(txs_7::time_stamp.asc())
             .first::<NaiveDateTime>(self.conn)
             .optional()

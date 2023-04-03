@@ -15,7 +15,6 @@ DECLARE candle_intervals TEXT[][] := '{
     {"24h", "1w"},
     {"24h", "1M"}
 }';
-    ivl TEXT[];
 BEGIN
     -- insert minute intervals
     INSERT INTO candles
@@ -64,10 +63,10 @@ BEGIN
             weighted_average_price = excluded.weighted_average_price;
 
     -- insert other intervals
-    FOREACH ivl IN ARRAY candle_intervals LOOP
+    FOR i IN 1..array_length(candle_intervals, 1) LOOP
         INSERT INTO candles
             SELECT
-                _to_raw_timestamp(time_start, ivl[2]) AS candle_time,
+                _to_raw_timestamp(time_start, candle_intervals[i][2]) AS candle_time,
                 amount_asset_id,
                 price_asset_id,
                 min(low) AS low,
@@ -80,10 +79,11 @@ BEGIN
                     AS weighted_average_price,
                 (array_agg(open ORDER BY time_start)::numeric[])[1] AS open,
                 (array_agg(open ORDER BY time_start DESC)::numeric[])[1] AS close,
-                ivl[2] AS interval,
+                candle_intervals[i][2] AS interval,
                 matcher_address
             FROM candles
-            WHERE interval = ivl[1] AND time_start >= _to_raw_timestamp(since_ts, ivl[2])
+            WHERE interval = candle_intervals[i][1]
+              AND time_start >= _to_raw_timestamp(since_ts, candle_intervals[i][2])
             GROUP BY candle_time, amount_asset_id, price_asset_id, matcher_address
 
         ON CONFLICT (time_start, amount_asset_id, price_asset_id, matcher_address, interval) DO UPDATE

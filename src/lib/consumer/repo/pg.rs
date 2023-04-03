@@ -1,10 +1,11 @@
 use anyhow::{Error, Result};
 use async_trait::async_trait;
+use chrono::{NaiveDateTime, Timelike as _};
 use diesel::dsl::sql;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::result::Error as DslError;
-use diesel::sql_types::{Array, BigInt, Int8, VarChar};
+use diesel::sql_types::{Array, BigInt, Int8, Timestamp, VarChar};
 use diesel::Table;
 use std::collections::HashMap;
 use std::mem::drop;
@@ -618,6 +619,42 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Ethereum InvokeScript payments"))
+    }
+
+    //
+    // CANDLES
+    //
+
+    fn calculate_candles_since_block_uid(&mut self, block_uid: i64) -> Result<()> {
+        let first_tx7_in_block_ts = txs_7::table
+            .select(txs_7::time_stamp)
+            .filter(txs_7::uid.eq(block_uid))
+            .order(txs_7::time_stamp.asc())
+            .first::<NaiveDateTime>(self.conn)?
+            .with_second(0)
+            .unwrap();
+
+        diesel::sql_query("CALL calc_and_insert_candles_since_timestamp($1)")
+            .bind::<Timestamp, _>(first_tx7_in_block_ts)
+            .execute(self.conn)
+            .map(drop)
+            .map_err(build_err_fn("Cannot calculate candles"))
+    }
+
+    fn rollback_candles(&mut self, block_uid: i64) -> Result<()> {
+        let first_tx7_in_block_ts = txs_7::table
+            .select(txs_7::time_stamp)
+            .filter(txs_7::uid.eq(block_uid + 1))
+            .order(txs_7::time_stamp.asc())
+            .first::<NaiveDateTime>(self.conn)?
+            .with_second(0)
+            .unwrap();
+
+        diesel::delete(candles::table)
+            .filter(candles::time_start.gt(first_tx7_in_block_ts))
+            .execute(self.conn)
+            .map(drop)
+            .map_err(build_err_fn("Cannot rollback candles"))
     }
 }
 

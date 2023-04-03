@@ -263,6 +263,7 @@ where
             })
             .collect_vec(),
     )?;
+    let first_new_block_uid = block_uids.iter().next().cloned();
 
     let block_uids_with_appends = block_uids.into_iter().zip(appends).collect_vec();
 
@@ -321,11 +322,14 @@ where
         if waves_data.len() > 0 {
             repo.insert_waves_data(&waves_data)?;
         }
+
+        if let Some(block_uid) = first_new_block_uid {
+            repo.calculate_candles_since_block_uid(block_uid)?;
+        }
     }
 
-    timer!("asset tickers updates handling");
-
     if let Some(storage_addr) = asset_storage_address {
+        timer!("handling asset tickers updates");
         let asset_tickers_updates_with_block_uids: Vec<(&i64, AssetTickerUpdate)> =
             block_uids_with_appends
                 .iter()
@@ -766,7 +770,7 @@ fn squash_microblocks<R: RepoOperations>(repo: &mut R, assets_only: bool) -> Res
 
 pub fn rollback<R: RepoOperations>(repo: &mut R, block_uid: i64, assets_only: bool) -> Result<()> {
     debug!("rolling back to block_uid = {}", block_uid);
-
+    rollback_candles(repo, block_uid)?;
     rollback_assets(repo, block_uid)?;
     rollback_asset_tickers(repo, block_uid)?;
 
@@ -813,4 +817,9 @@ fn rollback_asset_tickers<R: RepoOperations>(repo: &mut R, block_uid: i64) -> Re
         .collect();
 
     repo.reopen_asset_tickers_superseded_by(&lowest_deleted_uids)
+}
+
+fn rollback_candles<R: RepoOperations>(repo: &mut R, block_uid: i64) -> Result<()> {
+    repo.rollback_candles(block_uid)?;
+    repo.calculate_candles_since_block_uid(block_uid)
 }

@@ -778,6 +778,7 @@ fn squash_microblocks<R: RepoOperations>(repo: &mut R, assets_only: bool) -> Res
 
 pub fn rollback<R: RepoOperations>(repo: &mut R, block_uid: i64, assets_only: bool) -> Result<()> {
     debug!("rolling back to block_uid = {}", block_uid);
+
     rollback_assets(repo, block_uid)?;
     rollback_asset_tickers(repo, block_uid)?;
 

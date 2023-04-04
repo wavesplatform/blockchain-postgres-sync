@@ -130,11 +130,11 @@ BEGIN
 END
 $$;
 
-CREATE OR REPLACE FUNCTION _trunc_ts_by_secs(ts TIMESTAMP WITHOUT TIME ZONE, mins INTEGER)
+CREATE OR REPLACE FUNCTION _trunc_ts_by_secs(ts TIMESTAMP WITHOUT TIME ZONE, secs INTEGER)
 RETURNS TIMESTAMP
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    RETURN to_timestamp(floor(extract('epoch' from ts) / mins) * mins);
+    RETURN to_timestamp(floor(extract('epoch' from ts) / secs) * secs);
 END;
 $$;

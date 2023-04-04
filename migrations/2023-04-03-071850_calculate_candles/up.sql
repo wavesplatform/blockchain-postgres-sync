@@ -43,9 +43,14 @@ BEGIN
                 sender,
                 height,
                 amount,
-                price
+                CASE WHEN tx_version > 2
+                    THEN price::numeric
+                        * 10^(select decimals from assets where asset_id = price_asset_id)
+                        * 10^(select -decimals from assets where asset_id = amount_asset_id)
+                    ELSE price::numeric
+                END price
             FROM txs_7
-            WHERE time_stamp > since_ts ORDER BY uid) AS e
+            WHERE time_stamp >= since_ts ORDER BY uid, time_stamp <-> since_ts) AS e
         GROUP BY
             e.candle_time,
             e.amount_asset_id,

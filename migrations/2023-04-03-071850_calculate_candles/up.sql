@@ -138,3 +138,5 @@ BEGIN
     RETURN to_timestamp(floor(extract('epoch' from ts) / secs) * secs);
 END;
 $$;
+
+ALTER TABLE txs_18 RENAME COLUMN payload TO bytes;

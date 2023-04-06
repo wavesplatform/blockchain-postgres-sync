@@ -527,7 +527,7 @@ pub struct Tx18 {
     pub sender: TxSender,
     pub sender_public_key: TxSenderPubKey,
     pub status: TxStatus,
-    pub payload: Vec<u8>,
+    pub bytes: Vec<u8>,
     pub function_name: Option<String>,
 }
 

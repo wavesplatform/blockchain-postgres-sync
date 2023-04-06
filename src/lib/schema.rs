@@ -410,7 +410,7 @@ diesel::table! {
         fee -> Int8,
         status -> Varchar,
         block_uid -> Int8,
-        payload -> Bytea,
+        bytes -> Bytea,
         function_name -> Nullable<Varchar>,
     }
 }

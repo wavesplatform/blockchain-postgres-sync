@@ -669,3 +669,4 @@ CREATE INDEX IF NOT EXISTS candles_assets_id_idx
     WHERE ((("interval")::text = '1d'::text) AND ((matcher_address)::text = '3PEjHv3JGjcWNpYEEkif2w8NXV4kbhnoGgu'::text));
 CREATE INDEX IF NOT EXISTS waves_data_height_desc_quantity_idx ON waves_data (height DESC NULLS LAST, quantity);
 CREATE INDEX IF NOT EXISTS asset_tickers_ticker_idx ON asset_tickers (ticker);
+CREATE INDEX IF NOT EXISTS asset_tickers_asset_id_uid_idx ON asset_tickers (asset_id, uid) INCLUDE (ticker);

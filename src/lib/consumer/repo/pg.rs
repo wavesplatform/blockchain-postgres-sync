@@ -64,17 +64,18 @@ impl RepoOperations for PgRepoOperations<'_> {
     // COMMON
     //
 
-    fn get_prev_handled_height(&mut self) -> Result<Option<PrevHandledHeight>> {
+    fn get_prev_handled_height(&mut self, depth: u32) -> Result<Option<PrevHandledHeight>> {
         blocks_microblocks::table
             .select((blocks_microblocks::uid, blocks_microblocks::height))
-            .filter(
-                blocks_microblocks::height
-                    .eq(sql("(select max(height) - 1 from blocks_microblocks)")),
-            )
+            .filter(blocks_microblocks::height.eq(sql(&format!(
+                "(select max(height) - {depth} from blocks_microblocks)"
+            ))))
             .order(blocks_microblocks::uid.asc())
             .first(self.conn)
             .optional()
-            .map_err(build_err_fn("Cannot get prev handled_height"))
+            .map_err(build_err_fn(format!(
+                "Cannot get prev handled_height with depth {depth}"
+            )))
     }
 
     fn get_block_uid(&mut self, block_id: &str) -> Result<i64> {

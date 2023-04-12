@@ -28,7 +28,7 @@ pub trait RepoOperations {
     // COMMON
     //
 
-    fn get_prev_handled_height(&mut self) -> Result<Option<PrevHandledHeight>>;
+    fn get_prev_handled_height(&mut self, depth: u32) -> Result<Option<PrevHandledHeight>>;
 
     fn get_block_uid(&mut self, block_id: &str) -> Result<i64>;
 

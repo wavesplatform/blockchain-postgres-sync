@@ -112,26 +112,29 @@ where
         starting_height,
         updates_per_request,
         asset_storage_address,
+        start_rollback_depth,
         ..
     } = config;
 
     let asset_storage_address: Option<&'static str> =
         asset_storage_address.map(|a| &*Box::leak(a.into_boxed_str()));
     let starting_from_height = {
-        repo.transaction(move |ops| match ops.get_prev_handled_height() {
-            Ok(Some(prev_handled_height)) => {
-                rollback(ops, prev_handled_height.uid, assets_only)?;
-                Ok(prev_handled_height.height as u32 + 1)
-            }
-            Ok(None) => Ok(starting_height),
-            Err(e) => Err(e),
-        })
+        repo.transaction(
+            move |ops| match ops.get_prev_handled_height(start_rollback_depth) {
+                Ok(Some(prev_handled_height)) => {
+                    rollback(ops, prev_handled_height.uid, assets_only)?;
+                    Ok(prev_handled_height.height as u32 + 1)
+                }
+                Ok(None) => Ok(starting_height),
+                Err(e) => Err(e),
+            },
+        )
         .await?
     };
 
     info!(
-        "Start fetching updates from height {}",
-        starting_from_height
+        "Start fetching updates from height {} (by {} block(s) back)",
+        starting_from_height, start_rollback_depth
     );
 
     let mut rx = updates_src

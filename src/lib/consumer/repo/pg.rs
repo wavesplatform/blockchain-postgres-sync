@@ -1,10 +1,11 @@
 use anyhow::{Error, Result};
 use async_trait::async_trait;
+use chrono::{NaiveDateTime, Timelike as _};
 use diesel::dsl::sql;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::result::Error as DslError;
-use diesel::sql_types::{Array, BigInt, Int8, VarChar};
+use diesel::sql_types::{Array, BigInt, Int8, Timestamp, VarChar};
 use diesel::Table;
 use std::collections::HashMap;
 use std::mem::drop;
@@ -63,17 +64,18 @@ impl RepoOperations for PgRepoOperations<'_> {
     // COMMON
     //
 
-    fn get_prev_handled_height(&mut self) -> Result<Option<PrevHandledHeight>> {
+    fn get_prev_handled_height(&mut self, depth: u32) -> Result<Option<PrevHandledHeight>> {
         blocks_microblocks::table
             .select((blocks_microblocks::uid, blocks_microblocks::height))
-            .filter(
-                blocks_microblocks::height
-                    .eq(sql("(select max(height) - 1 from blocks_microblocks)")),
-            )
+            .filter(blocks_microblocks::height.eq(sql(&format!(
+                "(select max(height) - {depth} from blocks_microblocks)"
+            ))))
             .order(blocks_microblocks::uid.asc())
             .first(self.conn)
             .optional()
-            .map_err(build_err_fn("Cannot get prev handled_height"))
+            .map_err(build_err_fn(format!(
+                "Cannot get prev handled_height with depth {depth}"
+            )))
     }
 
     fn get_block_uid(&mut self, block_id: &str) -> Result<i64> {
@@ -618,6 +620,50 @@ impl RepoOperations for PgRepoOperations<'_> {
                 .execute(self.conn)
         })
         .map_err(build_err_fn("Cannot insert Ethereum InvokeScript payments"))
+    }
+
+    //
+    // CANDLES
+    //
+
+    fn calculate_candles_since_block_uid(&mut self, block_uid: i64) -> Result<()> {
+        let first_tx7_in_block_ts = match txs_7::table
+            .select(txs_7::time_stamp)
+            .filter(txs_7::block_uid.eq(block_uid))
+            .order(txs_7::time_stamp.asc())
+            .first::<NaiveDateTime>(self.conn)
+            .optional()
+            .map_err(build_err_fn("Cannot find exchange txs"))?
+        {
+            Some(ts) => ts.with_second(0).unwrap(),
+            None => return Ok(()),
+        };
+
+        diesel::sql_query("CALL calc_and_insert_candles_since_timestamp($1)")
+            .bind::<Timestamp, _>(first_tx7_in_block_ts)
+            .execute(self.conn)
+            .map(drop)
+            .map_err(build_err_fn("Cannot calculate candles"))
+    }
+
+    fn rollback_candles(&mut self, block_uid: i64) -> Result<()> {
+        let first_tx7_in_block_ts = match txs_7::table
+            .select(txs_7::time_stamp)
+            .filter(txs_7::block_uid.eq(block_uid + 1))
+            .order(txs_7::time_stamp.asc())
+            .first::<NaiveDateTime>(self.conn)
+            .optional()
+            .map_err(build_err_fn("Cannot find exchange txs in rollback"))?
+        {
+            Some(ts) => ts.with_second(0).unwrap(),
+            None => return Ok(()),
+        };
+
+        diesel::delete(candles::table)
+            .filter(candles::time_start.gt(first_tx7_in_block_ts))
+            .execute(self.conn)
+            .map(drop)
+            .map_err(build_err_fn("Cannot rollback candles"))
     }
 }
 

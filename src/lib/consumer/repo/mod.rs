@@ -28,7 +28,7 @@ pub trait RepoOperations {
     // COMMON
     //
 
-    fn get_prev_handled_height(&mut self) -> Result<Option<PrevHandledHeight>>;
+    fn get_prev_handled_height(&mut self, depth: u32) -> Result<Option<PrevHandledHeight>>;
 
     fn get_block_uid(&mut self, block_id: &str) -> Result<i64>;
 
@@ -131,4 +131,12 @@ pub trait RepoOperations {
     fn insert_txs_17(&mut self, txs: Vec<Tx17>) -> Result<()>;
 
     fn insert_txs_18(&mut self, txs: Vec<Tx18Combined>) -> Result<()>;
+
+    //
+    // CANDLES
+    //
+
+    fn calculate_candles_since_block_uid(&mut self, block_uid: i64) -> Result<()>;
+
+    fn rollback_candles(&mut self, block_uid: i64) -> Result<()>;
 }

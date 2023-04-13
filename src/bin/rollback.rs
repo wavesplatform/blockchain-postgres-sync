@@ -16,7 +16,7 @@ fn main() -> Result<()> {
         sql_query("SET enable_seqscan = OFF;").execute(conn)?;
         rollback(
             &mut PgRepoOperations { conn },
-            rollback_config.rollback_to,
+            rollback_config.start_rollback_depth,
             rollback_config.assets_only,
         )
     })

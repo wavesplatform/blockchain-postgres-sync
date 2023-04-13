@@ -148,7 +148,7 @@ impl
                     sender,
                     sender_public_key: into_base58(&meta.sender_public_key),
                     status,
-                    payload: tx.clone(),
+                    bytes: tx.clone(),
                     block_uid,
                     function_name: None,
                 };

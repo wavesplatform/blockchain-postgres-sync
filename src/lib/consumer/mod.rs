@@ -112,26 +112,29 @@ where
         starting_height,
         updates_per_request,
         asset_storage_address,
+        start_rollback_depth,
         ..
     } = config;
 
     let asset_storage_address: Option<&'static str> =
         asset_storage_address.map(|a| &*Box::leak(a.into_boxed_str()));
     let starting_from_height = {
-        repo.transaction(move |ops| match ops.get_prev_handled_height() {
-            Ok(Some(prev_handled_height)) => {
-                rollback(ops, prev_handled_height.uid, assets_only)?;
-                Ok(prev_handled_height.height as u32 + 1)
-            }
-            Ok(None) => Ok(starting_height),
-            Err(e) => Err(e),
-        })
+        repo.transaction(
+            move |ops| match ops.get_prev_handled_height(start_rollback_depth) {
+                Ok(Some(prev_handled_height)) => {
+                    rollback(ops, prev_handled_height.uid, assets_only)?;
+                    Ok(prev_handled_height.height as u32 + 1)
+                }
+                Ok(None) => Ok(starting_height),
+                Err(e) => Err(e),
+            },
+        )
         .await?
     };
 
     info!(
-        "Start fetching updates from height {}",
-        starting_from_height
+        "Start fetching updates from height {} (by {} block(s) back)",
+        starting_from_height, start_rollback_depth
     );
 
     let mut rx = updates_src
@@ -323,9 +326,8 @@ where
         }
     }
 
-    timer!("asset tickers updates handling");
-
     if let Some(storage_addr) = asset_storage_address {
+        timer!("handling asset tickers updates");
         let asset_tickers_updates_with_block_uids: Vec<(&i64, AssetTickerUpdate)> =
             block_uids_with_appends
                 .iter()
@@ -379,14 +381,16 @@ fn handle_txs<R: RepoOperations>(
         .fold(0usize, |txs, (_, block)| txs + block.txs.len());
     info!("handling {} transactions", txs_count);
 
+    let mut first_block_with_tx7_uid = None::<i64>;
+
     let mut ugen = UID_GENERATOR.lock().unwrap();
-    for (block_uid, bm) in block_uid_data {
+    for &(block_uid, bm) in block_uid_data {
         ugen.maybe_update_height(bm.height);
 
         for tx in &bm.txs {
             let tx_uid = ugen.next();
             let result_tx = ConvertedTx::try_from((
-                &tx.data, &tx.id, bm.height, &tx.meta, tx_uid, *block_uid, chain_id,
+                &tx.data, &tx.id, bm.height, &tx.meta, tx_uid, block_uid, chain_id,
             ))?;
             match result_tx {
                 ConvertedTx::Genesis(t) => txs_1.push(t),
@@ -395,7 +399,12 @@ fn handle_txs<R: RepoOperations>(
                 ConvertedTx::Transfer(t) => txs_4.push(t),
                 ConvertedTx::Reissue(t) => txs_5.push(t),
                 ConvertedTx::Burn(t) => txs_6.push(t),
-                ConvertedTx::Exchange(t) => txs_7.push(t),
+                ConvertedTx::Exchange(t) => {
+                    if first_block_with_tx7_uid.is_none() {
+                        first_block_with_tx7_uid = Some(block_uid);
+                    }
+                    txs_7.push(t);
+                }
                 ConvertedTx::Lease(t) => txs_8.push(t),
                 ConvertedTx::LeaseCancel(t) => txs_9.push(t),
                 ConvertedTx::CreateAlias(t) => txs_10.push(t),
@@ -443,6 +452,12 @@ fn handle_txs<R: RepoOperations>(
     insert_txs(txs_18, |txs| repo.insert_txs_18(txs))?;
 
     info!("{} transactions handled", txs_count);
+
+    if let Some(block_uid) = first_block_with_tx7_uid {
+        repo.calculate_candles_since_block_uid(block_uid)?;
+
+        info!("candles calculated")
+    }
 
     Ok(())
 }
@@ -772,6 +787,7 @@ pub fn rollback<R: RepoOperations>(repo: &mut R, block_uid: i64, assets_only: bo
 
     if !assets_only {
         repo.rollback_transactions(block_uid)?;
+        rollback_candles(repo, block_uid)?;
     }
 
     repo.rollback_blocks_microblocks(block_uid)?;
@@ -813,4 +829,9 @@ fn rollback_asset_tickers<R: RepoOperations>(repo: &mut R, block_uid: i64) -> Re
         .collect();
 
     repo.reopen_asset_tickers_superseded_by(&lowest_deleted_uids)
+}
+
+fn rollback_candles<R: RepoOperations>(repo: &mut R, block_uid: i64) -> Result<()> {
+    repo.rollback_candles(block_uid)?;
+    repo.calculate_candles_since_block_uid(block_uid)
 }

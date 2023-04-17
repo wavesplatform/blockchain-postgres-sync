@@ -140,3 +140,4 @@ END;
 $$;
 
 ALTER TABLE txs_18 RENAME COLUMN payload TO bytes;
+CREATE INDEX IF NOT EXISTS candles_interval ON candles (interval);

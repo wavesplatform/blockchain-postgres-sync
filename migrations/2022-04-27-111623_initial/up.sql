@@ -322,7 +322,7 @@ INHERITS (txs);
 
 CREATE TABLE IF NOT EXISTS txs_18
 (
-    payload BYTEA NOT NULL,
+    bytes BYTEA NOT NULL,
     function_name VARCHAR, -- null - transfer, not null - invoke
 
     CONSTRAINT txs_18_pk_uid PRIMARY KEY (uid),

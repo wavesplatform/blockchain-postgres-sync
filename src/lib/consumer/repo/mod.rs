@@ -10,7 +10,7 @@ use super::models::{
     txs::*,
     waves_data::WavesData,
 };
-use super::PrevHandledHeight;
+use super::UidHeight;
 
 #[async_trait]
 pub trait Repo {
@@ -28,9 +28,9 @@ pub trait RepoOperations {
     // COMMON
     //
 
-    fn get_prev_handled_height(&mut self, depth: u32) -> Result<Option<PrevHandledHeight>>;
+    fn get_prev_handled_height(&mut self, depth: u32) -> Result<Option<UidHeight>>;
 
-    fn get_block_uid(&mut self, block_id: &str) -> Result<i64>;
+    fn get_block_uid_height(&mut self, block_id: &str) -> Result<UidHeight>;
 
     fn get_key_block_uid(&mut self) -> Result<i64>;
 

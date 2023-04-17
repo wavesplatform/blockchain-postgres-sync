@@ -70,8 +70,8 @@ pub struct BlockchainUpdatesWithLastHeight {
     pub updates: Vec<BlockchainUpdate>,
 }
 
-#[derive(Debug, Queryable)]
-pub struct PrevHandledHeight {
+#[derive(Debug, Queryable, Clone, Copy)]
+pub struct UidHeight {
     pub uid: i64,
     pub height: i32,
 }
@@ -122,7 +122,7 @@ where
         repo.transaction(
             move |ops| match ops.get_prev_handled_height(start_rollback_depth) {
                 Ok(Some(prev_handled_height)) => {
-                    rollback(ops, prev_handled_height.uid, assets_only)?;
+                    rollback(ops, prev_handled_height, assets_only)?;
                     Ok(prev_handled_height.height as u32 + 1)
                 }
                 Ok(None) => Ok(starting_height),
@@ -238,7 +238,7 @@ fn handle_updates<R: RepoOperations>(
                 asset_storage_address,
             ),
             UpdatesItem::Rollback(sig) => {
-                let block_uid = repo.get_block_uid(sig)?;
+                let block_uid = repo.get_block_uid_height(sig)?;
                 rollback(repo, block_uid, assets_only)
             }
         })?;
@@ -779,18 +779,24 @@ fn squash_microblocks<R: RepoOperations>(repo: &mut R, assets_only: bool) -> Res
     Ok(())
 }
 
-pub fn rollback<R: RepoOperations>(repo: &mut R, block_uid: i64, assets_only: bool) -> Result<()> {
-    debug!("rolling back to block_uid = {}", block_uid);
+pub fn rollback<R: RepoOperations>(
+    repo: &mut R,
+    block: UidHeight,
+    assets_only: bool,
+) -> Result<()> {
+    let UidHeight { uid, height } = block;
 
-    rollback_assets(repo, block_uid)?;
-    rollback_asset_tickers(repo, block_uid)?;
+    debug!("rolling back to block_uid = {}, height = {}", uid, height);
+
+    rollback_assets(repo, uid)?;
+    rollback_asset_tickers(repo, uid)?;
 
     if !assets_only {
-        repo.rollback_transactions(block_uid)?;
-        rollback_candles(repo, block_uid)?;
+        repo.rollback_transactions(uid)?;
+        rollback_candles(repo, uid)?;
     }
 
-    repo.rollback_blocks_microblocks(block_uid)?;
+    repo.rollback_blocks_microblocks(uid)?;
 
     Ok(())
 }

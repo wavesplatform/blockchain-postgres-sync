@@ -10,7 +10,7 @@ use diesel::Table;
 use std::collections::HashMap;
 use std::mem::drop;
 
-use super::super::PrevHandledHeight;
+use super::super::UidHeight;
 use super::{Repo, RepoOperations};
 use crate::consumer::models::asset_tickers::AssetTickerOverride;
 use crate::consumer::models::{
@@ -64,7 +64,7 @@ impl RepoOperations for PgRepoOperations<'_> {
     // COMMON
     //
 
-    fn get_prev_handled_height(&mut self, depth: u32) -> Result<Option<PrevHandledHeight>> {
+    fn get_prev_handled_height(&mut self, depth: u32) -> Result<Option<UidHeight>> {
         blocks_microblocks::table
             .select((blocks_microblocks::uid, blocks_microblocks::height))
             .filter(blocks_microblocks::height.eq(sql(&format!(
@@ -78,9 +78,9 @@ impl RepoOperations for PgRepoOperations<'_> {
             )))
     }
 
-    fn get_block_uid(&mut self, block_id: &str) -> Result<i64> {
+    fn get_block_uid_height(&mut self, block_id: &str) -> Result<UidHeight> {
         blocks_microblocks::table
-            .select(blocks_microblocks::uid)
+            .select((blocks_microblocks::uid, blocks_microblocks::height))
             .filter(blocks_microblocks::id.eq(block_id))
             .get_result(self.conn)
             .map_err(build_err_fn(format!(

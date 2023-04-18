@@ -15,6 +15,7 @@ DECLARE candle_intervals TEXT[][] := '{
     {"24h", "1w"},
     {"24h", "1M"}
 }';
+interval_start_time_stamp TIMESTAMP;
 BEGIN
     -- insert minute intervals
     INSERT INTO candles
@@ -69,6 +70,8 @@ BEGIN
 
     -- insert other intervals
     FOR i IN 1..array_length(candle_intervals, 1) LOOP
+        SELECT _to_raw_timestamp(since_ts, candle_intervals[i][2]) INTO interval_start_time_stamp;
+
         INSERT INTO candles
             SELECT
                 _to_raw_timestamp(time_start, candle_intervals[i][2]) AS candle_time,
@@ -88,7 +91,7 @@ BEGIN
                 matcher_address
             FROM candles
             WHERE interval = candle_intervals[i][1]
-              AND time_start >= _to_raw_timestamp(since_ts, candle_intervals[i][2])
+              AND time_start >= interval_start_time_stamp
             GROUP BY candle_time, amount_asset_id, price_asset_id, matcher_address
 
         ON CONFLICT (time_start, amount_asset_id, price_asset_id, matcher_address, interval) DO UPDATE
@@ -130,7 +133,6 @@ BEGIN
 END
 $$;
 
-DROP FUNCTION IF EXISTS _trunc_ts_by_secs;
 CREATE OR REPLACE FUNCTION _trunc_ts_by_secs(ts TIMESTAMP WITHOUT TIME ZONE, secs INTEGER)
 RETURNS TIMESTAMP
 LANGUAGE plpgsql

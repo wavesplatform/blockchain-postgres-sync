@@ -35,6 +35,9 @@ DROP TABLE IF EXISTS txs_18;
 DROP TABLE IF EXISTS txs;
 DROP TABLE IF EXISTS blocks_microblocks;
 DROP FUNCTION IF EXISTS public.text_timestamp_cast;
+DROP FUNCTION IF EXISTS calc_and_insert_candles_since_timestamp;
+DROP FUNCTION IF EXISTS _to_raw_timestamp;
+DROP FUNCTION IF EXISTS _trunc_ts_by_secs;
 
 DROP EXTENSION IF EXISTS btree_gin;
 DROP EXTENSION IF EXISTS btree_gist;

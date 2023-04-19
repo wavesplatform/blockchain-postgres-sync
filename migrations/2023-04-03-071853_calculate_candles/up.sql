@@ -1,3 +1,15 @@
+CREATE VIEW IF NOT EXISTS decimals (
+    asset_id,
+    decimals
+) AS
+SELECT asset_id, decimals
+FROM asset_updates
+WHERE au.superseded_by = '9223372036854775806'::bigint
+UNION ALL
+SELECT
+    'WAVES'::character varying AS asset_id,
+    8 AS decimals;
+
 CREATE OR REPLACE PROCEDURE calc_and_insert_candles_since_timestamp(since_ts TIMESTAMP WITHOUT TIME ZONE)
 LANGUAGE plpgsql
 AS $$
@@ -46,8 +58,8 @@ BEGIN
                 amount,
                 CASE WHEN tx_version > 2
                     THEN price::numeric
-                        * 10^(select decimals from assets where asset_id = price_asset_id)
-                        * 10^(select -decimals from assets where asset_id = amount_asset_id)
+                        * 10^(select decimals from decimals where asset_id = price_asset_id)
+                        * 10^(select -decimals from decimals where asset_id = amount_asset_id)
                     ELSE price::numeric
                 END price
             FROM txs_7
@@ -142,4 +154,4 @@ BEGIN
 END;
 $$;
 
-CREATE INDEX IF NOT EXISTS candles_interval ON candles (interval);
+CREATE INDEX IF NOT EXISTS candles_interval_time_start ON candles (interval, time_start);

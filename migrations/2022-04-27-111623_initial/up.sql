@@ -449,7 +449,7 @@ SELECT au.asset_id,
     CASE
         WHEN au.script IS NOT NULL THEN true
         ELSE false
-        END             AS has_script,
+    END                 AS has_script,
     au.sponsorship      AS min_sponsored_asset_fee
 FROM asset_updates au
     LEFT JOIN (SELECT tickers.asset_id, tickers.ticker FROM tickers) t ON au.asset_id::text = t.asset_id

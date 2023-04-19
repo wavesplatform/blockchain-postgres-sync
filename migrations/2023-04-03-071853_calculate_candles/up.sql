@@ -1,10 +1,10 @@
-CREATE VIEW IF NOT EXISTS decimals (
+CREATE OR REPLACE VIEW decimals (
     asset_id,
     decimals
 ) AS
 SELECT asset_id, decimals
 FROM asset_updates
-WHERE au.superseded_by = '9223372036854775806'::bigint
+WHERE superseded_by = '9223372036854775806'::bigint
 UNION ALL
 SELECT
     'WAVES'::character varying AS asset_id,

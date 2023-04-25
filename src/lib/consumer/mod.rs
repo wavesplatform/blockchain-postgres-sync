@@ -454,9 +454,9 @@ fn handle_txs<R: RepoOperations>(
     info!("{} transactions handled", txs_count);
 
     if let Some(block_uid) = first_block_with_tx7_uid {
-        repo.calculate_candles_since_block_uid(block_uid)?;
+        timer!("calculating candles");
 
-        info!("candles calculated")
+        repo.calculate_candles_since_block_uid(block_uid)?;
     }
 
     Ok(())

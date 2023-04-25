@@ -2,6 +2,7 @@ pub mod pg;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use chrono::NaiveDateTime;
 
 use super::models::{
     asset_tickers::{AssetTickerOverride, DeletedAssetTicker, InsertableAssetTicker},
@@ -137,6 +138,10 @@ pub trait RepoOperations {
     //
 
     fn calculate_candles_since_block_uid(&mut self, block_uid: i64) -> Result<()>;
+
+    fn calculate_minute_candles(&mut self, ts: NaiveDateTime) -> Result<()>;
+
+    fn calculate_non_minute_candles(&mut self, ts: NaiveDateTime) -> Result<()>;
 
     fn rollback_candles(&mut self, block_uid: i64) -> Result<()>;
 }

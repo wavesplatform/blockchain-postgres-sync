@@ -1,7 +1,6 @@
 pub mod convert;
 
 use crate::schema::*;
-use bigdecimal::BigDecimal;
 use chrono::NaiveDateTime;
 use diesel::Insertable;
 use serde_json::Value;

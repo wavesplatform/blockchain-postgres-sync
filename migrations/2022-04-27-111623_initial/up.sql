@@ -493,6 +493,39 @@ begin
 END
 $_$;
 
+CREATE OR REPLACE FUNCTION _to_raw_timestamp(ts TIMESTAMP WITHOUT TIME ZONE, ivl TEXT)
+RETURNS TIMESTAMP
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    CASE
+        WHEN ivl = '1m' THEN RETURN _trunc_ts_by_secs(ts, 60);
+        WHEN ivl = '5m' THEN RETURN _trunc_ts_by_secs(ts, 300);
+        WHEN ivl = '15m' THEN RETURN _trunc_ts_by_secs(ts, 900);
+        WHEN ivl = '30m' THEN RETURN _trunc_ts_by_secs(ts, 1800);
+        WHEN ivl = '1h' THEN RETURN _trunc_ts_by_secs(ts, 3600);
+        WHEN ivl = '2h' THEN RETURN _trunc_ts_by_secs(ts, 7200);
+        WHEN ivl = '3h' THEN RETURN _trunc_ts_by_secs(ts, 10800);
+        WHEN ivl = '4h' THEN RETURN _trunc_ts_by_secs(ts, 14400);
+        WHEN ivl = '6h' THEN RETURN _trunc_ts_by_secs(ts, 21600);
+        WHEN ivl = '12h' THEN RETURN _trunc_ts_by_secs(ts, 43200);
+        WHEN ivl = '24h' THEN RETURN date_trunc('day', ts);
+        WHEN ivl = '1w' THEN RETURN date_trunc('week', ts);
+        WHEN ivl = '1M' THEN RETURN date_trunc('month', ts);
+    ELSE
+        RETURN to_timestamp(0);
+    END CASE;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION _trunc_ts_by_secs(ts TIMESTAMP WITHOUT TIME ZONE, secs INTEGER)
+RETURNS TIMESTAMP
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN to_timestamp(floor(extract('epoch' from ts) / secs) * secs);
+END;
+$$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS txs_1_uid_time_stamp_unique_idx  ON txs_1  (uid, time_stamp);
 CREATE UNIQUE INDEX IF NOT EXISTS txs_2_uid_time_stamp_unique_idx  ON txs_2  (uid, time_stamp);

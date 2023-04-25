@@ -1,22 +1,25 @@
-use anyhow::{Error, Result};
+use anyhow::{bail, Error, Result};
 use async_trait::async_trait;
 use chrono::{NaiveDateTime, Timelike as _};
-use diesel::dsl::sql;
-use diesel::pg::PgConnection;
-use diesel::prelude::*;
-use diesel::result::Error as DslError;
-use diesel::sql_types::{Array, BigInt, Int8, Timestamp, VarChar};
-use diesel::Table;
+use diesel::{
+    dsl::sql,
+    pg::PgConnection,
+    prelude::*,
+    result::Error as DslError,
+    sql_query,
+    sql_types::{Array, BigInt, Int8, Timestamp, VarChar},
+    Table,
+};
 use std::collections::HashMap;
 use std::mem::drop;
 
 use super::super::UidHeight;
 use super::{Repo, RepoOperations};
-use crate::consumer::models::asset_tickers::AssetTickerOverride;
 use crate::consumer::models::{
-    asset_tickers::{DeletedAssetTicker, InsertableAssetTicker},
+    asset_tickers::{AssetTickerOverride, DeletedAssetTicker, InsertableAssetTicker},
     assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
     block_microblock::BlockMicroblock,
+    candles::intervals::{self, CANDLE_INTERVALS},
     txs::*,
     waves_data::WavesData,
 };
@@ -194,7 +197,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         let (ids, superseded_by_uids): (Vec<&String>, Vec<i64>) =
             updates.iter().map(|u| (&u.id, u.superseded_by)).unzip();
 
-        let q = diesel::sql_query(
+        let q = sql_query(
             "UPDATE asset_updates
             SET superseded_by = updates.superseded_by
             FROM (SELECT UNNEST($1::text[]) as id, UNNEST($2::int8[]) as superseded_by) AS updates
@@ -210,7 +213,7 @@ impl RepoOperations for PgRepoOperations<'_> {
     }
 
     fn reopen_assets_superseded_by(&mut self, current_superseded_by: &Vec<i64>) -> Result<()> {
-        diesel::sql_query(
+        sql_query(
             "UPDATE asset_updates
             SET superseded_by = $1
             FROM (SELECT UNNEST($2) AS superseded_by) AS current
@@ -225,7 +228,7 @@ impl RepoOperations for PgRepoOperations<'_> {
 
     fn set_assets_next_update_uid(&mut self, new_uid: i64) -> Result<()> {
         // 3rd param - is called; in case of true, value'll be incremented before returning
-        diesel::sql_query(format!(
+        sql_query(format!(
             "select setval('asset_updates_uid_seq', {}, false);",
             new_uid
         ))
@@ -293,7 +296,7 @@ impl RepoOperations for PgRepoOperations<'_> {
         &mut self,
         current_superseded_by: &Vec<i64>,
     ) -> Result<()> {
-        diesel::sql_query(
+        sql_query(
             "UPDATE asset_tickers SET superseded_by = $1 FROM (SELECT UNNEST($2) AS superseded_by) AS current
             WHERE asset_tickers.superseded_by = current.superseded_by;")
             .bind::<BigInt, _>(MAX_UID)
@@ -312,7 +315,7 @@ impl RepoOperations for PgRepoOperations<'_> {
             .map(|u| (&u.asset_id, u.superseded_by))
             .unzip();
 
-        let q = diesel::sql_query(
+        let q = sql_query(
             "UPDATE asset_tickers
             SET superseded_by = updates.superseded_by
             FROM (SELECT UNNEST($1::text[]) as id, UNNEST($2::int8[]) as superseded_by) AS updates
@@ -329,7 +332,7 @@ impl RepoOperations for PgRepoOperations<'_> {
 
     fn set_asset_tickers_next_update_uid(&mut self, new_uid: i64) -> Result<()> {
         // 3rd param - is called; in case of true, value'll be incremented before returning
-        diesel::sql_query(format!(
+        sql_query(format!(
             "select setval('asset_tickers_uid_seq', {}, false);",
             new_uid
         ))
@@ -639,11 +642,139 @@ impl RepoOperations for PgRepoOperations<'_> {
             None => return Ok(()),
         };
 
-        diesel::sql_query("CALL calc_and_insert_candles_since_timestamp($1)")
-            .bind::<Timestamp, _>(first_tx7_in_block_ts)
+        self.calculate_minute_candles(first_tx7_in_block_ts)?;
+        self.calculate_non_minute_candles(first_tx7_in_block_ts)
+    }
+
+    fn calculate_minute_candles(&mut self, since_timestamp: NaiveDateTime) -> Result<()> {
+        let insert_candles_query = r#"
+            INSERT INTO candles
+                SELECT
+                    e.candle_time,
+                    amount_asset_id,
+                    price_asset_id,
+                    min(e.price) AS low,
+                    max(e.price) AS high,
+                    sum(e.amount) AS volume,
+                    sum((e.amount)::numeric * (e.price)::numeric) AS quote_volume,
+                    max(height) AS max_height,
+                    count(e.price) AS txs_count,
+                    floor(sum((e.amount)::numeric * (e.price)::numeric) / sum((e.amount)::numeric))::numeric
+                        AS weighted_average_price,
+                    (array_agg(e.price ORDER BY e.uid)::numeric[])[1] AS open,
+                    (array_agg(e.price ORDER BY e.uid DESC)::numeric[])[1] AS close,
+                    '1m' AS interval,
+                    e.sender AS matcher_address
+                FROM
+                    (SELECT
+                        date_trunc('minute', time_stamp) AS candle_time,
+                        uid,
+                        amount_asset_id,
+                        price_asset_id,
+                        sender,
+                        height,
+                        amount,
+                        CASE WHEN tx_version > 2
+                            THEN price::numeric
+                                * 10^(select decimals from decimals where asset_id = price_asset_id)
+                                * 10^(select -decimals from decimals where asset_id = amount_asset_id)
+                            ELSE price::numeric
+                        END price
+                    FROM txs_7
+                    WHERE time_stamp >= $1 ORDER BY uid, time_stamp <-> $1) AS e
+                GROUP BY
+                    e.candle_time,
+                    e.amount_asset_id,
+                    e.price_asset_id,
+                    e.sender
+            ON CONFLICT (time_start, amount_asset_id, price_asset_id, matcher_address, interval) DO UPDATE
+                SET open = excluded.open,
+                    close = excluded.close,
+                    low = excluded.low,
+                    high = excluded.high,
+                    max_height = excluded.max_height,
+                    quote_volume = excluded.quote_volume,
+                    txs_count = excluded.txs_count,
+                    volume = excluded.volume,
+                    weighted_average_price = excluded.weighted_average_price;
+        "#;
+        sql_query(insert_candles_query)
+            .bind::<Timestamp, _>(since_timestamp)
             .execute(self.conn)
             .map(drop)
-            .map_err(build_err_fn("Cannot calculate candles"))
+            .map_err(build_err_fn("Cannot calculate minute candles"))
+    }
+
+    fn calculate_non_minute_candles(&mut self, since_timestamp: NaiveDateTime) -> Result<()> {
+        let insert_candles_query = r#"
+            INSERT INTO candles
+            SELECT
+                _to_raw_timestamp(time_start, $2) AS candle_time,
+                amount_asset_id,
+                price_asset_id,
+                min(low) AS low,
+                max(high) AS high,
+                sum(volume) AS volume,
+                sum(quote_volume) AS quote_volume,
+                max(max_height) AS max_height,
+                sum(txs_count) as txs_count,
+                floor(sum((weighted_average_price * volume)::numeric)::numeric / sum(volume)::numeric)::numeric
+                    AS weighted_average_price,
+                (array_agg(open ORDER BY time_start)::numeric[])[1] AS open,
+                (array_agg(open ORDER BY time_start DESC)::numeric[])[1] AS close,
+                $2 AS interval,
+                matcher_address
+            FROM candles
+            WHERE interval = $1
+            AND time_start >= $3
+            GROUP BY candle_time, amount_asset_id, price_asset_id, matcher_address
+
+            ON CONFLICT (time_start, amount_asset_id, price_asset_id, matcher_address, interval) DO UPDATE
+                SET open = excluded.open,
+                    close = excluded.close,
+                    low = excluded.low,
+                    high = excluded.high,
+                    max_height = excluded.max_height,
+                    quote_volume = excluded.quote_volume,
+                    txs_count = excluded.txs_count,
+                    volume = excluded.volume,
+                    weighted_average_price = excluded.weighted_average_price;
+        "#;
+
+        for interval in CANDLE_INTERVALS {
+            let [interval_start, interval_end] = interval;
+            let interval_secs = match *interval_end {
+                intervals::MIN1 => 60,
+                intervals::MIN5 => 60 * 5,
+                intervals::MIN15 => 60 * 15,
+                intervals::MIN30 => 60 * 30,
+                intervals::HOUR1 => 60 * 60,
+                intervals::HOUR2 => 60 * 60 * 2,
+                intervals::HOUR3 => 60 * 60 * 3,
+                intervals::HOUR4 => 60 * 60 * 4,
+                intervals::HOUR6 => 60 * 60 * 6,
+                intervals::HOUR12 => 60 * 60 * 12,
+                intervals::HOUR24 => 60 * 60 * 24,
+                intervals::WEEK1 => 60 * 60 * 24 * 7,
+                intervals::MONTH1 => 60 * 60 * 24 * 30, //maybe use more precise trunc
+                _ => bail!("unknown interval {interval_end}"),
+            };
+            let interval_end_time_stamp = NaiveDateTime::from_timestamp_opt(
+                (since_timestamp.timestamp() / interval_secs) * interval_secs,
+                0,
+            )
+            .unwrap();
+
+            sql_query(insert_candles_query)
+                .bind::<VarChar, _>(interval_start)
+                .bind::<VarChar, _>(interval_end)
+                .bind::<Timestamp, _>(interval_end_time_stamp)
+                .execute(self.conn)
+                .map_err(build_err_fn(format!(
+                    "Cannot insert candles with [{interval_start}; {interval_end}] interval"
+                )))?;
+        }
+        Ok(())
     }
 
     fn rollback_candles(&mut self, block_uid: i64) -> Result<()> {

@@ -509,7 +509,7 @@ BEGIN
         WHEN ivl = '4h' THEN RETURN _trunc_ts_by_secs(ts, 14400);
         WHEN ivl = '6h' THEN RETURN _trunc_ts_by_secs(ts, 21600);
         WHEN ivl = '12h' THEN RETURN _trunc_ts_by_secs(ts, 43200);
-        WHEN ivl = '24h' THEN RETURN date_trunc('day', ts);
+        WHEN ivl = '1d' THEN RETURN date_trunc('day', ts);
         WHEN ivl = '1w' THEN RETURN date_trunc('week', ts);
         WHEN ivl = '1M' THEN RETURN date_trunc('month', ts);
     ELSE

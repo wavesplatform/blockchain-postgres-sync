@@ -721,7 +721,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 floor(sum((weighted_average_price * volume)::numeric)::numeric / sum(volume)::numeric)::numeric
                     AS weighted_average_price,
                 (array_agg(open ORDER BY time_start)::numeric[])[1] AS open,
-                (array_agg(open ORDER BY time_start DESC)::numeric[])[1] AS close,
+                (array_agg(close ORDER BY time_start DESC)::numeric[])[1] AS close,
                 $2 AS interval,
                 matcher_address
             FROM candles
@@ -754,7 +754,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                 intervals::HOUR4 => 60 * 60 * 4,
                 intervals::HOUR6 => 60 * 60 * 6,
                 intervals::HOUR12 => 60 * 60 * 12,
-                intervals::HOUR24 => 60 * 60 * 24,
+                intervals::DAY1 => 60 * 60 * 24,
                 intervals::WEEK1 => 60 * 60 * 24 * 7,
                 intervals::MONTH1 => 60 * 60 * 24 * 30, //maybe use more precise trunc
                 _ => bail!("unknown interval {interval_end}"),

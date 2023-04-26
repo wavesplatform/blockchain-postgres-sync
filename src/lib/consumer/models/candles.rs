@@ -32,13 +32,11 @@ pub mod intervals {
     pub const HOUR4: &str = "4h";
     pub const HOUR6: &str = "6h";
     pub const HOUR12: &str = "12h";
-    pub const HOUR24: &str = "24h";
+    pub const DAY1: &str = "1d";
     pub const WEEK1: &str = "1w";
     pub const MONTH1: &str = "1M";
 
-    pub type Interval = [&'static str; 2];
-
-    pub const CANDLE_INTERVALS: &[Interval] = &[
+    pub const CANDLE_INTERVALS: &[[&str; 2]] = &[
         [MIN1, MIN5],
         [MIN5, MIN15],
         [MIN15, MIN30],
@@ -48,8 +46,8 @@ pub mod intervals {
         [HOUR2, HOUR4],
         [HOUR3, HOUR6],
         [HOUR6, HOUR12],
-        [HOUR12, HOUR24],
-        [HOUR24, WEEK1],
-        [HOUR24, MONTH1],
+        [HOUR12, DAY1],
+        [DAY1, WEEK1],
+        [DAY1, MONTH1],
     ];
 }

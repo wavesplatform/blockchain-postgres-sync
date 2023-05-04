@@ -67,18 +67,43 @@ impl RepoOperations for PgRepoOperations<'_> {
     // COMMON
     //
 
-    fn get_prev_handled_height(&mut self, depth: u32) -> Result<Option<UidHeight>> {
+    fn get_current_height(&mut self) -> Result<i32> {
         blocks_microblocks::table
-            .select((blocks_microblocks::uid, blocks_microblocks::height))
-            .filter(blocks_microblocks::height.eq(sql(&format!(
-                "(select max(height) - {depth} from blocks_microblocks)"
-            ))))
-            .order(blocks_microblocks::uid.asc())
+            .select(blocks_microblocks::height)
+            .order(blocks_microblocks::height.desc())
             .first(self.conn)
             .optional()
-            .map_err(build_err_fn(format!(
-                "Cannot get prev handled_height with depth {depth}"
-            )))
+            .map_err(build_err_fn(format!("Cannot get current height")))
+            .map(|height| height.unwrap_or(0))
+    }
+
+    fn get_blocks_rollback_to(
+        &mut self,
+        depth: u32,
+        seq_step: u32,
+    ) -> Result<Option<Vec<UidHeight>>> {
+        let current_height = self.get_current_height()? as u32;
+        let rollback_step = u32::min(seq_step, depth);
+        let starting_height = current_height.saturating_sub(rollback_step);
+        let final_height = current_height.saturating_sub(depth);
+        // intentionally made up this interval because starting_height >= final height
+        let heights_rollback_to = (final_height..=starting_height)
+            .rev()
+            .step_by(rollback_step as usize)
+            .map(|h| h as i32)
+            .collect::<Vec<_>>();
+
+        chunked_with_result(blocks_microblocks::table, &heights_rollback_to, |heights| {
+            blocks_microblocks::table
+                .select((blocks_microblocks::uid, blocks_microblocks::height))
+                .filter(blocks_microblocks::height.eq_any(heights))
+                .order(blocks_microblocks::uid.desc())
+                .get_results(self.conn)
+        })
+        .optional()
+        .map_err(build_err_fn(format!(
+            "Cannot get prev handled_height with depth {depth}"
+        )))
     }
 
     fn get_block_uid_height(&mut self, block_id: &str) -> Result<UidHeight> {

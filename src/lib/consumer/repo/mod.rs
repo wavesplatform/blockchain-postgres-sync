@@ -29,7 +29,13 @@ pub trait RepoOperations {
     // COMMON
     //
 
-    fn get_prev_handled_height(&mut self, depth: u32) -> Result<Option<UidHeight>>;
+    fn get_current_height(&mut self) -> Result<i32>;
+
+    fn get_blocks_rollback_to(
+        &mut self,
+        depth: u32,
+        rollback_step: u32,
+    ) -> Result<Option<Vec<UidHeight>>>;
 
     fn get_block_uid_height(&mut self, block_id: &str) -> Result<UidHeight>;
 

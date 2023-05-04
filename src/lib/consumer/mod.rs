@@ -113,22 +113,23 @@ where
         updates_per_request,
         asset_storage_address,
         start_rollback_depth,
+        rollback_step,
         ..
     } = config;
 
     let asset_storage_address: Option<&'static str> =
         asset_storage_address.map(|a| &*Box::leak(a.into_boxed_str()));
     let starting_from_height = {
-        repo.transaction(
-            move |ops| match ops.get_prev_handled_height(start_rollback_depth) {
-                Ok(Some(prev_handled_height)) => {
-                    rollback(ops, prev_handled_height, assets_only)?;
-                    Ok(prev_handled_height.height as u32 + 1)
+        repo.transaction(move |ops| {
+            match ops.get_blocks_rollback_to(start_rollback_depth, rollback_step) {
+                Ok(Some(rollback_blocks)) => {
+                    rollback(ops, &rollback_blocks, assets_only)?;
+                    Ok(rollback_blocks.last().map(|height| height.height).unwrap() as u32 + 1)
                 }
                 Ok(None) => Ok(starting_height),
                 Err(e) => Err(e),
-            },
-        )
+            }
+        })
         .await?
     };
 
@@ -238,8 +239,8 @@ fn handle_updates<R: RepoOperations>(
                 asset_storage_address,
             ),
             UpdatesItem::Rollback(sig) => {
-                let block_uid = repo.get_block_uid_height(sig)?;
-                rollback(repo, block_uid, assets_only)
+                let block = repo.get_block_uid_height(sig)?;
+                rollback(repo, &[block], assets_only)
             }
         })?;
 
@@ -781,23 +782,24 @@ fn squash_microblocks<R: RepoOperations>(repo: &mut R, assets_only: bool) -> Res
 
 pub fn rollback<R: RepoOperations>(
     repo: &mut R,
-    block: UidHeight,
+    blocks: &[UidHeight],
     assets_only: bool,
 ) -> Result<()> {
-    let UidHeight { uid, height } = block;
+    for &block in blocks {
+        let UidHeight { uid, height } = block;
 
-    debug!("rolling back to block_uid = {}, height = {}", uid, height);
+        debug!("rolling back to block_uid = {}, height = {}", uid, height);
 
-    rollback_assets(repo, uid)?;
-    rollback_asset_tickers(repo, uid)?;
+        rollback_assets(repo, uid)?;
+        rollback_asset_tickers(repo, uid)?;
 
-    if !assets_only {
-        repo.rollback_transactions(uid)?;
-        rollback_candles(repo, uid)?;
+        if !assets_only {
+            repo.rollback_transactions(uid)?;
+            rollback_candles(repo, uid)?;
+        }
+
+        repo.rollback_blocks_microblocks(uid)?;
     }
-
-    repo.rollback_blocks_microblocks(uid)?;
-
     Ok(())
 }
 

@@ -18,6 +18,10 @@ fn default_start_rollback_depth() -> u32 {
     1
 }
 
+fn default_rollback_step() -> u32 {
+    500
+}
+
 #[derive(Deserialize)]
 struct ConfigFlat {
     asset_storage_address: Option<String>,
@@ -32,6 +36,8 @@ struct ConfigFlat {
     updates_per_request: usize,
     #[serde(default = "default_start_rollback_depth")]
     start_rollback_depth: u32,
+    #[serde(default = "default_rollback_step")]
+    rollback_step: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -44,6 +50,7 @@ pub struct Config {
     pub starting_height: u32,
     pub updates_per_request: usize,
     pub start_rollback_depth: u32,
+    pub rollback_step: u32,
 }
 
 pub fn load() -> Result<Config, Error> {
@@ -58,5 +65,6 @@ pub fn load() -> Result<Config, Error> {
         starting_height: config_flat.starting_height,
         updates_per_request: config_flat.updates_per_request,
         start_rollback_depth: config_flat.start_rollback_depth,
+        rollback_step: config_flat.rollback_step,
     })
 }

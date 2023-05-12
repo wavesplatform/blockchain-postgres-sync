@@ -1,5 +1,7 @@
 pub mod pg;
 
+use std::num::NonZeroU32;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
@@ -33,8 +35,8 @@ pub trait RepoOperations {
 
     fn get_blocks_rollback_to(
         &mut self,
-        depth: u32,
-        rollback_step: u32,
+        depth: NonZeroU32,
+        rollback_step: NonZeroU32,
     ) -> Result<Option<Vec<UidHeight>>>;
 
     fn get_block_uid_height(&mut self, block_id: &str) -> Result<UidHeight>;

@@ -1,6 +1,7 @@
 use crate::error::Error;
 use chrono::Duration;
 use serde::Deserialize;
+use std::num::NonZeroU32;
 
 fn default_assets_only() -> bool {
     false
@@ -49,12 +50,14 @@ pub struct Config {
     pub max_wait_time: Duration,
     pub starting_height: u32,
     pub updates_per_request: usize,
-    pub start_rollback_depth: u32,
-    pub rollback_step: u32,
+    pub start_rollback_depth: NonZeroU32,
+    pub rollback_step: NonZeroU32,
 }
 
 pub fn load() -> Result<Config, Error> {
     let config_flat = envy::from_env::<ConfigFlat>()?;
+    let nonzero_err =
+        |msg| Error::LoadConfigFailed(envy::Error::Custom(format!("{msg} must be > 0")));
 
     Ok(Config {
         asset_storage_address: config_flat.asset_storage_address,
@@ -64,7 +67,9 @@ pub fn load() -> Result<Config, Error> {
         max_wait_time: Duration::milliseconds(config_flat.max_wait_time_in_msecs as i64),
         starting_height: config_flat.starting_height,
         updates_per_request: config_flat.updates_per_request,
-        start_rollback_depth: config_flat.start_rollback_depth,
-        rollback_step: config_flat.rollback_step,
+        start_rollback_depth: NonZeroU32::new(config_flat.start_rollback_depth)
+            .ok_or_else(|| nonzero_err("start_rollback_depth"))?,
+        rollback_step: NonZeroU32::new(config_flat.rollback_step)
+            .ok_or_else(|| nonzero_err("rollback_step"))?,
     })
 }

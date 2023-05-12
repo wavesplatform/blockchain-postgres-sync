@@ -10,8 +10,8 @@ use diesel::{
     sql_types::{Array, BigInt, Int8, Timestamp, VarChar},
     Table,
 };
-use std::collections::HashMap;
 use std::mem::drop;
+use std::{collections::HashMap, num::NonZeroU32};
 
 use super::super::UidHeight;
 use super::{Repo, RepoOperations};
@@ -79,19 +79,24 @@ impl RepoOperations for PgRepoOperations<'_> {
 
     fn get_blocks_rollback_to(
         &mut self,
-        depth: u32,
-        seq_step: u32,
+        depth: NonZeroU32,
+        seq_step: NonZeroU32,
     ) -> Result<Option<Vec<UidHeight>>> {
+        let depth = depth.into();
         let current_height = self.get_current_height()? as u32;
-        let rollback_step = u32::min(seq_step, depth);
+        let rollback_step = u32::min(seq_step.into(), depth);
         let starting_height = current_height.saturating_sub(rollback_step);
         let final_height = current_height.saturating_sub(depth);
-        // intentionally made up this interval because starting_height >= final height
-        let heights_rollback_to = (final_height..=starting_height)
+
+        // intentionally made up this interval because starting_height >= final_height
+        // (final_height + 1) is needed to not accidentally include final_height twice
+        let mut heights_rollback_to = ((final_height + 1)..=starting_height)
             .rev()
             .step_by(rollback_step as usize)
             .map(|h| h as i32)
             .collect::<Vec<_>>();
+
+        heights_rollback_to.push(final_height as i32);
 
         chunked_with_result(blocks_microblocks::table, &heights_rollback_to, |heights| {
             blocks_microblocks::table
@@ -663,7 +668,10 @@ impl RepoOperations for PgRepoOperations<'_> {
             .optional()
             .map_err(build_err_fn("Cannot find exchange txs"))?
         {
-            Some(ts) => ts.with_second(0).unwrap(),
+            Some(ts) => ts
+                .with_second(0)
+                .and_then(|ts| ts.with_nanosecond(0))
+                .unwrap(),
             None => return Ok(()),
         };
 
@@ -811,7 +819,10 @@ impl RepoOperations for PgRepoOperations<'_> {
             .optional()
             .map_err(build_err_fn("Cannot find exchange txs in rollback"))?
         {
-            Some(ts) => ts.with_second(0).unwrap(),
+            Some(ts) => ts
+                .with_second(0)
+                .and_then(|ts| ts.with_nanosecond(0))
+                .unwrap(),
             None => return Ok(()),
         };
 

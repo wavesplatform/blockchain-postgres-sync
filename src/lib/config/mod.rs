@@ -1,6 +1,5 @@
 pub mod consumer;
 pub mod postgres;
-pub mod rollback;
 
 use crate::error::Error;
 

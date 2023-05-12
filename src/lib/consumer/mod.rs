@@ -124,7 +124,10 @@ where
             match ops.get_blocks_rollback_to(start_rollback_depth, rollback_step) {
                 Ok(Some(rollback_blocks)) => {
                     rollback(ops, &rollback_blocks, assets_only)?;
-                    Ok(rollback_blocks.last().map(|height| height.height).unwrap() as u32 + 1)
+                    Ok(rollback_blocks
+                        .last()
+                        .map(|height| height.height as u32 + 1)
+                        .unwrap_or(starting_height))
                 }
                 Ok(None) => Ok(starting_height),
                 Err(e) => Err(e),
@@ -785,6 +788,13 @@ pub fn rollback<R: RepoOperations>(
     blocks: &[UidHeight],
     assets_only: bool,
 ) -> Result<()> {
+    if let Some(b) = blocks.last() {
+        debug!(
+            "initiating sequenced rollback to block_uid = {}, height = {}",
+            b.uid, b.height
+        );
+    }
+
     for &block in blocks {
         let UidHeight { uid, height } = block;
 

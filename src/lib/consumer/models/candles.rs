@@ -51,3 +51,20 @@ pub mod intervals {
         [DAY1, MONTH1],
     ];
 }
+
+pub fn interval_in_seconds(interval: &str) -> Option<i64> {
+    match interval {
+        intervals::MIN1 => Some(60),
+        intervals::MIN5 => Some(60 * 5),
+        intervals::MIN15 => Some(60 * 15),
+        intervals::MIN30 => Some(60 * 30),
+        intervals::HOUR1 => Some(60 * 60),
+        intervals::HOUR2 => Some(60 * 60 * 2),
+        intervals::HOUR3 => Some(60 * 60 * 3),
+        intervals::HOUR4 => Some(60 * 60 * 4),
+        intervals::HOUR6 => Some(60 * 60 * 6),
+        intervals::HOUR12 => Some(60 * 60 * 12),
+        intervals::DAY1 => Some(60 * 60 * 24),
+        _ => None,
+    }
+}

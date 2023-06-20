@@ -1,6 +1,6 @@
 use anyhow::{bail, Error, Result};
 use async_trait::async_trait;
-use chrono::{NaiveDateTime, Timelike as _};
+use chrono::{Datelike, Duration, NaiveDateTime, Timelike as _};
 use diesel::{
     dsl::sql,
     pg::PgConnection,
@@ -15,6 +15,7 @@ use std::{collections::HashMap, num::NonZeroU32};
 
 use super::super::UidHeight;
 use super::{Repo, RepoOperations};
+use crate::consumer::models::candles::interval_in_seconds;
 use crate::consumer::models::{
     asset_tickers::{AssetTickerOverride, DeletedAssetTicker, InsertableAssetTicker},
     assets::{AssetOrigin, AssetOverride, AssetUpdate, DeletedAsset},
@@ -776,32 +777,37 @@ impl RepoOperations for PgRepoOperations<'_> {
 
         for interval in CANDLE_INTERVALS {
             let [interval_start, interval_end] = interval;
-            let interval_secs = match *interval_end {
-                intervals::MIN1 => 60,
-                intervals::MIN5 => 60 * 5,
-                intervals::MIN15 => 60 * 15,
-                intervals::MIN30 => 60 * 30,
-                intervals::HOUR1 => 60 * 60,
-                intervals::HOUR2 => 60 * 60 * 2,
-                intervals::HOUR3 => 60 * 60 * 3,
-                intervals::HOUR4 => 60 * 60 * 4,
-                intervals::HOUR6 => 60 * 60 * 6,
-                intervals::HOUR12 => 60 * 60 * 12,
-                intervals::DAY1 => 60 * 60 * 24,
-                intervals::WEEK1 => 60 * 60 * 24 * 7,
-                intervals::MONTH1 => 60 * 60 * 24 * 30, //maybe use more precise trunc
-                _ => bail!("unknown interval {interval_end}"),
-            };
-            let interval_end_time_stamp = NaiveDateTime::from_timestamp_opt(
-                (since_timestamp.timestamp() / interval_secs) * interval_secs,
-                0,
-            )
-            .unwrap();
+
+            let interval_start_time_stamp =
+                if let Some(interval_secs) = interval_in_seconds(&interval_end) {
+                    NaiveDateTime::from_timestamp_opt(
+                        (since_timestamp.timestamp() / interval_secs) * interval_secs,
+                        0,
+                    )
+                    .unwrap()
+                } else {
+                    match *interval_end {
+                        intervals::WEEK1 => {
+                            let weekday = since_timestamp.weekday().num_days_from_monday() as i64;
+                            (since_timestamp - Duration::days(weekday))
+                                .date()
+                                .and_hms_opt(0, 0, 0)
+                                .unwrap()
+                        }
+                        intervals::MONTH1 => since_timestamp
+                            .with_day(1)
+                            .unwrap()
+                            .date()
+                            .and_hms_opt(0, 0, 0)
+                            .unwrap(),
+                        _ => bail!("unknown interval {interval_end}"),
+                    }
+                };
 
             sql_query(insert_candles_query)
                 .bind::<VarChar, _>(interval_start)
                 .bind::<VarChar, _>(interval_end)
-                .bind::<Timestamp, _>(interval_end_time_stamp)
+                .bind::<Timestamp, _>(interval_start_time_stamp)
                 .execute(self.conn)
                 .map_err(build_err_fn(format!(
                     "Cannot insert candles with [{interval_start}; {interval_end}] interval"

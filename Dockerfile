@@ -1,4 +1,4 @@
-FROM rust:1.65 AS builder
+FROM rust:1.75 AS builder
 WORKDIR /app
 
 RUN rustup component add rustfmt
@@ -10,12 +10,14 @@ COPY ./migrations ./migrations
 RUN cargo install --path .
 
 
-FROM debian:11 as runtime
+FROM debian:12 as runtime
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y curl openssl libssl-dev libpq-dev postgresql-client
 RUN /usr/sbin/update-ca-certificates
 
 COPY --from=builder /usr/local/cargo/bin/* ./
+COPY --from=builder /app/migrations ./migrations/
+
 
 CMD ['./api']

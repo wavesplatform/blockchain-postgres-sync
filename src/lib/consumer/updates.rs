@@ -155,7 +155,6 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
         match value.update {
             Some(UpdatePB::Append(AppendPB {
                 ref mut body,
-                state_update: Some(_),
                 transaction_ids,
                 transactions_metadata,
                 transaction_state_updates,

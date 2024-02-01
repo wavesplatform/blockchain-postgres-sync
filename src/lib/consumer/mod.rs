@@ -687,7 +687,7 @@ fn handle_asset_tickers_updates<R: RepoOperations>(
             |(update_idx, (block_uid, tickers_update))| InsertableAssetTicker {
                 uid: asset_tickers_next_uid + update_idx as i64,
                 superseded_by: -1,
-                block_uid: *block_uid.clone(),
+                block_uid: **block_uid,
                 asset_id: tickers_update.asset_id.clone(),
                 ticker: tickers_update.ticker.clone(),
             },

@@ -3,38 +3,35 @@ name = "data-service-consumer"
 version = "0.0.1"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-# nightly crashes with "backtrace" feature
-anyhow = { version = "1.0", default-features = false, features = ["std"] }
+anyhow = "1"
 async-trait = "0.1"
-base64 = "0.13"
-bigdecimal = { version = "0.3", features = ["serde"] }
-blake2 = "0.9"
-bs58 = "0.4.0"
+base64 = "0.21"
+bigdecimal = { version = "0.4", features = ["serde"] }
+blake2 = "0.10"
+bs58 = "0.5"
 bytes = "1.1"
-chrono = { version = "0.4", features = ["serde"] }
-deadpool-diesel = "0.4"
-diesel = { version = "2", default-features = false, features = ["chrono", "postgres", "r2d2", "32-column-tables", "serde_json", "numeric"] }
+chrono = { version = "^0.4.27", features = ["serde"] }
+deadpool-diesel = "0.5"
+diesel = { version = "^2.1", default-features = false, features = ["chrono", "postgres", "r2d2", "32-column-tables", "serde_json", "numeric"] }
 diesel_migrations = { version = "2", features = ["postgres"] }
 envy = "0.4"
-fragstrings = { git = "https://github.com/a-kordys/fragstrings", tag = "v0.1.1", default-features = false, features = ["parse"] }
+fragstrings = { git = "https://github.com/waves-exchange/fragstrings", tag = "v0.2.0", default-features = false, features = ["parse"] }
 hex = "0.4.3"
-itertools = "0.10"
+itertools = "0.12"
 lazy_static = "1.4"
 percent-encoding = "2.1"
-prost = { version = "0.8", features = ["no-recursion-limit"] }
+prost = { version = "0.12", features = ["no-recursion-limit"] }
 r2d2 = "0.8"
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.81"
-sha3 = "0.9"
+sha3 = "0.10"
 thiserror = "1.0"
 tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
-tonic = "0.5"
+tonic = "0.10"
 wavesexchange_log = { git = "https://github.com/waves-exchange/wavesexchange-rs", tag = "wavesexchange_log/0.5.1" }
-waves-protobuf-schemas = { git = "https://github.com/wavesplatform/protobuf-schemas", tag = "v1.4.3" }
+waves-protobuf-schemas = { git = "https://github.com/wavesplatform/protobuf-schemas", tag = "rust_v1.5.2" }
 
 [lib]
 name = "app_lib"

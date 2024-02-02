@@ -42,6 +42,7 @@ impl From<&InvokeScriptArgValue> for DataEntryTypeValue {
         match val {
             InvokeScriptArgValue::IntegerValue(v) => DataEntryTypeValue::Integer(*v),
             InvokeScriptArgValue::BinaryValue(v) => {
+                #[allow(deprecated)] // for base64::encode()
                 DataEntryTypeValue::Binary(format!("base64:{}", base64::encode(v)))
             }
             InvokeScriptArgValue::StringValue(v) => {

@@ -208,7 +208,7 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                                 header: Some(HeaderPB { timestamp, .. }),
                                 ..
                             }),
-                        updated_waves_amount,
+                        updated_waves_amount, ..
                     })) => Ok(Block(BlockMicroblockAppend {
                         id: bs58::encode(&value.id).into_string(),
                         time_stamp: Some(epoch_ms_to_naivedatetime(*timestamp)),

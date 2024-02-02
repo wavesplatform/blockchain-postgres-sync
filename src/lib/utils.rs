@@ -6,6 +6,7 @@ pub fn into_base58(b: impl AsRef<[u8]>) -> String {
 
 pub fn into_prefixed_base64(b: impl AsRef<[u8]>) -> String {
     let b = b.as_ref();
+    #[allow(deprecated)] // for base64::encode()
     if b.len() > 0 {
         String::from("base64:") + &base64::encode(b)
     } else {

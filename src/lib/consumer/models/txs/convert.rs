@@ -7,7 +7,7 @@ use crate::utils::{
 use crate::waves::{extract_asset_id, Address, ChainId, PublicKeyHash, WAVES_ID};
 use serde_json::json;
 use waves_protobuf_schemas::waves::{
-    data_transaction_data::data_entry::Value as DataValue,
+    data_entry::Value as DataValue,
     events::{
         transaction_metadata::{ethereum_metadata::Action as EthAction, *},
         TransactionMetadata,

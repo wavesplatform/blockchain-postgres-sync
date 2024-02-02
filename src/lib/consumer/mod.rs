@@ -11,7 +11,7 @@ use std::sync::Mutex;
 use std::time::Instant;
 use tokio::sync::mpsc::Receiver;
 use waves_protobuf_schemas::waves::{
-    data_transaction_data::data_entry::Value,
+    data_entry::Value,
     events::{transaction_metadata::Metadata, StateUpdate, TransactionMetadata},
     signed_transaction::Transaction,
     SignedTransaction, Transaction as WavesTx,
@@ -490,14 +490,13 @@ fn extract_base_asset_info_updates(
                         let time_stamp = match tx.data.transaction.as_ref() {
                             Some(stx) => match stx {
                                 Transaction::WavesTransaction(WavesTx { timestamp, .. }) => {
-                                    DateTime::from_utc(epoch_ms_to_naivedatetime(*timestamp), Utc)
+                                    let dt = epoch_ms_to_naivedatetime(*timestamp);
+                                    DateTime::from_naive_utc_and_offset(dt, Utc)
                                 }
                                 Transaction::EthereumTransaction(_) => {
                                     if let Some(Metadata::Ethereum(meta)) = &tx.meta.metadata {
-                                        DateTime::from_utc(
-                                            epoch_ms_to_naivedatetime(meta.timestamp),
-                                            Utc,
-                                        )
+                                        let dt = epoch_ms_to_naivedatetime(meta.timestamp);
+                                        DateTime::from_naive_utc_and_offset(dt, Utc)
                                     } else {
                                         unreachable!("wrong meta variant")
                                     }
@@ -584,6 +583,7 @@ fn handle_base_asset_info_updates<R: RepoOperations>(
 
     let updates_count = updates.len();
     let assets_next_uid = repo.get_next_assets_uid()?;
+    #[allow(deprecated)] // for base64::encode()
     let asset_updates = updates
         .iter()
         .enumerate()

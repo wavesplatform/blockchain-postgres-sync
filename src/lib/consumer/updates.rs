@@ -6,6 +6,7 @@ use std::str;
 use std::time::{Duration as StdDuration, Instant};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::time;
+use waves_protobuf_schemas::tonic;
 use waves_protobuf_schemas::waves::{
     block::Header as HeaderPB,
     events::{

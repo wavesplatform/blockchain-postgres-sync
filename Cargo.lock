@@ -331,7 +331,6 @@ dependencies = [
  "itertools 0.12.1",
  "lazy_static",
  "percent-encoding",
- "prost",
  "r2d2",
  "regex",
  "serde",
@@ -339,7 +338,6 @@ dependencies = [
  "sha3",
  "thiserror",
  "tokio",
- "tonic",
  "waves-protobuf-schemas",
  "wavesexchange_log",
 ]

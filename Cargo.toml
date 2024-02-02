@@ -21,7 +21,6 @@ hex = "0.4.3"
 itertools = "0.12"
 lazy_static = "1.4"
 percent-encoding = "2.1"
-prost = { version = "0.12", features = ["no-recursion-limit"] }
 r2d2 = "0.8"
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }
@@ -29,7 +28,6 @@ serde_json = "1.0.81"
 sha3 = "0.10"
 thiserror = "1.0"
 tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
-tonic = "0.10"
 wavesexchange_log = { git = "https://github.com/waves-exchange/wavesexchange-rs", tag = "wavesexchange_log/0.5.1" }
 waves-protobuf-schemas = { git = "https://github.com/wavesplatform/protobuf-schemas", tag = "rust_v1.5.2" }
 

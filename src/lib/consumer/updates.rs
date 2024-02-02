@@ -6,6 +6,7 @@ use std::str;
 use std::time::{Duration as StdDuration, Instant};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::time;
+use waves_protobuf_schemas::tonic;
 use waves_protobuf_schemas::waves::{
     block::Header as HeaderPB,
     events::{
@@ -208,7 +209,7 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                                 header: Some(HeaderPB { timestamp, .. }),
                                 ..
                             }),
-                        updated_waves_amount,
+                        updated_waves_amount, ..
                     })) => Ok(Block(BlockMicroblockAppend {
                         id: bs58::encode(&value.id).into_string(),
                         time_stamp: Some(epoch_ms_to_naivedatetime(*timestamp)),

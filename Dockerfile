@@ -22,4 +22,4 @@ COPY --from=builder /usr/local/cargo/bin/* ./
 COPY --from=builder /app/migrations ./migrations/
 
 
-CMD ['./api']
+CMD ['./consumer']

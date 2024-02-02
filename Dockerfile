@@ -8,7 +8,8 @@ COPY Cargo.* ./
 COPY ./src ./src
 COPY ./migrations ./migrations
 
-RUN cargo install --path .
+#RUN cargo install --path .
+RUN cargo build --release
 
 
 FROM debian:12 as runtime

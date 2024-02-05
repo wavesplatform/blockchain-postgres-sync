@@ -100,8 +100,8 @@ impl UpdatesSourceImpl {
 
         loop {
             if let Some(SubscribeEventPB {
-                update: Some(update),
-            }) = stream
+                            update: Some(update),
+                        }) = stream
                 .message()
                 .await
                 .map_err(|s| AppError::StreamError(format!("Updates stream error: {}", s)))?
@@ -135,8 +135,8 @@ impl UpdatesSourceImpl {
                     last_height,
                     updates: result.drain(..).collect(),
                 })
-                .await
-                .map_err(|e| AppError::StreamError(format!("Channel error: {}", e)))?;
+                    .await
+                    .map_err(|e| AppError::StreamError(format!("Channel error: {}", e)))?;
                 should_receive_more = true;
                 start = Instant::now();
             }
@@ -154,12 +154,12 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
 
         match value.update {
             Some(UpdatePB::Append(AppendPB {
-                ref mut body,
-                transaction_ids,
-                transactions_metadata,
-                transaction_state_updates,
-                ..
-            })) => {
+                                      ref mut body,
+                                      transaction_ids,
+                                      transactions_metadata,
+                                      transaction_state_updates,
+                                      ..
+                                  })) => {
                 let height = value.height;
 
                 let txs: Option<(Vec<SignedTransactionPB>, Option<i64>)> = match body {
@@ -172,9 +172,9 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                         }))
                     }
                     Some(BodyPB::MicroBlock(MicroBlockAppendPB {
-                        ref mut micro_block,
-                        ..
-                    })) => Ok(micro_block.as_mut().and_then(|it| {
+                                                ref mut micro_block,
+                                                ..
+                                            })) => Ok(micro_block.as_mut().and_then(|it| {
                         it.micro_block
                             .as_mut()
                             .map(|it| (it.transactions.drain(..).collect(), None))
@@ -203,13 +203,13 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
 
                 match body {
                     Some(BodyPB::Block(BlockAppendPB {
-                        block:
-                            Some(BlockPB {
-                                header: Some(HeaderPB { timestamp, .. }),
-                                ..
-                            }),
-                        updated_waves_amount, ..
-                    })) => Ok(Block(BlockMicroblockAppend {
+                                           block:
+                                           Some(BlockPB {
+                                                    header: Some(HeaderPB { timestamp, .. }),
+                                                    ..
+                                                }),
+                                           updated_waves_amount, ..
+                                       })) => Ok(Block(BlockMicroblockAppend {
                         id: bs58::encode(&value.id).into_string(),
                         time_stamp: Some(epoch_ms_to_naivedatetime(*timestamp)),
                         height,
@@ -221,9 +221,9 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                         txs,
                     })),
                     Some(BodyPB::MicroBlock(MicroBlockAppendPB {
-                        micro_block: Some(SignedMicroBlockPB { total_block_id, .. }),
-                        ..
-                    })) => Ok(Microblock(BlockMicroblockAppend {
+                                                micro_block: Some(SignedMicroBlockPB { total_block_id, .. }),
+                                                ..
+                                            })) => Ok(Microblock(BlockMicroblockAppend {
                         id: bs58::encode(&total_block_id).into_string(),
                         time_stamp: None,
                         height,

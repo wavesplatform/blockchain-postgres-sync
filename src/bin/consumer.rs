@@ -50,7 +50,6 @@ async fn main() -> Result<()> {
     select! {
         Err(err) = consumer => {
             error!("{}", err);
-            panic!("{}", err);
         },
         result = metrics => {
             if let Err(err) = result {

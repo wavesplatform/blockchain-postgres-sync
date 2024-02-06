@@ -6,7 +6,7 @@ use wavesexchange_liveness::channel;
 use wavesexchange_log::{error, info};
 use wavesexchange_warp::MetricsWarpBuilder;
 
-const LAST_TIMESTAMP_QUERY: &str = "SELECT EXTRACT(EPOCH FROM time_stamp) * 1000 AS time_stamp FROM blocks_microblocks WHERE time_stamp IS NOT NULL ORDER BY uid DESC LIMIT 1;";
+const LAST_TIMESTAMP_QUERY: &str = "SELECT (EXTRACT(EPOCH FROM time_stamp) * 1000)::BIGINT as time_stamp FROM blocks_microblocks WHERE time_stamp IS NOT NULL ORDER BY uid DESC LIMIT 1";
 const POLL_INTERVAL_SECS: u64 = 60;
 const MAX_BLOCK_AGE: Duration = Duration::from_secs(300);
 

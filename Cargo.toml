@@ -30,6 +30,9 @@ thiserror = "1.0"
 tokio = { version = "1.12", features = ["macros", "rt-multi-thread"] }
 wavesexchange_log = { git = "https://github.com/waves-exchange/wavesexchange-rs", tag = "wavesexchange_log/0.5.1" }
 waves-protobuf-schemas = { git = "https://github.com/wavesplatform/protobuf-schemas", tag = "rust_v1.5.2" }
+wavesexchange_liveness = { git = "https://github.com/waves-exchange/wavesexchange-rs", tag = "wavesexchange_liveness/0.3.1"}
+wavesexchange_warp = { git = "https://github.com/waves-exchange/wavesexchange-rs", tag = "wavesexchange_warp/0.14.10" }
+
 
 [lib]
 name = "app_lib"

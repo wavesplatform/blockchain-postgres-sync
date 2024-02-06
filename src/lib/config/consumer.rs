@@ -23,6 +23,10 @@ fn default_rollback_step() -> u32 {
     500
 }
 
+fn default_metrics_port() -> u16 {
+    9090
+}
+
 #[derive(Deserialize)]
 struct ConfigFlat {
     asset_storage_address: Option<String>,
@@ -39,6 +43,8 @@ struct ConfigFlat {
     start_rollback_depth: u32,
     #[serde(default = "default_rollback_step")]
     rollback_step: u32,
+    #[serde(default = "default_metrics_port")]
+    metrics_port: u16,
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +58,7 @@ pub struct Config {
     pub updates_per_request: usize,
     pub start_rollback_depth: NonZeroU32,
     pub rollback_step: NonZeroU32,
+    pub metrics_port: u16,
 }
 
 pub fn load() -> Result<Config, Error> {
@@ -71,5 +78,6 @@ pub fn load() -> Result<Config, Error> {
             .ok_or_else(|| nonzero_err("start_rollback_depth"))?,
         rollback_step: NonZeroU32::new(config_flat.rollback_step)
             .ok_or_else(|| nonzero_err("rollback_step"))?,
+        metrics_port: config_flat.metrics_port,
     })
 }

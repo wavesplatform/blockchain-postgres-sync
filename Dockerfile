@@ -1,4 +1,4 @@
-FROM rust:1.75 AS builder
+FROM rust:1.89 AS builder
 WORKDIR /app
 
 RUN rustup component add rustfmt
@@ -22,4 +22,4 @@ COPY --from=builder /app/target/release/migration ./migration
 COPY --from=builder /app/migrations ./migrations/
 
 
-CMD ['./consumer']
+CMD ["./consumer"]

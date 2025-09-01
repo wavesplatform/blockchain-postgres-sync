@@ -1,3 +1,5 @@
+DROP VIEW IF EXISTS decimals;
+
 DROP VIEW IF EXISTS assets;
 DROP VIEW IF EXISTS tickers;
 DROP TABLE IF EXISTS asset_origins;

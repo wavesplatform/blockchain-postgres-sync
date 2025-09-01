@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS get_decimals_or_exception(text);

@@ -12,7 +12,6 @@ use diesel::{
 };
 use std::mem::drop;
 use std::{collections::HashMap, num::NonZeroU32};
-
 use super::super::UidHeight;
 use super::{Repo, RepoOperations};
 use crate::consumer::models::candles::interval_in_seconds;
@@ -189,9 +188,8 @@ impl RepoOperations for PgRepoOperations<'_> {
     //
 
     fn get_next_assets_uid(&mut self) -> Result<i64> {
-        asset_updates_uid_seq::table
-            .select(asset_updates_uid_seq::last_value)
-            .first(self.conn)
+        diesel::select(sql::<BigInt>("nextval('asset_updates_uid_seq')"))
+            .get_result(self.conn)
             .map_err(build_err_fn("Cannot get next assets update uid"))
     }
 
@@ -373,9 +371,8 @@ impl RepoOperations for PgRepoOperations<'_> {
     }
 
     fn get_next_asset_tickers_uid(&mut self) -> Result<i64> {
-        asset_tickers_uid_seq::table
-            .select(asset_tickers_uid_seq::last_value)
-            .first(self.conn)
+        diesel::select(sql::<BigInt>("nextval('asset_tickers_uid_seq')"))
+            .get_result(self.conn)
             .map_err(build_err_fn("Cannot get next asset tickers update uid"))
     }
 
@@ -710,8 +707,8 @@ impl RepoOperations for PgRepoOperations<'_> {
                         amount,
                         CASE WHEN tx_version > 2
                             THEN price::numeric
-                                * 10^(select decimals from decimals where asset_id = price_asset_id)
-                                * 10^(select -decimals from decimals where asset_id = amount_asset_id)
+                                * 10^get_decimals_or_exception(price_asset_id)
+                                * 10^get_decimals_or_exception(amount_asset_id)
                             ELSE price::numeric
                         END price
                     FROM txs_7
@@ -732,6 +729,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                     volume = excluded.volume,
                     weighted_average_price = excluded.weighted_average_price;
         "#;
+
         sql_query(insert_candles_query)
             .bind::<Timestamp, _>(since_timestamp)
             .execute(self.conn)

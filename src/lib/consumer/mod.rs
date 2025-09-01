@@ -583,6 +583,7 @@ fn handle_base_asset_info_updates<R: RepoOperations>(
 
     let updates_count = updates.len();
     let assets_next_uid = repo.get_next_assets_uid()?;
+
     #[allow(deprecated)] // for base64::encode()
     let asset_updates = updates
         .iter()

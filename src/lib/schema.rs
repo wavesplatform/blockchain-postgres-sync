@@ -44,18 +44,6 @@ diesel::table! {
     }
 }
 
-table! {
-    asset_updates_uid_seq (last_value) {
-        last_value -> BigInt,
-    }
-}
-
-table! {
-    asset_tickers_uid_seq (last_value) {
-        last_value -> BigInt,
-    }
-}
-
 diesel::table! {
     use diesel::sql_types::*;
 
@@ -83,7 +71,9 @@ diesel::table! {
 
     candles (interval, time_start, amount_asset_id, price_asset_id, matcher_address) {
         time_start -> Timestamp,
+        #[max_length = 255]
         amount_asset_id -> Varchar,
+        #[max_length = 255]
         price_asset_id -> Varchar,
         low -> Numeric,
         high -> Numeric,
@@ -103,7 +93,9 @@ diesel::table! {
     use diesel::sql_types::*;
 
     pairs (amount_asset_id, price_asset_id, matcher_address) {
+        #[max_length = 255]
         amount_asset_id -> Varchar,
+        #[max_length = 255]
         price_asset_id -> Varchar,
         first_price -> Numeric,
         last_price -> Numeric,
@@ -114,6 +106,7 @@ diesel::table! {
         low -> Numeric,
         weighted_average_price -> Numeric,
         txs_count -> Int4,
+        #[max_length = 255]
         matcher_address -> Varchar,
     }
 }
@@ -645,6 +638,13 @@ diesel::table! {
         quantity -> Numeric,
     }
 }
+
+diesel::joinable!(txs_11_transfers -> txs_11 (tx_uid));
+diesel::joinable!(txs_12_data -> txs_12 (tx_uid));
+diesel::joinable!(txs_16_args -> txs_16 (tx_uid));
+diesel::joinable!(txs_16_payment -> txs_16 (tx_uid));
+diesel::joinable!(txs_18_args -> txs_18 (tx_uid));
+diesel::joinable!(txs_18_payment -> txs_18 (tx_uid));
 
 diesel::allow_tables_to_appear_in_same_query!(
     asset_origins,

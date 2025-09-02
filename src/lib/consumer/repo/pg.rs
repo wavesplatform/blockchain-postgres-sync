@@ -708,7 +708,7 @@ impl RepoOperations for PgRepoOperations<'_> {
                         CASE WHEN tx_version > 2
                             THEN price::numeric
                                 * 10^get_decimals_or_exception(price_asset_id)
-                                * 10^get_decimals_or_exception(amount_asset_id)
+                                * 10^(-get_decimals_or_exception(amount_asset_id))
                             ELSE price::numeric
                         END price
                     FROM txs_7

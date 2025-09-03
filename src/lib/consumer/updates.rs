@@ -24,7 +24,7 @@ use waves_protobuf_schemas::waves::{
     Block as BlockPB, SignedMicroBlock as SignedMicroBlockPB,
     SignedTransaction as SignedTransactionPB,
 };
-use wavesexchange_log::{debug, error};
+use wavesexchange_log::{debug, error, info};
 
 use super::{
     epoch_ms_to_naivedatetime, BlockMicroblockAppend, BlockchainUpdate,
@@ -193,14 +193,29 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                     Some((txs, ..)) => txs
                         .into_iter()
                         .enumerate()
-                        .map(|(idx, tx)| {
+                        // .map(|(idx, tx)| {
+                        //     let id = transaction_ids.get(idx).unwrap().clone();
+                        //     Tx {
+                        //         id: bs58::encode(id).into_string(),
+                        //         data: tx,
+                        //         meta: transactions_metadata.get(idx).unwrap().clone(),
+                        //         state_update: transaction_state_updates.get(idx).unwrap().clone(),
+                        //     }
+                        // })
+                        .filter_map(|(idx, tx)| {
                             let id = transaction_ids.get(idx).unwrap().clone();
-                            Tx {
+                            info!("IDX: {}", idx);
+                            info!("transactions_metadata: {:?}", &transactions_metadata);
+                            info!("transactions_metadata IDX: {:?}", &transactions_metadata.get(idx));
+                            if transactions_metadata.get(idx).is_none() {
+                                return None;
+                            }
+                            Some(Tx {
                                 id: bs58::encode(id).into_string(),
                                 data: tx,
                                 meta: transactions_metadata.get(idx).unwrap().clone(),
                                 state_update: transaction_state_updates.get(idx).unwrap().clone(),
-                            }
+                            })
                         })
                         .collect(),
                     None => vec![],

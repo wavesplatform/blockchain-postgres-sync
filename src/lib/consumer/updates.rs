@@ -204,10 +204,12 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                         // })
                         .filter_map(|(idx, tx)| {
                             let id = transaction_ids.get(idx).unwrap().clone();
-                            info!("IDX: {}", idx);
-                            info!("transactions_metadata: {:?}", &transactions_metadata);
-                            info!("transactions_metadata IDX: {:?}", &transactions_metadata.get(idx));
+
                             if transactions_metadata.get(idx).is_none() {
+                                info!("IDX: {}", idx);
+                                info!("TX: {:?}", &tx);
+                                info!("id: {}", bs58::encode(id).into_string());
+                                info!("transactions_metadata: {:?}", &transactions_metadata);
                                 return None;
                             }
                             Some(Tx {

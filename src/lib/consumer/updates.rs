@@ -24,7 +24,7 @@ use waves_protobuf_schemas::waves::{
     Block as BlockPB, SignedMicroBlock as SignedMicroBlockPB,
     SignedTransaction as SignedTransactionPB,
 };
-use wavesexchange_log::{debug, error};
+use wavesexchange_log::{debug, error, warn};
 
 use super::{
     epoch_ms_to_naivedatetime, BlockMicroblockAppend, BlockchainUpdate,
@@ -193,13 +193,27 @@ impl TryFrom<BlockchainUpdatedPB> for BlockchainUpdate {
                     Some((txs, ..)) => txs
                         .into_iter()
                         .enumerate()
-                        .map(|(idx, tx)| {
-                            let id = transaction_ids.get(idx).unwrap().clone();
-                            Tx {
-                                id: bs58::encode(id).into_string(),
-                                data: tx,
-                                meta: transactions_metadata.get(idx).unwrap().clone(),
-                                state_update: transaction_state_updates.get(idx).unwrap().clone(),
+                        .filter_map(|(idx, tx)| {
+                            let id = transaction_ids.get(idx).unwrap();
+                            let meta = transactions_metadata.get(idx);
+                            let state_updates = transaction_state_updates.get(idx);
+                
+                            match (meta, state_updates) {
+                                (Some(meta), Some(state_updates)) => {
+                                    Some(Tx {
+                                        id: bs58::encode(id).into_string(),
+                                        data: tx,
+                                        meta: meta.clone(),
+                                        state_update: state_updates.clone(),
+                                    })
+                                }
+                                _ => {
+                                    warn!(
+                                        "Skipping transaction id {} due to missing metadata or state update",
+                                        bs58::encode(id).into_string()
+                                    );
+                                    None
+                                }
                             }
                         })
                         .collect(),

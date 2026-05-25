@@ -16,7 +16,7 @@ use waves_protobuf_schemas::waves::{
     signed_transaction::Transaction,
     SignedTransaction, Transaction as WavesTx,
 };
-use wavesexchange_log::{debug, info, timer};
+use wavesexchange_log::{debug, info, timer, warn};
 
 use self::models::{asset_tickers::InsertableAssetTicker, block_microblock::BlockMicroblock};
 use self::models::{
@@ -393,9 +393,16 @@ fn handle_txs<R: RepoOperations>(
 
         for tx in &bm.txs {
             let tx_uid = ugen.next();
-            let result_tx = ConvertedTx::try_from((
+            let result_tx = match ConvertedTx::try_from((
                 &tx.data, &tx.id, bm.height, &tx.meta, tx_uid, block_uid, chain_id,
-            ))?;
+            )) {
+                Ok(tx) => tx,
+                Err(AppError::InconsistDataError(msg)) => {
+                    warn!("Skipping transaction: {} due to missing data", msg);
+                    continue;
+                }
+                Err(e) => return Err(e.into()),
+            };
             match result_tx {
                 ConvertedTx::Genesis(t) => txs_1.push(t),
                 ConvertedTx::Payment(t) => txs_2.push(t),
